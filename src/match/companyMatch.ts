@@ -24,3 +24,16 @@ export function matchCompanyByDomain(
 	if (!domain) return undefined;
 	return directory.find((company) => company.domain?.toLowerCase() === domain);
 }
+
+/**
+ * Keeps only the company wikilinks that resolve to an actual Company
+ * note by filename, dropping the rest. A Meeting note's companies
+ * field is derived from resolved Person records, but an existing
+ * Person note's own company field could already be stale (a human
+ * typo, a renamed or deleted Company note), so this is checked again
+ * here rather than trusted, per the vault schema's own gotcha.
+ */
+export function validateCompanyLinks(links: string[], directory: CompanyRecord[]): string[] {
+	const validNames = new Set(directory.map((company) => `[[${company.name}]]`));
+	return links.filter((link) => validNames.has(link));
+}
