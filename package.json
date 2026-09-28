@@ -1,0 +1,22 @@
+{
+  "name": "graft",
+  "version": "0.1.0",
+  "description": "Read-only sync of a Google Calendar and an Outlook/Microsoft 365 calendar into an existing Obsidian note schema",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [],
+  "author": "Elijah Qatana",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.28.0",
+    "obsidian": "^1.7.2",
+    "tslib": "^2.7.0",
+    "typescript": "^5.6.0"
+  }
+}

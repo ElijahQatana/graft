@@ -1,0 +1,10 @@
+{
+  "id": "graft",
+  "name": "Graft",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Read-only sync of a Google Calendar and an Outlook/Microsoft 365 calendar into your existing meeting-note schema.",
+  "author": "Elijah Qatana",
+  "authorUrl": "https://github.com/ElijahQatana",
+  "isDesktopOnly": false
+}
