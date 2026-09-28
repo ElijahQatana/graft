@@ -12,11 +12,16 @@
   "author": "Elijah Qatana",
   "license": "MIT",
   "devDependencies": {
+    "@types/luxon": "^3.7.5",
     "@types/node": "^22.0.0",
     "builtin-modules": "^4.0.0",
     "esbuild": "^0.28.0",
     "obsidian": "^1.7.2",
     "tslib": "^2.7.0",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "ical.js": "^2.2.1",
+    "luxon": "^3.7.2"
   }
 }
