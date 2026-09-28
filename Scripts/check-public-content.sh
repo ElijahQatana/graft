@@ -47,7 +47,8 @@ if grep -Eiq '(gh[pousr]_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PR
 fi
 
 grep -Eio '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}' "$added_text" \
-  | grep -Eiv '@(example\.(com|org|net)|users\.noreply\.github\.com)$' \
+  | grep -Eiv '@([a-z0-9-]+\.)*(example\.(com|org|net)|example|test|invalid)$' \
+  | grep -Eiv '@users\.noreply\.github\.com$' \
   > "$scan_dir/unapproved-emails" || true
 
 if [ -s "$scan_dir/unapproved-emails" ]; then
