@@ -4,9 +4,11 @@
   "description": "Read-only sync of a Google Calendar and an Outlook/Microsoft 365 calendar into an existing Obsidian note schema",
   "main": "main.js",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "Elijah Qatana",
