@@ -1,5 +1,6 @@
 import type { Attendee } from "../types.ts";
 import { sanitizeFilename } from "../util/filename.ts";
+import { matchCompanyByDomain, type CompanyRecord } from "../match/companyMatch.ts";
 
 export type FilenameStyle = "full" | "firstOnly" | "initialLast";
 
@@ -21,19 +22,27 @@ export interface PersonStub {
 		full_name: string;
 		first_name: string;
 		last_name: string;
+		company: string[];
 		email: string;
 	};
 }
 
 /**
  * Builds a minimal stub for an attendee with no matching Person note.
- * Only full_name/first_name/last_name/email get filled in; everything
- * else (title, department, seniority) stays blank for a human to add
- * later, per the vault schema's own convention.
+ * full_name/first_name/last_name/email always get filled in, plus a
+ * company link when the attendee's email domain matches an existing
+ * Company note (never a newly-created one, that stays manual per the
+ * design decisions). Everything else (title, department, seniority)
+ * stays blank for a human to add later, per the vault schema.
  */
-export function buildPersonStub(attendee: Attendee, rules: FilenameConventionRule[]): PersonStub {
+export function buildPersonStub(
+	attendee: Attendee,
+	rules: FilenameConventionRule[],
+	companies: CompanyRecord[],
+): PersonStub {
 	const { first, last } = splitName(attendee);
 	const fullName = last ? `${first} ${last}` : first;
+	const company = matchCompanyByDomain(attendee.email, companies);
 
 	return {
 		filename: sanitizeFilename(applyStyle(first, last, styleFor(attendee.email, rules))),
@@ -41,6 +50,7 @@ export function buildPersonStub(attendee: Attendee, rules: FilenameConventionRul
 			full_name: fullName,
 			first_name: first,
 			last_name: last,
+			company: company ? [`[[${company.name}]]`] : [],
 			email: attendee.email,
 		},
 	};
