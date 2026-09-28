@@ -1,4 +1,4 @@
-import type { CalendarEvent } from "../types";
+import type { CalendarEvent } from "../types.ts";
 
 export type TitleMatchMode = "exact" | "prefix" | "suffix" | "contains";
 

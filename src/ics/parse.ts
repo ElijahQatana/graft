@@ -1,5 +1,5 @@
 import ICAL from "ical.js";
-import type { Attendee, CalendarEvent, SyncWindow } from "../types";
+import type { Attendee, CalendarEvent, SyncWindow } from "../types.ts";
 
 /** Defends against a pathological RRULE (e.g. unbounded MINUTELY) hanging the sync. */
 const MAX_ITERATIONS_PER_SERIES = 20000;

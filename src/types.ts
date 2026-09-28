@@ -27,6 +27,8 @@ export interface CalendarEvent {
 	status?: "CONFIRMED" | "TENTATIVE" | "CANCELLED";
 	/** True if this occurrence came from an RRULE-bearing master. */
 	isRecurring: boolean;
+	/** Which configured feed this came from ("Google", "Outlook"). Set by the plan builder, not the parser. */
+	source?: string;
 }
 
 /** How far back and forward from now to expand recurring events and include one-off ones. */

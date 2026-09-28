@@ -3,7 +3,7 @@ import {
 	DEFAULT_SETTINGS,
 	GraftSettings,
 	GraftSettingTab,
-} from "./settings";
+} from "./settings.ts";
 
 /**
  * Graft syncs a Google Calendar and an Outlook/Microsoft 365 calendar,

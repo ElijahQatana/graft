@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import type GraftPlugin from "./main";
+import type GraftPlugin from "./main.ts";
 
 /**
  * Empty for now. Every real setting (feed URLs, folders, templates,

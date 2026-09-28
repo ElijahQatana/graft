@@ -1,5 +1,5 @@
-import type { CalendarEvent } from "../types";
-import type { FilterResult } from "./titleMatch";
+import type { CalendarEvent } from "../types.ts";
+import type { FilterResult } from "./titleMatch.ts";
 
 export interface IgnoreListEntry {
 	uid: string;
