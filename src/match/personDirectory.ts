@@ -1,5 +1,6 @@
-import type { App, TFile } from "obsidian";
+import type { App } from "obsidian";
 import type { PersonRecord } from "./personMatch.ts";
+import { isInFolder } from "../util/vaultPath.ts";
 
 /**
  * Reads every Person note's email/email_aliases out of Obsidian's
@@ -26,8 +27,4 @@ export function buildPersonDirectory(app: App, folder: string): PersonRecord[] {
 	}
 
 	return directory;
-}
-
-function isInFolder(file: TFile, folder: string): boolean {
-	return file.path === folder || file.path.startsWith(`${folder}/`);
 }

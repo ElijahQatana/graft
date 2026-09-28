@@ -1,4 +1,5 @@
 import type { Attendee } from "../types.ts";
+import { sanitizeFilename } from "../util/filename.ts";
 
 export type FilenameStyle = "full" | "firstOnly" | "initialLast";
 
@@ -71,9 +72,4 @@ function splitName(attendee: Attendee): { first: string; last: string } {
 	// email's local part rather than leaving the name blank.
 	const local = attendee.email.split("@")[0] ?? attendee.email;
 	return { first: local, last: "" };
-}
-
-/** A note filename can't contain a slash; swap it for a hyphen rather than let file creation fail. */
-function sanitizeFilename(name: string): string {
-	return name.replace(/\//g, "-");
 }

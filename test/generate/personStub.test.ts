@@ -32,7 +32,10 @@ test("a missing CN falls back to the email's local part rather than being blank"
 	assert.equal(stub.filename, "j.doe");
 });
 
-test("a slash in the name doesn't break the filename", () => {
-	const stub = buildPersonStub({ email: "x@other.example", name: "A/B Example" }, rules);
-	assert.doesNotMatch(stub.filename, /\//);
+test("a slash or pipe in the name doesn't break the filename", () => {
+	const withSlash = buildPersonStub({ email: "x@other.example", name: "A/B Example" }, rules);
+	assert.doesNotMatch(withSlash.filename, /\//);
+
+	const withPipe = buildPersonStub({ email: "y@other.example", name: "A|B Example" }, rules);
+	assert.doesNotMatch(withPipe.filename, /\|/);
 });
