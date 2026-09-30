@@ -33,8 +33,6 @@ Private, pre-release. Work is tracked as GitHub issues against the milestones in
 
 ## Development
 
-Once the M0 scaffold lands:
-
 ```sh
 npm install
 npm run dev    # esbuild in watch mode
@@ -42,3 +40,9 @@ npm run build  # production build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Documentation
+
+- [Getting started](docs/getting-started.md)
+- [Configuration](docs/configuration.md)
+- [Architecture](docs/technical/architecture.md)
