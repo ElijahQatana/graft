@@ -89,6 +89,8 @@ test("validators reject unsafe paths, URLs, windows, and rule rows", () => {
 	assert.equal(isTimezone("UTC"), true);
 	assert.equal(isTitleRule({ mode: "contains", value: " " }), false);
 	assert.equal(isTitleRule({ mode: "invalid", value: "Synthetic" }), false);
+	assert.equal(isTitleRule({ mode: ["exact"], value: "Synthetic" }), false);
+	assert.equal(isFilenameRule({ domain: "example.com", style: ["full"] }), false);
 	assert.equal(isFilenameRule({ domain: "person@example.com", style: "full" }), false);
 	assert.equal(isFilenameRule({ domain: "example.com", style: "firstOnly" }), true);
 });

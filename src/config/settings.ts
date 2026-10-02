@@ -74,7 +74,7 @@ export function isDayCount(value: number): boolean {
 
 export function isTitleRule(value: unknown): value is TitleMatchRule {
 	const rule = record(value);
-	return ["exact", "prefix", "suffix", "contains"].includes(String(rule.mode))
+	return typeof rule.mode === "string" && ["exact", "prefix", "suffix", "contains"].includes(rule.mode)
 		&& typeof rule.value === "string" && rule.value.trim().length > 0
 		&& (rule.caseSensitive === undefined || typeof rule.caseSensitive === "boolean");
 }
@@ -82,7 +82,7 @@ export function isTitleRule(value: unknown): value is TitleMatchRule {
 export function isFilenameRule(value: unknown): value is FilenameConventionRule {
 	const rule = record(value);
 	return typeof rule.domain === "string" && /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/i.test(rule.domain)
-		&& ["full", "firstOnly", "initialLast"].includes(String(rule.style));
+		&& typeof rule.style === "string" && ["full", "firstOnly", "initialLast"].includes(rule.style);
 }
 
 /** Restores valid saved fields while supplying fresh nested defaults for older settings. */
