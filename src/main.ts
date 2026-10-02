@@ -1,9 +1,6 @@
-import { Plugin } from "obsidian";
-import {
-	DEFAULT_SETTINGS,
-	GraftSettings,
-	GraftSettingTab,
-} from "./settings.ts";
+import { Notice, Plugin } from "obsidian";
+import { GraftSettingTab } from "./settings.ts";
+import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 
 /**
  * Graft syncs a Google Calendar and an Outlook/Microsoft 365 calendar,
@@ -13,6 +10,7 @@ import {
  */
 export default class GraftPlugin extends Plugin {
 	settings: GraftSettings;
+	private settingsSave: Promise<void> = Promise.resolve();
 
 	async onload() {
 		await this.loadSettings();
@@ -22,10 +20,16 @@ export default class GraftPlugin extends Plugin {
 	onunload() {}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = loadGraftSettings(await this.loadData());
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
+		const snapshot: GraftSettings = JSON.parse(JSON.stringify(this.settings));
+		this.settingsSave = this.settingsSave.catch(() => {}).then(() => this.saveData(snapshot));
+		try {
+			await this.settingsSave;
+		} catch {
+			new Notice("Graft could not save settings. Try editing the setting again.");
+		}
 	}
 }
