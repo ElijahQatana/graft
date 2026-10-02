@@ -7,7 +7,8 @@ Graft is an Obsidian plugin written in TypeScript. Its sync pipeline is split in
 - `src/sync/` builds a plan without writing to the vault.
 - `src/match/` resolves existing Meeting, Person, Series, and Company notes.
 - `src/generate/` and `src/templates/` prepare note content and updates.
-- `src/main.ts` and `src/settings.ts` contain the current Obsidian integration shell.
+- `src/config/` defines settings defaults, validation, and loading.
+- `src/main.ts` handles plugin loading and ordered settings saves; `src/settings.ts` provides the settings tab. Sync commands are not connected yet.
 
 The intended flow is:
 

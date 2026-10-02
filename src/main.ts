@@ -5,8 +5,7 @@ import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 /**
  * Graft syncs a Google Calendar and an Outlook/Microsoft 365 calendar,
  * read-only, into the Meeting/Series/Person/Company notes this vault
- * already uses. This is just the load/unload skeleton; the sync
- * engine itself lands in later milestones.
+ * already uses. Settings are available; sync commands are connected separately.
  */
 export default class GraftPlugin extends Plugin {
 	settings: GraftSettings;
