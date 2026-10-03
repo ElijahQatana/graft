@@ -2,11 +2,7 @@ import { Notice, Plugin } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 
-/**
- * Graft syncs a Google Calendar and an Outlook/Microsoft 365 calendar,
- * read-only, into the Meeting/Series/Person/Company notes this vault
- * already uses. Settings are available; sync commands are connected separately.
- */
+/** Loads the plugin settings and tab. Sync commands are not connected yet. */
 export default class GraftPlugin extends Plugin {
 	settings: GraftSettings;
 	private settingsSave: Promise<void> = Promise.resolve();

@@ -1,48 +1,23 @@
 # Graft
 
-*One schedule, grafted into the notes you already keep.*
+A small Obsidian plugin for bringing Google and Outlook or Microsoft 365 calendar events into Meeting notes. It uses ICS feeds and keeps calendar access read-only.
 
-Graft is an Obsidian plugin that reads two calendars, a Google Calendar and an Outlook or Microsoft 365 calendar, and syncs them into notes matching a schema you already use by hand. It never writes back to either calendar. Read-only, one direction, always.
+Still in development. The settings tab works, and the parsing, filtering, matching, and note helpers are in place. Preview and sync commands are not connected yet, so the plugin does not sync notes from the UI.
 
-## The shape of it
-
-- **Feeds** are the calendar sources: a Google Calendar and an Outlook/Microsoft 365 calendar, each read from its own private ICS address. No OAuth, no client secret, no external service.
-- **Filters** decide what never becomes a note: an exact-match convention for your own calendar blocks, and a plain, manually-maintained ignore list for everything else.
-- **Meetings** are one note per dated occurrence, keyed on the event's ICS `UID` (and `RECURRENCE-ID` for a single modified instance of a recurring series), so a reschedule or retitle updates the existing note instead of duplicating it.
-- **Series** are the recurring-meeting definitions a Meeting note can link back to. A Series can also carry a standing agenda that new occurrences pick up automatically when they're created.
-- **People** and **Companies** are the entity notes Graft matches calendar attendees against. An unmatched attendee gets a minimal stub note, never a guess at their title or department.
-
-## Scope
-
-What Graft does:
-- Fetches both calendars on demand and parses their events.
-- Filters out what you've told it to ignore, using the configured title rules and ignore list.
-- Matches attendees and recurring series against your vault's existing notes.
-- Creates or updates Meeting notes in place, preserving anything you've written by hand.
-- Shows you a preview of what it would change before it writes anything.
-
-What Graft doesn't do:
-- Write, create, update, or delete anything on either calendar.
-- Filter by RSVP or decline status.
-- Automatically maintain the ignore list. Ignoring an event is always a deliberate, manual edit.
-- Guess at Person or Company details beyond a minimal stub.
-
-## Status
-
-Private, pre-release. Work is tracked as GitHub issues against the milestones in this repo, starting with the M0 scaffold. Not yet on the Obsidian community plugin list.
+The planned flow matches existing Person, Series, and Company notes, creates minimal Person and Series stubs when needed, and updates calendar fields while keeping handwritten notes.
 
 ## Development
 
 ```sh
 npm install
-npm run dev    # esbuild in watch mode
-npm run build  # production build
+npm test
+npm run dev
+npm run build
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+To try it locally, copy `main.js` and `manifest.json` into `.obsidian/plugins/graft/` in a test vault, then enable Graft.
 
-## Documentation
-
-- [Getting started](docs/getting-started.md)
-- [Configuration](docs/configuration.md)
-- [Architecture](docs/technical/architecture.md)
+- [Setup](docs/getting-started.md)
+- [Settings](docs/configuration.md)
+- [Code layout](docs/technical/architecture.md)
+- [Contributing](CONTRIBUTING.md)

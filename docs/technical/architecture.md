@@ -1,4 +1,4 @@
-# Architecture
+# Code layout
 
 Graft is an Obsidian plugin written in TypeScript. Its sync pipeline is split into small modules:
 
@@ -16,4 +16,4 @@ The intended flow is:
 ICS feeds -> parse -> filter -> plan -> resolve notes -> preview -> apply
 ```
 
-Calendar access is one-way. The plugin reads calendar feeds and writes only to the configured Obsidian vault.
+The helpers read calendar feeds and prepare vault note changes. The plugin UI does not run this flow yet.

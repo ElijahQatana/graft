@@ -2,12 +2,7 @@ import type { App } from "obsidian";
 import type { PersonRecord } from "./personMatch.ts";
 import { isInFolder } from "../util/vaultPath.ts";
 
-/**
- * Reads every Person note's email/email_aliases out of Obsidian's
- * metadataCache, not by parsing files manually. Deliberately thin:
- * all the actual matching logic lives in personMatch.ts, which
- * doesn't import Obsidian at all and can be tested without a vault.
- */
+/** Reads Person emails and aliases from metadataCache. */
 export function buildPersonDirectory(app: App, folder: string): PersonRecord[] {
 	const directory: PersonRecord[] = [];
 

@@ -1,22 +1,15 @@
 import ICAL from "ical.js";
 import type { Attendee, CalendarEvent, SyncWindow } from "../types.ts";
 
-/** Defends against a pathological RRULE (e.g. unbounded MINUTELY) hanging the sync. */
+/** Limit recurrence expansion so dense or unbounded rules cannot hang a sync. */
 const MAX_ITERATIONS_PER_SERIES = 20000;
 
-/**
- * Parses raw ICS text into normalized CalendarEvents, one per dated
- * occurrence within the sync window. Recurring series are expanded
- * from their RRULE; a VEVENT carrying RECURRENCE-ID overrides the
- * matching occurrence instead of appearing as its own event.
- */
+/** Expands events within the sync window and applies recurrence exceptions. */
 export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 	const component = new ICAL.Component(ICAL.parse(icsText));
 	const vevents = component.getAllSubcomponents("vevent");
 
-	// Exceptions (a single moved/retitled occurrence) must be grouped
-	// with their series' master before ical.js can apply them; passed
-	// loose, they'd otherwise show up as their own duplicate events.
+	// Group exceptions with their master so they do not become duplicate events.
 	const exceptionsByUid = new Map<string, ICAL.Component[]>();
 	const primaries: ICAL.Component[] = [];
 	for (const vevent of vevents) {
@@ -60,9 +53,7 @@ export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 					details.item,
 					details.startDate,
 					details.endDate,
-					// Same conversion as start/end below, not .toString(),
-					// so a recurrenceId is directly comparable to a start
-					// value elsewhere (ignore-list matching, update keying).
+					// Use the same format as start/end for matching.
 					toDateOrIso(details.recurrenceId),
 					true,
 				),
@@ -73,18 +64,8 @@ export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 	return results;
 }
 
-/**
- * ical.js's iterator(seed) doesn't "fast-forward within" the RRULE,
- * it re-derives occurrences using the seed's own time-of-day as if
- * it were a new DTSTART. Passed windowStart directly, a series whose
- * real meeting time is 14:00 would silently come back scheduled at
- * whatever hour windowStart happens to be (00:00, if constructed
- * from a plain Date). Seeding with the event's own hour/minute/second
- * keeps occurrence times correct while still skipping the iterator
- * forward past years of history for an old series. Never seed with
- * a time before the real DTSTART either, ical.js will happily
- * "recur" backwards past it, which iCalendar's semantics forbid.
- */
+/** Seed with the event's time of day so occurrences keep their scheduled time.
+ * Do not seed before DTSTART. */
 function seedForWindow(event: ICAL.Event, windowStart: ICAL.Time): ICAL.Time {
 	if (event.startDate.compare(windowStart) >= 0) {
 		return event.startDate.clone();
@@ -139,7 +120,7 @@ function toAttendee(prop: ICAL.Property | null): Attendee | undefined {
 	return cn ? { email, name: String(cn) } : { email };
 }
 
-/** All-day dates stay a plain calendar date; toJSDate() would apply this machine's local timezone. */
+/** Keep all-day dates without applying the local timezone. */
 function toDateOrIso(time: ICAL.Time): string {
 	if (time.isDate) {
 		return `${pad(time.year, 4)}-${pad(time.month)}-${pad(time.day)}`;

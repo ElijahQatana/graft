@@ -2,13 +2,7 @@ import { stringifyYaml, type App, type TFile } from "obsidian";
 import { buildMeetingNote, type MeetingNoteInput } from "./meetingNote.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 
-/**
- * Builds and writes a new Meeting note. Deliberately thin: all the
- * actual content decisions live in buildMeetingNote, which stays
- * testable without a vault; this just serializes and creates the
- * file, and does the one thing that genuinely needs a live vault to
- * check, whether the target path is already taken.
- */
+/** Serializes and creates a Meeting note, checking for an existing file first. */
 export async function writeMeetingNote(
 	app: App,
 	folder: string,

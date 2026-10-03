@@ -2,7 +2,7 @@ import type { App } from "obsidian";
 import type { CompanyRecord } from "./companyMatch.ts";
 import { isInFolder } from "../util/vaultPath.ts";
 
-/** Reads every Company note's name and domain out of metadataCache. Same thin-adapter shape as the others. */
+/** Reads Company filenames and domains from metadataCache. */
 export function buildCompanyDirectory(app: App, folder: string): CompanyRecord[] {
 	const directory: CompanyRecord[] = [];
 

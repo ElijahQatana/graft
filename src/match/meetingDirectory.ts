@@ -2,7 +2,7 @@ import type { App } from "obsidian";
 import type { MeetingRecord } from "./meetingMatch.ts";
 import { isInFolder } from "../util/vaultPath.ts";
 
-/** Reads every Meeting note's join key out of metadataCache. Same thin-adapter shape as the others. */
+/** Reads Meeting join keys from metadataCache. */
 export function buildMeetingDirectory(app: App, folder: string): MeetingRecord[] {
 	const directory: MeetingRecord[] = [];
 

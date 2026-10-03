@@ -3,13 +3,13 @@ import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { sanitizeFilename } from "../util/filename.ts";
 import { renderTemplate } from "../templates/engine.ts";
 
-/** A generic default, meant to be overridden by a real filename-pattern setting once GFT-014 lands. */
+/** Default filename pattern; callers can supply their own. */
 export const DEFAULT_FILENAME_PATTERN = "{{title}} {{date}}";
 
 export interface ResolvedAttendee {
-	/** The Person note's filename (existing or newly-stubbed), used for the wikilink. */
+	/** Person filename used for the wikilink. */
 	filename: string;
-	/** That person's own company wikilinks, e.g. ["[[Acme]]"], folded into the Meeting's companies field. */
+	/** Company links included in the Meeting note. */
 	companyLinks: string[];
 }
 
@@ -20,9 +20,9 @@ export interface MeetingNoteInput {
 	/** Absent means subtype: OneOff. */
 	series?: { filename: string };
 	invitedAs: string;
-	/** IANA zone name the vault files meetings under, e.g. "America/New_York". Never hardcoded here. */
+	/** Timezone used for Meeting dates and times. */
 	timezone: string;
-	/** Already-extracted content of the Series note's Standing Agenda section, if any. */
+	/** Content from the Series note's Standing Agenda, if present. */
 	seriesStandingAgenda?: string;
 }
 
@@ -32,12 +32,7 @@ export interface MeetingNote {
 	body: string;
 }
 
-/**
- * Builds a complete new Meeting note: frontmatter as a plain object
- * (serialized via Obsidian's stringifyYaml by the caller, not built
- * as YAML text here) and the body with the Agenda split already
- * decided (Series Agenda once, Invite Agenda from the invite itself).
- */
+/** Builds frontmatter and body content. The caller serializes the frontmatter. */
 export function buildMeetingNote(
 	input: MeetingNoteInput,
 	filenamePattern: string = DEFAULT_FILENAME_PATTERN,
@@ -95,12 +90,7 @@ function wallClockFor(value: string, allDay: boolean, timezone: string) {
 	return allDay ? wallClockFromDate(value) : toWallClock(value, timezone);
 }
 
-/**
- * Matches the existing template's own blank-line rhythm: a heading
- * directly followed by its first subheading with no gap, two blank
- * lines of empty content space between one subsection's content and
- * the next heading.
- */
+/** Keep blank lines between the default body sections. */
 function buildBody(description: string | undefined, seriesStandingAgenda: string | undefined): string {
 	const inviteAgenda = description && description.trim() ? description.trim() : "No agenda provided";
 

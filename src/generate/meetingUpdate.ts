@@ -12,21 +12,8 @@ export interface MeetingUpdateInput {
 	timezone: string;
 }
 
-/**
- * The exact set of fields the plugin ever touches on an existing
- * Meeting note, and nothing else. Deliberately does NOT include
- * date/week/month/year/weekday: refiling a note across a calendar
- * day would mean renaming or moving it, which is a bigger, riskier
- * change than a plain field update and isn't done here. A reschedule
- * that crosses a day updates scheduled_start/scheduled_end correctly
- * but leaves the note under its original date; flagged as a known
- * limitation, not a silent gap.
- *
- * occurrence_status only ever flips to Cancelled on an explicit
- * STATUS:CANCELLED. It's never set to Occurred (ICS has no
- * attendance data) or Rescheduled (that status doesn't exist in the
- * schema, a reschedule just updates the time fields directly).
- */
+/** Fields owned by calendar sync. Date fields and filenames stay unchanged on reschedule.
+ * occurrence_status changes only for an explicit cancellation. */
 export function buildMeetingFrontmatterUpdate(
 	input: MeetingUpdateInput,
 	companies: CompanyRecord[],

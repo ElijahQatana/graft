@@ -3,7 +3,7 @@ import type { FilterResult } from "./titleMatch.ts";
 
 export interface IgnoreListEntry {
 	uid: string;
-	/** null means "ignore the whole event or series," not just one occurrence. */
+	/** null skips the whole event or series. */
 	recurrenceId: string | null;
 	note?: string;
 }
@@ -12,19 +12,14 @@ interface IgnoreListFile {
 	ignored: IgnoreListEntry[];
 }
 
-/** Parses the ignore-list JSON file's contents. A missing or blank file means ignore nothing. */
+/** Parses an ignore list. Missing or blank content ignores nothing. */
 export function parseIgnoreList(raw: string | null | undefined): IgnoreListEntry[] {
 	if (!raw || !raw.trim()) return [];
 	const parsed = JSON.parse(raw) as Partial<IgnoreListFile>;
 	return parsed.ignored ?? [];
 }
 
-/**
- * Filters events against the ignore list: a bare-uid entry
- * (recurrenceId: null) skips every occurrence of that uid, a
- * uid+recurrenceId entry skips only that one occurrence, leaving
- * sibling occurrences of the same series untouched.
- */
+/** A UID skips the whole series; UID plus recurrenceId skips one occurrence. */
 export function filterByIgnoreList(
 	events: CalendarEvent[],
 	entries: IgnoreListEntry[],

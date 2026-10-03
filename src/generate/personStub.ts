@@ -4,19 +4,14 @@ import { matchCompanyByDomain, type CompanyRecord } from "../match/companyMatch.
 
 export type FilenameStyle = "full" | "firstOnly" | "initialLast";
 
-/**
- * How to name a new Person note's file based on the attendee's email
- * domain. This table is settings-driven (GFT-014), never hardcoded:
- * a real vault's actual employer/client domains are the user's own
- * data, not something that belongs baked into this repo's source.
- */
+/** Email-domain rules for naming new Person notes. */
 export interface FilenameConventionRule {
 	domain: string;
 	style: FilenameStyle;
 }
 
 export interface PersonStub {
-	/** Filename without extension or folder, e.g. "Charles" or "F. Example" or "Lara Example". */
+	/** Filename without its folder or extension. */
 	filename: string;
 	frontmatter: {
 		full_name: string;
@@ -27,14 +22,7 @@ export interface PersonStub {
 	};
 }
 
-/**
- * Builds a minimal stub for an attendee with no matching Person note.
- * full_name/first_name/last_name/email always get filled in, plus a
- * company link when the attendee's email domain matches an existing
- * Company note (never a newly-created one, that stays manual per the
- * design decisions). Everything else (title, department, seniority)
- * stays blank for a human to add later, per the vault schema.
- */
+/** Builds a Person stub, with a company link when the domain matches an existing Company note. */
 export function buildPersonStub(
 	attendee: Attendee,
 	rules: FilenameConventionRule[],
@@ -78,8 +66,7 @@ function splitName(attendee: Attendee): { first: string; last: string } {
 		const parts = attendee.name.trim().split(/\s+/);
 		return { first: parts[0], last: parts.slice(1).join(" ") };
 	}
-	// No CN on the ATTENDEE property to work with, fall back to the
-	// email's local part rather than leaving the name blank.
+	// Fall back to the email local part when the attendee has no name.
 	const local = attendee.email.split("@")[0] ?? attendee.email;
 	return { first: local, last: "" };
 }

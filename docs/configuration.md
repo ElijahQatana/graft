@@ -1,18 +1,18 @@
-# Configuration
+# Settings
 
-Open Graft in Obsidian's settings. Valid text edits and toggles save automatically; use **Add** or **Save** for rule rows. Invalid edits show a message and leave the saved value unchanged. Save a rule before adding or moving another row.
+Open Graft in Obsidian's settings. Text fields and toggles save automatically. Rule rows use **Add** and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
 
-The settings are available now. Preview and sync commands are not connected yet, so changing these settings does not fetch calendars or write notes.
+These settings do not start a sync yet. Preview and sync commands are still being connected.
 
-- **Calendar feeds:** Google and Outlook or Microsoft 365 ICS URLs, each with its `invited_as` identity. Blank URLs leave feeds unconfigured. URLs are masked on screen but stored as plain text in the vault's local plugin settings. Use HTTPS where possible.
-- **Folders:** Meeting, Person, Series, and Company folders, relative to the vault root. Defaults are `Meetings`, `People`, `Series`, and `Companies`. Company notes remain manually maintained.
-- **Templates:** optional paths to existing Markdown files for Meeting, Person, and Series bodies. Blank selects built-in content. Graft uses `{{name}}` placeholders and does not execute Templater scripts. Template application belongs to the upcoming sync flow.
-- **Meeting filenames:** defaults to `{{title}} {{date}}`. Unknown placeholders remain visible.
-- **Filters:** an optional ignore-list JSON path and ordered title skip rules. Title modes are exact, prefix, suffix, and contains, with optional case sensitivity. The first matching rule skips the event. Blank ignore-list paths disable that filter; missing files ignore nothing.
-- **Person filenames:** ordered domain-to-style rules: full name, first name, or initial and last name. The first matching domain wins; unlisted domains use full names.
-- **Sync window:** non-negative whole days back and ahead, defaulting to 7 and 30. Meeting dates and times use the selected timezone, defaulting to UTC.
-- **Behavior:** Person and Series stubs, strict Company links, and preview before apply default to on. Startup sync defaults to off. These toggles take effect once the sync flow is connected.
+- **Feeds:** Google and Outlook ICS URLs and an `invited_as` identity for each. Blank URLs leave a feed unconfigured. URLs are masked on screen but saved as plain text in the vault's plugin settings. Prefer HTTPS.
+- **Folders:** Meeting, Person, Series, and Company folders. Defaults are `Meetings`, `People`, `Series`, and `Companies`. Company notes are maintained manually.
+- **Templates:** optional Markdown file paths for Meeting, Person, and Series bodies. Blank selects the built-in body once sync is connected. Graft uses `{{name}}` placeholders; it does not run Templater scripts.
+- **Meeting filenames:** default to `{{title}} {{date}}`. Unknown placeholders remain visible.
+- **Filters:** an optional ignore-list JSON path and ordered title skip rules. Title rules support exact, prefix, suffix, and contains, with optional case sensitivity. The first match wins. A blank or missing ignore list ignores nothing.
+- **Person filenames:** ordered domain rules for full name, first name, or initial and last name. The first match wins; unlisted domains use full names.
+- **Window:** whole days back and ahead, including zero. Defaults are 7 and 30, with UTC as the timezone.
+- **Behavior:** Person and Series stubs, strict Company links, and preview default to on. Startup sync defaults to off. These options take effect once sync is connected.
 
-Folder and file paths cannot be absolute or contain parent traversal. Folders do not need to exist yet; template files must exist when selected. Existing settings retain their valid fields when new defaults are added.
+Paths are relative to the vault root and cannot contain parent traversal. Templates must exist when selected; folders can be created later.
 
-Calendar feeds remain read-only. Keep private feed URLs and real calendar data out of source files, fixtures, issues, logs, and shared vault copies.
+Keep feed URLs and real calendar data out of shared notes, screenshots, logs, and vault copies.

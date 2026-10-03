@@ -1,16 +1,11 @@
-/** The minimal shape read from a Meeting note's frontmatter to find its match. */
+/** Meeting fields used for matching. */
 export interface MeetingRecord {
 	path: string;
 	icsUid?: string;
 	icsRecurrenceId?: string;
 }
 
-/**
- * Finds the existing Meeting note for a CalendarEvent by its
- * compound UID + RECURRENCE-ID key. A one-off event and the
- * unmodified occurrences of a series both have no recurrenceId,
- * normalized to "" here so undefined and "" match each other.
- */
+/** Matches UID and recurrenceId, treating a missing recurrenceId as an empty string. */
 export function matchMeeting(
 	uid: string,
 	recurrenceId: string | undefined,

@@ -1,11 +1,6 @@
 import { requestUrl } from "obsidian";
 
-/**
- * Thrown when an ICS feed can't be reached, or what comes back
- * doesn't look like calendar data. Callers catch this specifically
- * rather than a generic network error, so a bad feed URL surfaces
- * as a clear message instead of an unhandled rejection.
- */
+/** A feed request failed or returned content that is not an ICS calendar. */
 export class IcsFetchError extends Error {
 	constructor(message: string, readonly url: string, readonly cause?: unknown) {
 		super(message);
@@ -13,11 +8,7 @@ export class IcsFetchError extends Error {
 	}
 }
 
-/**
- * Fetches a single ICS feed and returns its raw text. Uses
- * Obsidian's requestUrl rather than fetch() so it works on mobile
- * and isn't subject to the feed host's CORS policy.
- */
+/** Uses Obsidian's requestUrl to avoid browser CORS restrictions. */
 export async function fetchIcs(url: string): Promise<string> {
 	let response;
 	try {

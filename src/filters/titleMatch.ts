@@ -13,11 +13,7 @@ export interface FilterResult {
 	skipped: Array<{ event: CalendarEvent; reason: string }>;
 }
 
-/**
- * An ordered rule list; the first rule that matches an event's title
- * wins and the event is skipped, meaning "never sync this." An empty
- * rule list matches nothing, so everything passes through unchanged.
- */
+/** The first matching rule skips the event. An empty list keeps everything. */
 export function filterByTitle(events: CalendarEvent[], rules: TitleMatchRule[]): FilterResult {
 	const kept: CalendarEvent[] = [];
 	const skipped: FilterResult["skipped"] = [];

@@ -2,12 +2,7 @@ import type { App } from "obsidian";
 import type { SeriesRecord } from "./seriesMatch.ts";
 import { isInFolder } from "../util/vaultPath.ts";
 
-/**
- * Reads every Series note's join key out of metadataCache. Same
- * shape and reasoning as personDirectory.ts: deliberately thin, all
- * the actual logic lives in seriesMatch.ts, which stays testable
- * without a real vault.
- */
+/** Reads Series join keys from metadataCache. */
 export function buildSeriesDirectory(app: App, folder: string): SeriesRecord[] {
 	const directory: SeriesRecord[] = [];
 
