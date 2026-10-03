@@ -81,5 +81,15 @@ test("one feed failing to fetch doesn't stop the other feed's events from being 
 	assert.equal(plan.toProcess[0].source, "Google");
 	assert.equal(plan.errors.length, 1);
 	assert.equal(plan.errors[0].feed, "Outlook");
-	assert.match(plan.errors[0].message, /HTTP 401/);
+	assert.equal(plan.errors[0].message, "Calendar feed could not be fetched or parsed.");
+});
+
+test("feed errors do not include request or parser details", async () => {
+	const feeds: FeedConfig[] = [{ name: "Google", url: "https://example.com/feed.ics?key=synthetic" }];
+	for (const failure of [new Error("https://example.com/feed.ics?key=synthetic"), "Synthetic event content"]) {
+		const plan = await buildSyncPlan(feeds, WINDOW, [], [], async () => { throw failure; });
+		assert.deepEqual(plan.errors, [{ feed: "Google", message: "Calendar feed could not be fetched or parsed." }]);
+	}
+	const malformed = await buildSyncPlan(feeds, WINDOW, [], [], async () => "Synthetic invalid ICS content");
+	assert.deepEqual(malformed.errors, [{ feed: "Google", message: "Calendar feed could not be fetched or parsed." }]);
 });

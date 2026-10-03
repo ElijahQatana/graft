@@ -38,8 +38,8 @@ export async function buildSyncPlan(
 				source: feed.name,
 			}));
 			allEvents.push(...events);
-		} catch (cause) {
-			errors.push({ feed: feed.name, message: describeError(cause) });
+		} catch {
+			errors.push({ feed: feed.name, message: "Calendar feed could not be fetched or parsed." });
 		}
 	}
 
@@ -51,8 +51,4 @@ export async function buildSyncPlan(
 		skipped: [...titleFiltered.skipped, ...ignoreFiltered.skipped],
 		errors,
 	};
-}
-
-function describeError(cause: unknown): string {
-	return cause instanceof Error ? cause.message : String(cause);
 }
