@@ -1,0 +1,93 @@
+import type { SyncPlan } from "../sync/plan.ts";
+import { buildMeetingNote, type MeetingNote, type MeetingNoteInput } from "../generate/meetingNote.ts";
+import { buildMeetingFrontmatterUpdate } from "../generate/meetingUpdate.ts";
+import type { PersonStub } from "../generate/personStub.ts";
+import type { SeriesStub } from "../generate/seriesStub.ts";
+import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
+import { extractSection, replaceSection } from "../util/markdownSections.ts";
+
+export interface FieldChange {
+	field: string;
+	before: unknown;
+	after: unknown;
+}
+
+export interface PreviewWarning {
+	kind: "unresolved-company" | "ambiguous-person" | "vanished-event";
+	/** A note path or event title for local display. */
+	subject: string;
+}
+
+export interface PreviewInput {
+	plan: SyncPlan;
+	/** One resolved input per toProcess event, in the same order. */
+	meetings: Array<{
+		input: MeetingNoteInput;
+		existing?: { path: string; frontmatter: Record<string, unknown>; body: string };
+	}>;
+	personStubs: Array<{ path: string; stub: PersonStub }>;
+	seriesStubs: Array<{ path: string; stub: SeriesStub }>;
+	companies: CompanyRecord[];
+	meetingFolder: string;
+	filenamePattern?: string;
+	/** Matching and feed-coverage warnings supplied by the resolver. */
+	warnings: PreviewWarning[];
+}
+
+export interface SyncPreview {
+	newMeetings: Array<{ path: string; note: MeetingNote }>;
+	updates: Array<{ path: string; changes: FieldChange[] }>;
+	personStubs: PreviewInput["personStubs"];
+	seriesStubs: PreviewInput["seriesStubs"];
+	skipped: SyncPlan["skipped"];
+	errors: SyncPlan["errors"];
+	warnings: PreviewWarning[];
+}
+
+/** Uses the write helpers' values without reading or writing the vault. */
+export function buildSyncPreview(source: PreviewInput): SyncPreview {
+	if (source.meetings.length !== source.plan.toProcess.length
+		|| source.meetings.some(({ input }, index) => input.event !== source.plan.toProcess[index])) {
+		throw new Error("Preview needs a resolved input for each planned event.");
+	}
+	const preview: SyncPreview = {
+		newMeetings: [], updates: [], personStubs: source.personStubs,
+		seriesStubs: source.seriesStubs, skipped: source.plan.skipped,
+		errors: source.plan.errors, warnings: [...source.warnings],
+	};
+	for (const { input, existing } of source.meetings) {
+		const companyLinks = [...(input.organizer?.companyLinks ?? []), ...input.invited.flatMap((person) => person.companyLinks)];
+		if (validateCompanyLinks(companyLinks, source.companies).length !== companyLinks.length) {
+			preview.warnings.push({ kind: "unresolved-company", subject: existing?.path ?? input.event.summary });
+		}
+		if (!existing) {
+			const note = buildMeetingNote(input, source.filenamePattern);
+			note.frontmatter.companies = validateCompanyLinks(note.frontmatter.companies as string[], source.companies);
+			preview.newMeetings.push({ path: `${source.meetingFolder}/${note.filename}.md`, note });
+			continue;
+		}
+		const next = buildMeetingFrontmatterUpdate(input, source.companies);
+		const changes: FieldChange[] = [];
+		for (const [field, after] of Object.entries(next)) {
+			const before = existing.frontmatter[field];
+			if (!sameValue(before, after)) changes.push({ field, before, after });
+		}
+		const body = replaceSection(existing.body, "## Invite Agenda", input.event.description?.trim() || "No agenda provided");
+		if (body !== existing.body) {
+			const before = extractSection(existing.body, "## Invite Agenda");
+			const after = extractSection(body, "## Invite Agenda");
+			changes.push(before === after
+				? { field: "Body formatting", before: existing.body, after: body }
+				: { field: "Invite Agenda", before, after });
+		}
+		preview.updates.push({ path: existing.path, changes });
+	}
+	return preview;
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+	if (Array.isArray(left) && Array.isArray(right)) {
+		return left.length === right.length && left.every((value, index) => sameValue(value, right[index]));
+	}
+	return left === right;
+}
