@@ -55,7 +55,8 @@ class PluginSettingTab {
 class Plugin {
 	addSettingTab(tab) { this.tab = tab; }
 }
-const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin };
+class Modal {}
+const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal };
 
 async function loadModule(entry) {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
