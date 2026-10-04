@@ -2,9 +2,9 @@
 
 A small Obsidian plugin for bringing Google and Outlook or Microsoft 365 calendar events into Meeting notes. It uses ICS feeds and keeps calendar access read-only.
 
-Still in development. The settings tab, note helpers, and dry-run preview modal are in place. Preview and sync commands are not connected yet, so the plugin does not sync notes from the UI.
+Still in development. The settings tab, Preview sync, Sync now, and Apply are connected. Testing against real Google and Outlook feeds is still pending.
 
-The planned flow matches existing Person, Series, and Company notes, creates minimal Person and Series stubs when needed, and updates calendar fields while keeping handwritten notes.
+The flow matches existing Person, Series, and Company notes, creates minimal Person and Series stubs when needed, and updates calendar fields while keeping handwritten notes.
 
 ## Development
 
