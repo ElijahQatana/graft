@@ -14,6 +14,7 @@ export interface PersonStub {
 	/** Filename without its folder or extension. */
 	filename: string;
 	frontmatter: {
+		type: "Person";
 		full_name: string;
 		first_name: string;
 		last_name: string;
@@ -35,6 +36,7 @@ export function buildPersonStub(
 	return {
 		filename: sanitizeFilename(applyStyle(first, last, styleFor(attendee.email, rules))),
 		frontmatter: {
+			type: "Person",
 			full_name: fullName,
 			first_name: first,
 			last_name: last,

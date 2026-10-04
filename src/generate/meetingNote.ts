@@ -24,6 +24,7 @@ export interface MeetingNoteInput {
 	timezone: string;
 	/** Content from the Series note's Standing Agenda, if present. */
 	seriesStandingAgenda?: string;
+	bodyTemplate?: string;
 }
 
 export interface MeetingNote {
@@ -77,7 +78,12 @@ export function buildMeetingNote(
 		Tags: ["Meeting"],
 	};
 
-	const body = buildBody(input.event.description, input.seriesStandingAgenda);
+	const body = input.bodyTemplate === undefined ? buildBody(input.event.description, input.seriesStandingAgenda)
+		: renderTemplate(input.bodyTemplate, {
+			...Object.fromEntries(Object.entries(frontmatter).map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)])),
+			invite_agenda: input.event.description?.trim() || "No agenda provided",
+			series_agenda: input.seriesStandingAgenda?.trim() || "",
+		});
 
 	const filename = sanitizeFilename(
 		renderTemplate(filenamePattern, { title: input.event.summary, date: start.date }),

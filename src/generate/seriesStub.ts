@@ -4,6 +4,7 @@ import { sanitizeFilename } from "../util/filename.ts";
 export interface SeriesStub {
 	filename: string;
 	frontmatter: {
+		type: "Series";
 		series_title: string;
 		google_recurring_event_id: string;
 	};
@@ -14,6 +15,7 @@ export function buildSeriesStub(event: CalendarEvent): SeriesStub {
 	return {
 		filename: sanitizeFilename(event.summary || event.uid),
 		frontmatter: {
+			type: "Series",
 			series_title: event.summary,
 			google_recurring_event_id: event.uid,
 		},

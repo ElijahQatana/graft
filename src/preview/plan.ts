@@ -1,10 +1,10 @@
 import type { SyncPlan } from "../sync/plan.ts";
 import { buildMeetingNote, type MeetingNote, type MeetingNoteInput } from "../generate/meetingNote.ts";
-import { buildMeetingFrontmatterUpdate } from "../generate/meetingUpdate.ts";
+import { buildMeetingFrontmatterUpdate, buildMeetingBodyUpdate } from "../generate/meetingUpdate.ts";
 import type { PersonStub } from "../generate/personStub.ts";
 import type { SeriesStub } from "../generate/seriesStub.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
-import { extractSection, replaceSection } from "../util/markdownSections.ts";
+import { extractSection } from "../util/markdownSections.ts";
 
 export interface FieldChange {
 	field: string;
@@ -25,11 +25,12 @@ export interface PreviewInput {
 		input: MeetingNoteInput;
 		existing?: { path: string; frontmatter: Record<string, unknown>; body: string };
 	}>;
-	personStubs: Array<{ path: string; stub: PersonStub }>;
-	seriesStubs: Array<{ path: string; stub: SeriesStub }>;
+	personStubs: Array<{ path: string; stub: PersonStub; body?: string }>;
+	seriesStubs: Array<{ path: string; stub: SeriesStub; body?: string }>;
 	companies: CompanyRecord[];
 	meetingFolder: string;
 	filenamePattern?: string;
+	strictCompanyLinks?: boolean;
 	/** Matching and feed-coverage warnings supplied by the resolver. */
 	warnings: PreviewWarning[];
 }
@@ -57,28 +58,26 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 	};
 	for (const { input, existing } of source.meetings) {
 		const companyLinks = [...(input.organizer?.companyLinks ?? []), ...input.invited.flatMap((person) => person.companyLinks)];
-		if (validateCompanyLinks(companyLinks, source.companies).length !== companyLinks.length) {
+		if (source.strictCompanyLinks !== false && validateCompanyLinks(companyLinks, source.companies).length !== companyLinks.length) {
 			preview.warnings.push({ kind: "unresolved-company", subject: existing?.path ?? input.event.summary });
 		}
 		if (!existing) {
 			const note = buildMeetingNote(input, source.filenamePattern);
-			note.frontmatter.companies = validateCompanyLinks(note.frontmatter.companies as string[], source.companies);
+			if (source.strictCompanyLinks !== false) note.frontmatter.companies = validateCompanyLinks(note.frontmatter.companies as string[], source.companies);
 			preview.newMeetings.push({ path: `${source.meetingFolder}/${note.filename}.md`, note });
 			continue;
 		}
-		const next = buildMeetingFrontmatterUpdate(input, source.companies);
+		const next = buildMeetingFrontmatterUpdate(input, source.companies, source.strictCompanyLinks);
 		const changes: FieldChange[] = [];
 		for (const [field, after] of Object.entries(next)) {
 			const before = existing.frontmatter[field];
 			if (!sameValue(before, after)) changes.push({ field, before, after });
 		}
-		const body = replaceSection(existing.body, "## Invite Agenda", input.event.description?.trim() || "No agenda provided");
+		const body = buildMeetingBodyUpdate(existing.body, input.event.description);
 		if (body !== existing.body) {
 			const before = extractSection(existing.body, "## Invite Agenda");
 			const after = extractSection(body, "## Invite Agenda");
-			changes.push(before === after
-				? { field: "Body formatting", before: existing.body, after: body }
-				: { field: "Invite Agenda", before, after });
+			changes.push({ field: "Invite Agenda", before, after });
 		}
 		preview.updates.push({ path: existing.path, changes });
 	}

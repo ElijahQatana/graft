@@ -54,6 +54,7 @@ class PluginSettingTab {
 }
 class Plugin {
 	addSettingTab(tab) { this.tab = tab; }
+	addCommand(command) { (this.commands ??= []).push(command); }
 }
 class Modal {}
 const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal };

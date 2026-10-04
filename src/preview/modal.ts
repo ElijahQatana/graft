@@ -7,9 +7,12 @@ const warningText = {
 	"vanished-event": "Event missing from the feed. This does not mark it cancelled.",
 };
 
-/** Read-only display. Command and Apply wiring belongs to the sync flow. */
+/** Displays a prepared plan. Applying never fetches the feeds again. */
 export class SyncPreviewModal extends Modal {
-	constructor(app: App, private preview: SyncPreview) {
+	private applying = false;
+	private consumed = false;
+	constructor(app: App, private preview: SyncPreview,
+		private apply?: () => Promise<void>, private done?: () => void) {
 		super(app);
 	}
 
@@ -52,10 +55,11 @@ export class SyncPreviewModal extends Modal {
 		for (const [label, stubs] of [["New Person stubs", personStubs], ["New Series stubs", seriesStubs]] as const) {
 			if (!stubs.length) continue;
 			root.createEl("h3", { text: label });
-			for (const { path, stub } of stubs) {
+			for (const { path, stub, body } of stubs) {
 				const details = root.createEl("details");
 				details.createEl("summary", { text: path });
 				showFields(details, stub.frontmatter);
+				if (body) details.createEl("pre", { text: body });
 			}
 		}
 		if (skipped.length) {
@@ -71,11 +75,24 @@ export class SyncPreviewModal extends Modal {
 			root.createEl("p", { text: "Some feeds could not be read. This preview is incomplete." });
 			for (const error of errors) root.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.` });
 		}
-		root.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => this.close());
+		if (this.apply) {
+			const button = root.createEl("button", { text: "Apply", attr: { type: "button" } });
+			button.addEventListener("click", async () => {
+				if (this.applying || this.consumed) return;
+				this.consumed = true;
+				this.applying = true;
+				button.disabled = true;
+				try { await this.apply!(); }
+				finally { this.applying = false; this.close(); }
+			});
+		} else root.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan." });
+		root.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 	}
 
 	onClose() {
+		this.consumed = true;
 		this.contentEl.empty();
+		if (!this.applying) this.done?.();
 	}
 }
 

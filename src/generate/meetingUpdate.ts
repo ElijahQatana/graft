@@ -2,6 +2,13 @@ import type { CalendarEvent } from "../types.ts";
 import type { ResolvedAttendee } from "./meetingNote.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
+import { extractSection, replaceSection } from "../util/markdownSections.ts";
+
+/** Avoid rewriting body spacing when the invite text has not changed. */
+export function buildMeetingBodyUpdate(body: string, description?: string): string {
+	const agenda = description?.trim() || "No agenda provided";
+	return extractSection(body, "## Invite Agenda") === agenda ? body : replaceSection(body, "## Invite Agenda", agenda);
+}
 
 export interface MeetingUpdateInput {
 	event: CalendarEvent;
@@ -17,6 +24,7 @@ export interface MeetingUpdateInput {
 export function buildMeetingFrontmatterUpdate(
 	input: MeetingUpdateInput,
 	companies: CompanyRecord[],
+	strictCompanyLinks = true,
 ): Record<string, unknown> {
 	const start = input.event.allDay
 		? wallClockFromDate(input.event.start)
@@ -40,7 +48,7 @@ export function buildMeetingFrontmatterUpdate(
 		scheduled_start: start.time,
 		scheduled_end: end.time,
 		invite_updated: input.event.lastModified ?? "",
-		companies: validateCompanyLinks(rawCompanies, companies),
+		companies: strictCompanyLinks ? validateCompanyLinks(rawCompanies, companies) : rawCompanies,
 		ics_uid: input.event.uid,
 		ics_recurrence_id: input.event.recurrenceId ?? "",
 	};

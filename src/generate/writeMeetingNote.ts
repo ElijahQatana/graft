@@ -9,9 +9,10 @@ export async function writeMeetingNote(
 	input: MeetingNoteInput,
 	companies: CompanyRecord[],
 	filenamePattern?: string,
+	strictCompanyLinks = true,
 ): Promise<TFile> {
 	const note = buildMeetingNote(input, filenamePattern);
-	note.frontmatter.companies = validateCompanyLinks(
+	if (strictCompanyLinks) note.frontmatter.companies = validateCompanyLinks(
 		note.frontmatter.companies as string[],
 		companies,
 	);

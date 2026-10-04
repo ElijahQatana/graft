@@ -54,15 +54,12 @@ test("unchanged arrays and missing agenda headings do not produce changes", () =
 	assert.deepEqual(buildSyncPreview(source).updates[0].changes, []);
 });
 
-test("body spacing changes are shown even when the agenda text stays the same", () => {
+test("unchanged agenda text preserves existing body spacing", () => {
 	const source = fixture();
 	const body = "## Invite Agenda\nNew agenda\n# Human Notes (yay)\nKeep this";
 	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter: buildMeetingFrontmatterUpdate(source.meetings[0].input, []), body };
 	const changes = buildSyncPreview(source).updates[0].changes;
-	assert.equal(changes.length, 1);
-	assert.equal(changes[0].field, "Body formatting");
-	assert.equal(changes[0].before, body);
-	assert.match(changes[0].after as string, /Keep this/);
+	assert.equal(changes.length, 0);
 });
 
 test("explicit cancellation is shown but vanished events are warnings only", () => {
