@@ -386,7 +386,7 @@ test("event titles with a colon preview and apply with cleaned filenames", async
 test("two titles that clean to the same filename are reported as a planned-name conflict", async () => {
 	const f = fixture();
 	f.fetch = async (url) => url.includes("google") ? calendar("a@example.com", "Sync: Planning") : calendar("b@example.com", "Sync? Planning");
-	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /conflict/);
+	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /same name/);
 	assert.equal(f.writes.length, 0);
 });
 
@@ -538,7 +538,7 @@ test("deliberate prepare errors show their own message in the notice", async () 
 		"The ignore list is not valid JSON. Fix the file or clear the ignore list setting.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", "{ not json"); },
 		"The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); },
 		"A template file set in Graft settings was not found. Fix the template path or clear it.": (f) => { f.plugin.settings.templates.meeting = "Templates/Missing.md"; },
-		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f) => { f.plugin.settings.meetingFilenamePattern = "Invalid:filename"; },
+		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f) => { f.plugin.settings.folders.meeting = "Bad:folder"; },
 		"Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.": (f) => { f.plugin.settings.meetingFilenamePattern = "Same"; },
 		"More than one Meeting note has the same event UID. Remove the duplicate from the Meeting folder.": (f) => { for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" })); },
 	};
