@@ -284,7 +284,8 @@
 	gap: var(--size-4-2);
 }
 
-.graft-settings .graft-rule-row input[type="text"] {
+.graft-settings .graft-rule-row input[type="text"],
+.graft-settings .graft-rule-row input[type="password"] {
 	flex: 1 1 10rem;
 	min-width: 0;
 }

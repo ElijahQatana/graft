@@ -2,13 +2,19 @@ import type { TitleMatchRule } from "../filters/titleMatch.ts";
 import type { FilenameConventionRule } from "../generate/personStub.ts";
 import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, loadSchema, type NoteSchema } from "./schema.ts";
 
+export type CalendarType = "google" | "outlook";
+
 export interface CalendarSettings {
+	/** Required and unique among calendars, ignoring case. Shown in the preview. */
+	name: string;
+	type: CalendarType;
 	url: string;
 	invitedAs: string;
 }
 
 export interface GraftSettings {
-	feeds: { google: CalendarSettings; outlook: CalendarSettings };
+	/** Synced in this order; when two calendars hold one event, the earlier one is used. */
+	calendars: CalendarSettings[];
 	folders: { meeting: string; person: string; series: string; company: string };
 	/** Vault-relative Markdown template paths. Blank selects the built-in body. */
 	templates: { meeting: string; person: string; series: string };
@@ -31,7 +37,7 @@ export interface GraftSettings {
 }
 
 export const DEFAULT_SETTINGS: GraftSettings = {
-	feeds: { google: { url: "", invitedAs: "" }, outlook: { url: "", invitedAs: "" } },
+	calendars: [],
 	folders: { meeting: "Meetings", person: "People", series: "Series", company: "Companies" },
 	templates: { meeting: "", person: "", series: "" },
 	ignoreListPath: "",
@@ -58,6 +64,19 @@ export function isFeedUrl(value: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+/** A calendar needs a feed URL, unlike the optional URL fields elsewhere. */
+export function isCalendarUrl(value: string): boolean {
+	return value.trim().length > 0 && isFeedUrl(value);
+}
+
+export function isCalendarType(value: unknown): value is CalendarType {
+	return value === "google" || value === "outlook";
+}
+
+export function sameCalendarName(left: string, right: string): boolean {
+	return left.trim().toLowerCase() === right.trim().toLowerCase();
 }
 
 export function isVaultPath(value: string, allowEmpty = true): boolean {
@@ -101,12 +120,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
 	result.companyLinking = Object.keys(input).length > 0;
 	result.schema = loadSchema(input.schema, hasSchema || !Object.keys(input).length ? MINIMAL_SCHEMA : ORIGINAL_SCHEMA);
-	const feeds = record(input.feeds);
-	for (const key of ["google", "outlook"] as const) {
-		const feed = record(feeds[key]);
-		if (typeof feed.url === "string" && isFeedUrl(feed.url)) result.feeds[key].url = feed.url.trim();
-		if (typeof feed.invitedAs === "string") result.feeds[key].invitedAs = feed.invitedAs;
-	}
+	result.calendars = loadCalendars(input);
 	const folders = record(input.folders);
 	for (const key of ["meeting", "person", "series", "company"] as const) {
 		const value = folders[key];
@@ -133,6 +147,27 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 		if (typeof input[key] === "boolean") result[key] = input[key];
 	}
 	return result;
+}
+
+/** Reads the calendar list. Settings saved before it existed hold a fixed Google and Outlook
+ * feed; each one with a URL becomes an entry, and blank ones are dropped. */
+function loadCalendars(input: Record<string, unknown>): CalendarSettings[] {
+	const calendars: CalendarSettings[] = [];
+	function add(candidate: Record<string, unknown>) {
+		if (typeof candidate.name !== "string" || !candidate.name.trim() || !isCalendarType(candidate.type)) return;
+		if (typeof candidate.url !== "string" || !isCalendarUrl(candidate.url)) return;
+		const name = candidate.name.trim();
+		if (calendars.some((calendar) => sameCalendarName(calendar.name, name))) return;
+		calendars.push({ name, type: candidate.type, url: candidate.url.trim(), invitedAs: typeof candidate.invitedAs === "string" ? candidate.invitedAs : "" });
+	}
+	if (Array.isArray(input.calendars)) {
+		for (const entry of input.calendars) add(record(entry));
+	} else {
+		const feeds = record(input.feeds);
+		add({ ...record(feeds.google), name: "Google", type: "google" });
+		add({ ...record(feeds.outlook), name: "Outlook", type: "outlook" });
+	}
+	return calendars;
 }
 
 function record(value: unknown): Record<string, unknown> {

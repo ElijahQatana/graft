@@ -85,12 +85,10 @@ function fixture({ linking = false } = {}) {
 	return { plugin, tab, saves, row, control };
 }
 
-test("settings controls update every scalar and nested field with masked feed inputs", async () => {
+test("settings controls update every scalar and nested field", async () => {
 	const { plugin, control, saves } = fixture();
 	await control("Company linking", "toggle").change(true);
 	const edits = [
-		["Google ICS URL", "https://example.com/google.ics"], ["Google invited as", "one@example.com"],
-		["Outlook / Microsoft 365 ICS URL", "https://example.com/outlook.ics"], ["Outlook / Microsoft 365 invited as", "two@example.com"],
 		["Meeting folder", "Custom/Meetings"], ["Person folder", "Custom/People"], ["Series folder", "Custom/Series"], ["Company folder", "Custom/Companies"],
 		["Meeting template", "Templates/Meeting.md"], ["Person template", "Templates/Meeting.md"], ["Series template", "Templates/Meeting.md"],
 		["Meeting filename pattern", "{{date}} {{title}}"], ["Ignore-list file", "Config/ignore.json"],
@@ -99,8 +97,6 @@ test("settings controls update every scalar and nested field with masked feed in
 	for (const [name, value] of edits) await control(name, "text").change(value);
 	for (const name of ["Create Person stubs", "Create Series stubs", "Strict Company links", "Preview before apply"]) await control(name, "toggle").change(false);
 	await control("Sync on startup", "toggle").change(true);
-	assert.equal(control("Google ICS URL", "text").inputEl.type, "password");
-	assert.equal(control("Outlook / Microsoft 365 ICS URL", "text").inputEl.type, "password");
 	assert.equal(saves.length, edits.length + 6);
 	assert.deepEqual(loadGraftSettings(saves.at(-1)), plugin.settings);
 	assert.equal(plugin.settings.daysBack, 0);
@@ -111,7 +107,7 @@ test("settings controls update every scalar and nested field with masked feed in
 test("invalid input never changes saved settings and errors never echo its value", async () => {
 	const { control, saves, row } = fixture();
 	for (const [name, value] of [
-		["Google ICS URL", "file:///synthetic-secret"], ["Meeting folder", "../outside"],
+		["Meeting folder", "../outside"],
 		["Meeting template", "Templates/Missing.md"], ["Person template", "Templates/Meeting.txt"],
 		["Ignore-list file", "/absolute"], ["Timezone", "Invalid/Zone"], ["Days back", "-1"],
 		["Days ahead", "1.5"], ["Meeting filename pattern", ""],
@@ -146,6 +142,77 @@ test("title rules can be added, edited, reordered, and removed", async () => {
 	assert.equal(control("Title rule 1", "button", "Up").disabled, true);
 	await control("Title rule 1", "button", "Remove").click();
 	assert.equal(plugin.settings.titleMatchRules.length, 1);
+});
+
+test("calendars start empty and can be added, edited, reordered, and removed", async () => {
+	const { plugin, control, saves, row } = fixture();
+	assert.deepEqual(plugin.settings.calendars, []);
+	const fill = (rowName, name, type, url, invitedAs) => {
+		const [nameInput, urlInput, invitedInput] = row(rowName).controls.filter((item) => item.kind === "text");
+		nameInput.change(name); urlInput.change(url); invitedInput.change(invitedAs);
+		if (type) control(rowName, "dropdown").change(type);
+	};
+	fill("New calendar", "Work", "outlook", " https://example.com/work.ics ", "one@example.com");
+	await control("New calendar", "button", "Add calendar").click();
+	fill("New calendar", "Personal", undefined, "https://example.com/personal.ics", "");
+	await control("New calendar", "button", "Add calendar").click();
+	assert.equal(saves.length, 2);
+	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.calendars)), [
+		{ name: "Work", type: "outlook", url: "https://example.com/work.ics", invitedAs: "one@example.com" },
+		{ name: "Personal", type: "google", url: "https://example.com/personal.ics", invitedAs: "" },
+	]);
+	for (const calendar of [row("Calendar 1"), row("Calendar 2")]) {
+		assert.equal(calendar.controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
+	}
+	fill("Calendar 2", "Home", "outlook", "https://example.com/home.ics", "two@example.com");
+	await control("Calendar 2", "button", "Save").click();
+	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.calendars[1])), { name: "Home", type: "outlook", url: "https://example.com/home.ics", invitedAs: "two@example.com" });
+	assert.equal(control("Calendar 1", "button", "Up").disabled, true);
+	await control("Calendar 2", "button", "Up").click();
+	assert.deepEqual(plugin.settings.calendars.map((calendar) => calendar.name), ["Home", "Work"]);
+	await control("Calendar 1", "button", "Remove").click();
+	assert.deepEqual(plugin.settings.calendars.map((calendar) => calendar.name), ["Work"]);
+	await control("Calendar 1", "button", "Remove").click();
+	assert.deepEqual(plugin.settings.calendars, []);
+	assert.deepEqual(loadGraftSettings(saves.at(-1)).calendars, []);
+});
+
+test("calendar rows reject missing names, duplicate names, and bad URLs without echoing them", async () => {
+	const { plugin, control, saves, row } = fixture();
+	const fill = (rowName, name, url) => {
+		const [nameInput, urlInput] = row(rowName).controls.filter((item) => item.kind === "text");
+		nameInput.change(name); urlInput.change(url);
+	};
+	const message = (rowName) => row(rowName).descEl.children[0].text;
+	fill("New calendar", " ", "https://example.com/a.ics");
+	await control("New calendar", "button", "Add calendar").click();
+	assert.match(message("New calendar"), /Enter a calendar name/);
+	for (const url of ["", "file:///synthetic-secret", "https://user:synthetic-secret@example.com/a.ics", "not a url"]) {
+		fill("New calendar", "Work", url);
+		await control("New calendar", "button", "Add calendar").click();
+		assert.match(message("New calendar"), /Change not saved/);
+		if (url) assert.equal(message("New calendar").includes(url), false);
+	}
+	assert.equal(saves.length, 0);
+	fill("New calendar", "Work", "https://example.com/work.ics");
+	await control("New calendar", "button", "Add calendar").click();
+	fill("New calendar", " WORK ", "https://example.com/other.ics");
+	await control("New calendar", "button", "Add calendar").click();
+	assert.match(message("New calendar"), /Another calendar already uses that name/);
+	fill("New calendar", "Home", "https://example.com/home.ics");
+	await control("New calendar", "button", "Add calendar").click();
+	fill("Calendar 2", "work", "https://example.com/home.ics");
+	await control("Calendar 2", "button", "Save").click();
+	assert.match(message("Calendar 2"), /Another calendar already uses that name/);
+	fill("Calendar 2", "Home", "");
+	await control("Calendar 2", "button", "Save").click();
+	assert.match(message("Calendar 2"), /Change not saved/);
+	// Saving a row under its own name is not a duplicate.
+	fill("Calendar 1", "Work", "https://example.com/work2.ics");
+	await control("Calendar 1", "button", "Save").click();
+	assert.equal(plugin.settings.calendars[0].url, "https://example.com/work2.ics");
+	assert.equal(plugin.settings.calendars.length, 2);
+	assert.equal(saves.length, 3);
 });
 
 test("filename conventions normalize domains and persist style, order, and removal", async () => {

@@ -1,6 +1,6 @@
 # Graft
 
-A small Obsidian plugin for bringing Google and Outlook or Microsoft 365 calendar events into Meeting notes. It uses ICS feeds and keeps calendar access read-only.
+A small Obsidian plugin for bringing Google and Outlook or Microsoft 365 calendar events into Meeting notes. It uses ICS feeds, with any number of calendars you add in settings, and keeps calendar access read-only.
 
 Still in development. The settings tab, Preview sync, Sync now, and Apply are connected. Testing against real Google and Outlook feeds is still pending.
 
