@@ -93,6 +93,24 @@ test("two feeds preview without writes, apply matches preview, and repeat sync r
 	assert.equal(f.writes.length, count);
 });
 
+test("preview feature flags come from settings", async () => {
+	const cases = [
+		[{}, { personStubs: true, seriesStubs: true, skipped: false }],
+		[{ createPersonStubs: false }, { personStubs: false, seriesStubs: true, skipped: false }],
+		[{ createSeriesStubs: false }, { personStubs: true, seriesStubs: false, skipped: false }],
+		[{ ignoreListPath: "Ignore.md" }, { personStubs: true, seriesStubs: true, skipped: true }],
+		[{ titleMatchRules: [{ mode: "contains", value: "sample" }] }, { personStubs: true, seriesStubs: true, skipped: true }],
+	];
+	for (const [override, expected] of cases) {
+		const f = fixture();
+		if (override.ignoreListPath) f.put(override.ignoreListPath, "");
+		const settings = { ...f.settings, ...override };
+		const prepared = await prepareSync(f.app, settings, f.fetch, now);
+		assert.deepEqual(clean(prepared.preview.features), expected);
+		assert.deepEqual(clean(prepared.input.features), expected);
+	}
+});
+
 test("updates preserve handwritten fields and body, use existing Series agenda and Company links", async () => {
 	const f = fixture();
 	f.put("People/Alex Example.md", note({ type: "Person", email_aliases: ["alex@example.com"], company: ["[[Example Co]]", "[[Missing]]"] }));

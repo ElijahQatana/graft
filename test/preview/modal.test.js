@@ -44,7 +44,7 @@ function fixture() {
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC", organizer: { filename: "Alex Example", companyLinks: ["[[Missing]]"] } } }],
 		personStubs: [{ path: "People/Alex Example.md", stub: { filename: "Alex Example", frontmatter: { full_name: "Alex Example", email: "alex@example.com", company: [] } } }],
 		seriesStubs: [{ path: "Series/Example.md", stub: { filename: "Example", frontmatter: { series_title: "Example", google_recurring_event_id: "series@example.com" } } }],
-		companies: [], meetingFolder: "Meetings", warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }],
+		companies: [], meetingFolder: "Meetings", features: { personStubs: true, seriesStubs: true, skipped: true }, warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }],
 	};
 }
 
@@ -68,12 +68,51 @@ test("modal displays each section as literal text and never shows raw feed error
 });
 
 test("empty previews and unchanged meetings are explicit", () => {
-	const modal = new SyncPreviewModal({}, { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [] });
+	const modal = new SyncPreviewModal({}, { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } });
 	modal.onOpen();
 	assert.ok(allElements(modal.contentEl).some((element) => element.text === "No note changes planned."));
 	modal.preview.updates.push({ path: "Meetings/Existing.md", changes: [] });
 	modal.onOpen();
 	assert.ok(allElements(modal.contentEl).some((element) => element.text === "No field changes."));
+});
+
+const emptyPreview = (features, counts = {}) => ({
+	newMeetings: Array.from({ length: counts.newMeetings ?? 0 }, (_, i) => ({ path: `Meetings/New ${i}.md`, note: { frontmatter: {}, body: "" } })),
+	updates: Array.from({ length: counts.updates ?? 0 }, (_, i) => ({ path: `Meetings/Old ${i}.md`, changes: [] })),
+	personStubs: Array.from({ length: counts.personStubs ?? 0 }, (_, i) => ({ path: `People/P${i}.md`, stub: { frontmatter: {} } })),
+	seriesStubs: Array.from({ length: counts.seriesStubs ?? 0 }, (_, i) => ({ path: `Series/S${i}.md`, stub: { frontmatter: {} } })),
+	skipped: Array.from({ length: counts.skipped ?? 0 }, (_, i) => ({ event: makeEvent({ summary: `Skip ${i}` }), reason: "Ignored" })),
+	errors: [], warnings: [], features,
+});
+const summaryOf = (preview) => {
+	const modal = new SyncPreviewModal({}, preview);
+	modal.onOpen();
+	return allElements(modal.contentEl).find((element) => element.text && /Meetings?[,.]/.test(element.text) && !element.text.includes("/")).text;
+};
+
+test("summary lists only the enabled features, in every combination", () => {
+	const counts = { newMeetings: 2, updates: 3, personStubs: 4, seriesStubs: 5, skipped: 6 };
+	for (const personStubs of [false, true]) for (const seriesStubs of [false, true]) for (const skipped of [false, true]) {
+		const expected = ["2 new Meetings", "3 existing Meetings", ...(personStubs ? ["4 Person stubs"] : []), ...(seriesStubs ? ["5 Series stubs"] : []), ...(skipped ? ["6 skipped"] : [])].join(", ") + ".";
+		assert.equal(summaryOf(emptyPreview({ personStubs, seriesStubs, skipped }, counts)), expected);
+	}
+});
+
+test("an enabled feature with nothing to report still shows its zero", () => {
+	assert.equal(summaryOf(emptyPreview({ personStubs: true, seriesStubs: true, skipped: true })), "0 new Meetings, 0 existing Meetings, 0 Person stubs, 0 Series stubs, 0 skipped.");
+	assert.equal(summaryOf(emptyPreview({ personStubs: false, seriesStubs: false, skipped: false })), "0 new Meetings, 0 existing Meetings.");
+});
+
+test("summary and note rows use singular for one and plural for zero or many", () => {
+	const on = { personStubs: true, seriesStubs: true, skipped: true };
+	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 1, updates: 1, personStubs: 1, seriesStubs: 1, skipped: 1 })), "1 new Meeting, 1 existing Meeting, 1 Person stub, 1 Series stub, 1 skipped.");
+	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 0, updates: 12, personStubs: 2 })), "0 new Meetings, 12 existing Meetings, 2 Person stubs, 0 Series stubs, 0 skipped.");
+	const preview = emptyPreview(on);
+	preview.updates = [0, 1, 2].map((n) => ({ path: `Meetings/R${n}.md`, changes: Array.from({ length: n }, (_, i) => ({ field: `f${i}`, before: "a", after: "b" })) }));
+	const modal = new SyncPreviewModal({}, preview);
+	modal.onOpen();
+	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary").map((element) => element.text);
+	assert.deepEqual(rows, ["Meetings/R0.md (0 changes)", "Meetings/R1.md (1 change)", "Meetings/R2.md (2 changes)"]);
 });
 
 test("preview new-note payload matches writeMeetingNote directly", async () => {
@@ -124,7 +163,7 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 // Drives GraftPlugin.runSync with a Modal that tracks how many are open.
 async function loadPlugin(canApply = true) {
 	const stubs = {
-		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [] } });
+		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } } });
 			export const applySync = async () => globalThis.__applySync();`,
 		"./ics/fetch.ts": "export const fetchIcs = async () => '';",
 	};

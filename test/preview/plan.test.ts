@@ -14,6 +14,7 @@ export function fixture(): PreviewInput {
 		plan: { toProcess: [event], skipped: [], errors: [] },
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC" } }],
 		personStubs: [], seriesStubs: [], companies: [], meetingFolder: "Meetings", warnings: [],
+		features: { personStubs: true, seriesStubs: true, skipped: false },
 	};
 }
 
@@ -106,4 +107,13 @@ test("unresolved or out-of-order events cannot silently disappear from the previ
 	const other = fixture();
 	other.meetings[0].input.event = makeEvent();
 	assert.throws(() => buildSyncPreview(other), /resolved input/);
+});
+
+test("the preview carries a copy of the enabled-feature flags", () => {
+	const source = fixture();
+	source.features = { personStubs: false, seriesStubs: true, skipped: true };
+	const preview = buildSyncPreview(source);
+	assert.deepEqual(preview.features, source.features);
+	source.features.personStubs = true;
+	assert.equal(preview.features.personStubs, false);
 });
