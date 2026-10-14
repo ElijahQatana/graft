@@ -17,7 +17,7 @@ Use `npm run dev` to rebuild `main.js` while editing. To load the plugin in a de
 Add your calendars and set destination folders in Graft settings. Each calendar needs a name and a private ICS URL. See [Configuration](configuration.md) for the available fields.
 
 1. Open the command palette and run **Graft: Preview sync**.
-2. Expand the new notes and updates, then check skips and warnings. Preview writes nothing. The summary line counts new and existing Meetings, plus Person stubs, Series stubs and skipped events only when those features are on (skipped needs a title rule or an ignore list).
+2. Expand the new notes and updates, then check skips and warnings. Preview writes nothing. The summary line counts new and existing Meetings, plus Person stubs and Series stubs when those features are on. Skipped events are always shown when there are any, and shown as 0 when a title rule or an ignore list is set.
 3. Click **Apply** to write the displayed plan, or **Close** to discard it.
 4. Run Preview sync again to check the result.
 
