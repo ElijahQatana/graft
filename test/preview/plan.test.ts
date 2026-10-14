@@ -54,6 +54,29 @@ test("unchanged arrays and missing agenda headings do not produce changes", () =
 	assert.deepEqual(buildSyncPreview(source).updates[0].changes, []);
 });
 
+test("an existing note without the invite heading warns, and a note with it does not", () => {
+	const source = fixture();
+	const frontmatter = buildMeetingFrontmatterUpdate(source.meetings[0].input, []);
+	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter, body: "# Human Notes (yay)\nKeep this" };
+	const missing = buildSyncPreview(source);
+	assert.deepEqual(missing.warnings, [{ kind: "missing-invite-heading", subject: "Meetings/Original.md" }]);
+	assert.deepEqual(missing.updates[0].changes, []);
+	source.meetings[0].existing.body = "## Invite Agenda\n\nOld agenda";
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+	source.meetings[0].existing.body = "## Invite Agenda\n\nNew agenda";
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+});
+
+test("the invite heading check follows the configured heading and ignores new notes", () => {
+	const source = fixture();
+	source.meetings[0].input.schema = { ...ORIGINAL_SCHEMA, headings: { ...ORIGINAL_SCHEMA.headings, inviteAgenda: "## From the invite" } };
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter: {}, body: "## Invite Agenda\n\nOld agenda" };
+	assert.deepEqual(buildSyncPreview(source).warnings, [{ kind: "missing-invite-heading", subject: "Meetings/Original.md" }]);
+	source.meetings[0].existing.body = "## From the invite\n\nOld agenda";
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+});
+
 test("unchanged agenda text preserves existing body spacing", () => {
 	const source = fixture();
 	const body = "## Invite Agenda\nNew agenda\n# Human Notes (yay)\nKeep this";
@@ -65,7 +88,7 @@ test("unchanged agenda text preserves existing body spacing", () => {
 test("explicit cancellation is shown but vanished events are warnings only", () => {
 	const source = fixture();
 	source.plan.toProcess[0].status = "CANCELLED";
-	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter: { ...buildMeetingFrontmatterUpdate(source.meetings[0].input, []), occurrence_status: "Scheduled" }, body: "" };
+	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter: { ...buildMeetingFrontmatterUpdate(source.meetings[0].input, []), occurrence_status: "Scheduled" }, body: "## Invite Agenda\n\nNew agenda" };
 	source.warnings.push({ kind: "vanished-event", subject: "Meetings/Missing.md" }, { kind: "ambiguous-person", subject: "Alex Example" });
 	source.plan.skipped.push({ event: makeEvent({ summary: "Skip example" }), reason: "Ignored" });
 	source.plan.errors.push({ feed: "Outlook", message: "Calendar feed could not be fetched or parsed." });
