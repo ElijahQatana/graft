@@ -18,6 +18,14 @@ export interface PreviewWarning {
 	subject: string;
 }
 
+/** Which optional features are on, so the summary lists only those. */
+export interface PreviewFeatures {
+	personStubs: boolean;
+	seriesStubs: boolean;
+	/** A title rule or an ignore list is configured. */
+	skipped: boolean;
+}
+
 export interface PreviewInput {
 	plan: SyncPlan;
 	/** One resolved input per toProcess event, in the same order. */
@@ -33,6 +41,7 @@ export interface PreviewInput {
 	strictCompanyLinks?: boolean;
 	/** Matching and feed-coverage warnings supplied by the resolver. */
 	warnings: PreviewWarning[];
+	features: PreviewFeatures;
 }
 
 export interface SyncPreview {
@@ -43,6 +52,7 @@ export interface SyncPreview {
 	skipped: SyncPlan["skipped"];
 	errors: SyncPlan["errors"];
 	warnings: PreviewWarning[];
+	features: PreviewFeatures;
 }
 
 /** Uses the write helpers' values without reading or writing the vault. */
@@ -54,7 +64,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 	const preview: SyncPreview = {
 		newMeetings: [], updates: [], personStubs: source.personStubs,
 		seriesStubs: source.seriesStubs, skipped: source.plan.skipped,
-		errors: source.plan.errors, warnings: [...source.warnings],
+		errors: source.plan.errors, warnings: [...source.warnings], features: { ...source.features },
 	};
 	for (const { input, existing } of source.meetings) {
 		const companyLinks = [...(input.organizer?.companyLinks ?? []), ...input.invited.flatMap((person) => person.companyLinks)];
