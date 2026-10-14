@@ -41,7 +41,7 @@ test("all settings survive JSON persistence without sharing input objects", () =
 		personFilenameRules: [{ domain: "example.com", style: "initialLast" as const }],
 		meetingFilenamePattern: "{{date}} {{title}}", timezone: "Europe/London",
 		daysBack: 0, daysAhead: 60, createPersonStubs: false, createSeriesStubs: false,
-		strictCompanyLinks: false, previewBeforeApply: false, autoRunOnStartup: true,
+		companyLinking: true, strictCompanyLinks: false, previewBeforeApply: false, autoRunOnStartup: true,
 	};
 	assert.deepEqual(loadGraftSettings(JSON.parse(JSON.stringify(saved))), saved);
 	const loaded = loadGraftSettings(saved);
@@ -93,4 +93,23 @@ test("validators reject unsafe paths, URLs, windows, and rule rows", () => {
 	assert.equal(isFilenameRule({ domain: "example.com", style: ["full"] }), false);
 	assert.equal(isFilenameRule({ domain: "person@example.com", style: "full" }), false);
 	assert.equal(isFilenameRule({ domain: "example.com", style: "firstOnly" }), true);
+});
+
+test("Company linking is off for a new install and on for settings saved before it existed", () => {
+	for (const value of [undefined, null, {}, [], "invalid"]) assert.equal(loadGraftSettings(value).companyLinking, false);
+	assert.equal(DEFAULT_SETTINGS.companyLinking, false);
+	assert.equal(loadGraftSettings({ daysBack: 3 }).companyLinking, true);
+	assert.equal(loadGraftSettings({ strictCompanyLinks: false }).companyLinking, true);
+	assert.equal(loadGraftSettings({ schema: {}, createPersonStubs: true }).companyLinking, true);
+});
+
+test("a saved Company linking choice is kept either way", () => {
+	assert.equal(loadGraftSettings({ companyLinking: true }).companyLinking, true);
+	assert.equal(loadGraftSettings({ daysBack: 3, companyLinking: false }).companyLinking, false);
+	assert.equal(loadGraftSettings({ daysBack: 3, companyLinking: "yes" }).companyLinking, true);
+});
+
+test("Strict Company links keeps its default and saved value whether linking is on or off", () => {
+	assert.equal(loadGraftSettings({}).strictCompanyLinks, true);
+	assert.equal(loadGraftSettings({ strictCompanyLinks: false }).strictCompanyLinks, false);
 });

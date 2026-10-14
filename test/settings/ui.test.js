@@ -73,9 +73,9 @@ async function loadModule(entry) {
 const { GraftSettingTab } = await loadModule("src/settings.ts");
 const { default: GraftPlugin } = await loadModule("src/main.ts");
 
-function fixture() {
+function fixture({ linking = false } = {}) {
 	const saves = [];
-	const plugin = { settings: loadGraftSettings({}), async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
+	const plugin = { settings: { ...loadGraftSettings({}), companyLinking: linking }, async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
 	const app = { vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
 	const tab = new GraftSettingTab(app, plugin);
 	tab.display();
@@ -87,6 +87,7 @@ function fixture() {
 
 test("settings controls update every scalar and nested field with masked feed inputs", async () => {
 	const { plugin, control, saves } = fixture();
+	await control("Company linking", "toggle").change(true);
 	const edits = [
 		["Google ICS URL", "https://example.com/google.ics"], ["Google invited as", "one@example.com"],
 		["Outlook / Microsoft 365 ICS URL", "https://example.com/outlook.ics"], ["Outlook / Microsoft 365 invited as", "two@example.com"],
@@ -100,7 +101,7 @@ test("settings controls update every scalar and nested field with masked feed in
 	await control("Sync on startup", "toggle").change(true);
 	assert.equal(control("Google ICS URL", "text").inputEl.type, "password");
 	assert.equal(control("Outlook / Microsoft 365 ICS URL", "text").inputEl.type, "password");
-	assert.equal(saves.length, edits.length + 5);
+	assert.equal(saves.length, edits.length + 6);
 	assert.deepEqual(loadGraftSettings(saves.at(-1)), plugin.settings);
 	assert.equal(plugin.settings.daysBack, 0);
 	assert.equal(plugin.settings.autoRunOnStartup, true);
@@ -230,7 +231,7 @@ test("schema section edits names, types, headings, body, and extras with conflic
 });
 
 test("matching and type properties warn that renaming does not update existing notes", () => {
-	const { row } = fixture();
+	const { row } = fixture({ linking: true });
 	const warned = [
 		"Type property", "Meeting type value", "Person type value", "Series type value", "Company type value",
 		"Meeting property: Event UID", "Meeting property: Recurrence ID", "Person property: Email",
@@ -304,4 +305,29 @@ test("schema section stays open and keeps scroll across re-renders", async () =>
 	tab.display();
 	assert.equal(details().open, false);
 	assert.ok(row("Schema preset"));
+});
+
+const COMPANY_ROWS = ["Company folder", "Strict Company links", "Company type value", "Person property: Company links", "Company property: Domain"];
+
+test("Company settings are hidden while Company linking is off", () => {
+	const { row, control, plugin } = fixture();
+	assert.equal(plugin.settings.companyLinking, false);
+	assert.equal(control("Company linking", "toggle").value, false);
+	for (const name of COMPANY_ROWS) assert.equal(row(name), undefined, name);
+	assert.ok(row("Person property: Email"));
+	assert.ok(row("Series property: Event UID"));
+	assert.ok(row("Preview before apply"));
+});
+
+test("turning Company linking on shows the Company settings, and off hides them again", async () => {
+	const { row, control, plugin, saves } = fixture();
+	await control("Company linking", "toggle").change(true);
+	assert.equal(plugin.settings.companyLinking, true);
+	assert.equal(saves.at(-1).companyLinking, true);
+	for (const name of COMPANY_ROWS) assert.ok(row(name), name);
+	assert.equal(control("Strict Company links", "toggle").value, true);
+	await control("Company linking", "toggle").change(false);
+	assert.equal(plugin.settings.companyLinking, false);
+	for (const name of COMPANY_ROWS) assert.equal(row(name), undefined, name);
+	assert.equal(plugin.settings.strictCompanyLinks, true);
 });

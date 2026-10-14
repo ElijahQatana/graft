@@ -73,8 +73,11 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const people = notes(settings.folders.person, schema.types.person).map((note) => ({ path: note.file.path, email: stringValue(note.frontmatter[schema.person.email]), emailAliases: links(note.frontmatter[schema.person.emailAliases]), note }));
 	const series = notes(settings.folders.series, schema.types.series).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.series.uid]), note }));
 	const meetings = notes(settings.folders.meeting, schema.types.meeting).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.meeting.uid]), icsRecurrenceId: stringValue(note.frontmatter[schema.meeting.recurrenceId]), note }));
-	const companies = notes(settings.folders.company, schema.types.company).map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter[schema.company.domain]) }));
-	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: settings.strictCompanyLinks, warnings: [] };
+	const linking = settings.companyLinking;
+	// With linking off, a {{companies}} extra would write an empty list over links already in a note.
+	const meetingSchema = linking ? schema : { ...schema, meetingExtras: schema.meetingExtras.filter((field) => ![field.value].flat().some((item) => item.trim() === "{{companies}}")) };
+	const companies = !linking ? [] : notes(settings.folders.company, schema.types.company).map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter[schema.company.domain]) }));
+	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: linking && settings.strictCompanyLinks, warnings: [] };
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
 	const targets = new Set<string>();
@@ -87,11 +90,11 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const matches = people.filter((person) => matchPerson(attendee, [person]));
 		if (matches.length > 1) input.warnings.push({ kind: "ambiguous-person", subject: attendee.name || "Calendar attendee" });
 		const person = matches[0];
-		if (person) return { filename: person.note.file.basename, companyLinks: links(person.note.frontmatter[schema.person.company]) };
+		if (person) return { filename: person.note.file.basename, companyLinks: linking ? links(person.note.frontmatter[schema.person.company]) : [] };
 		const key = attendee.email.toLowerCase();
 		if (newPeople.has(key)) return newPeople.get(key);
 		if (!settings.createPersonStubs) return undefined;
-		const stub = buildPersonStub(attendee, settings.personFilenameRules, companies, schema);
+		const stub = buildPersonStub(attendee, settings.personFilenameRules, companies, schema, linking);
 		const path = `${settings.folders.person}/${stub.filename}.md`;
 		reserve(path);
 		input.personStubs.push({ path, stub, body: stubBody(bodies.person, stub.frontmatter) });
@@ -126,7 +129,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			targets.add(existing.file.path);
 		}
 		input.meetings.push({
-			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: settings.feeds[event.source as "google" | "outlook"].invitedAs, schema, timezone: settings.timezone, bodyTemplate: bodies.meeting },
+			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: settings.feeds[event.source as "google" | "outlook"].invitedAs, schema: meetingSchema, timezone: settings.timezone, bodyTemplate: bodies.meeting },
 			existing: existing ? { path: existing.file.path, frontmatter: existing.frontmatter, body: existing.body } : undefined,
 		});
 	}
