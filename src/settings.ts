@@ -41,12 +41,13 @@ export class GraftSettingTab extends PluginSettingTab {
 		const settings = this.plugin.settings;
 		const scrollTop = containerEl.scrollTop;
 		containerEl.empty();
+		containerEl.classList?.add("graft-settings");
 		this.target = containerEl;
 		containerEl.createEl("h2", { text: "Graft" });
-		containerEl.createEl("p", { text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
+		containerEl.createEl("p", { cls: "graft-intro", text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
 
 		this.heading("Calendar feeds");
-		containerEl.createEl("p", { text: "Feed URLs are private and stored in this vault's plugin settings. Keep them out of shared notes, screenshots, and logs. Leave a URL blank to leave that feed unconfigured." });
+		containerEl.createEl("p", { cls: "graft-help", text: "Feed URLs are private and stored in this vault's plugin settings. Keep them out of shared notes, screenshots, and logs. Leave a URL blank to leave that feed unconfigured." });
 		for (const [key, label] of [["google", "Google"], ["outlook", "Outlook / Microsoft 365"]] as const) {
 			this.text(`${label} ICS URL`, "Use the calendar's ICS subscription URL, preferably HTTPS.", settings.feeds[key].url,
 				(value) => { settings.feeds[key].url = value.trim(); },
@@ -103,7 +104,7 @@ export class GraftSettingTab extends PluginSettingTab {
 	}
 
 	private heading(text: string): void {
-		this.target.createEl("h3", { text });
+		this.target.createEl("h3", { text, cls: "graft-heading" });
 	}
 
 	private text(
@@ -111,7 +112,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		validate: (value: string) => string | undefined = () => undefined, masked = false,
 	): void {
 		const setting = new Setting(this.target).setName(name).setDesc(description);
-		const error = setting.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		const error = setting.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
 		setting.addText((input) => {
 			input.setValue(value);
 			input.inputEl.setAttribute("aria-label", name);
@@ -147,7 +148,7 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private titleRules(): void {
 		this.heading("Title skip rules");
-		this.target.createEl("p", { text: "The first matching rule skips the event. Rules run from top to bottom. Save each row after editing." });
+		this.target.createEl("p", { cls: "graft-help", text: "The first matching rule skips the event. Rules run from top to bottom. Save each row after editing." });
 		const rules = this.plugin.settings.titleMatchRules;
 		rules.forEach((rule, index) => this.titleRow({ ...rule }, index));
 		this.titleRow({ mode: "contains", value: "", caseSensitive: false });
@@ -155,13 +156,15 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private titleRow(draft: TitleMatchRule, index?: number): void {
 		const row = new Setting(this.target).setName(index === undefined ? "New title rule" : `Title rule ${index + 1}`);
-		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
+		const error = row.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
 		row.addDropdown((input) => input.addOptions({ exact: "Exact", prefix: "Prefix", suffix: "Suffix", contains: "Contains" })
 			.setValue(draft.mode).onChange((value) => { draft.mode = value as TitleMatchRule["mode"]; }));
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Title rule text");
 			input.setPlaceholder("Title text to skip").setValue(draft.value).onChange((value) => { draft.value = value; });
 		});
+		row.controlEl?.createEl("span", { text: "Match case", cls: "graft-inline-label" });
 		row.addToggle((input) => input.setTooltip("Case-sensitive match").setValue(draft.caseSensitive ?? false)
 			.onChange((value) => { draft.caseSensitive = value; }));
 		row.addButton((button) => button.setButtonText(index === undefined ? "Add" : "Save").onClick(async () => {
@@ -176,14 +179,15 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private filenameRules(): void {
 		this.heading("Person filename conventions");
-		this.target.createEl("p", { text: "The first matching email domain selects the filename style. Unlisted domains use the full name. Save each row after editing." });
+		this.target.createEl("p", { cls: "graft-help", text: "The first matching email domain selects the filename style. Unlisted domains use the full name. Save each row after editing." });
 		this.plugin.settings.personFilenameRules.forEach((rule, index) => this.filenameRow({ ...rule }, index));
 		this.filenameRow({ domain: "", style: "full" });
 	}
 
 	private filenameRow(draft: FilenameConventionRule, index?: number): void {
 		const row = new Setting(this.target).setName(index === undefined ? "New filename rule" : `Filename rule ${index + 1}`);
-		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
+		const error = row.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Email domain");
 			input.setPlaceholder("example.com").setValue(draft.domain).onChange((value) => { draft.domain = value.trim().toLowerCase(); });
@@ -201,12 +205,12 @@ export class GraftSettingTab extends PluginSettingTab {
 	}
 
 	private schemaSection(): void {
-		const details = this.containerEl.createEl("details");
+		const details = this.containerEl.createEl("details", { cls: "graft-schema" });
 		details.open = this.schemaOpen;
 		details.addEventListener("toggle", () => { this.schemaOpen = details.open; });
 		details.createEl("summary", { text: "Note schema (advanced)" });
 		this.target = details;
-		this.target.createEl("p", { text: "Property names, note types and headings Graft reads and writes. Defaults suit a new vault; change them to match your own notes. Existing notes keep their current names until you edit them." });
+		this.target.createEl("p", { cls: "graft-help", text: "Property names, note types and headings Graft reads and writes. Defaults suit a new vault; change them to match your own notes. Existing notes keep their current names until you edit them." });
 		new Setting(this.target).setName("Schema preset").setDesc("Replaces every schema setting below. Minimal is the default for new vaults. Original matches the schema used before these settings existed.")
 			.addButton((button) => button.setButtonText("Use minimal").onClick(async () => this.applyPreset(MINIMAL_SCHEMA)))
 			.addButton((button) => button.setButtonText("Use original").onClick(async () => this.applyPreset(ORIGINAL_SCHEMA)));
@@ -239,7 +243,8 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.schemaText("Standing agenda heading", "Heading in a Series note whose content is copied into new Meetings.", "heading", (s) => s.headings.standingAgenda, (s, v) => { s.headings.standingAgenda = v; });
 
 		const body = new Setting(this.target).setName("Built-in Meeting body").setDesc("Used when no Meeting template is set. Placeholders: {{series_section}} and {{invite_section}}; the invite section is required.");
-		const bodyError = body.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		body.settingEl?.classList?.add("graft-wide-row");
+		const bodyError = body.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
 		body.addTextArea((input) => {
 			input.inputEl.setAttribute("aria-label", "Built-in Meeting body");
 			input.setValue(schema.meetingBody).onChange(async (value) => {
@@ -258,7 +263,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.schemaText("Recurrence value: one-off", "{{recurrence}} for a Meeting without a Series note.", "type", (s) => s.recurrenceValues.oneOff, (s, v) => { s.recurrenceValues.oneOff = v; });
 
 		this.heading("Extra Meeting properties");
-		this.target.createEl("p", { text: "Extra properties written to new Meeting notes. Turn on Update to refresh one on every sync. Values can use {{title}}, {{date}}, {{week}}, {{month}}, {{year}}, {{weekday}}, {{recurrence}} and {{companies}}. Write a list as [\"a\", \"b\"]. Save each row after editing." });
+		this.target.createEl("p", { cls: "graft-help", text: "Extra properties written to new Meeting notes. Turn on Update to refresh one on every sync. Values can use {{title}}, {{date}}, {{week}}, {{month}}, {{year}}, {{weekday}}, {{recurrence}} and {{companies}}. Write a list as [\"a\", \"b\"]. Save each row after editing." });
 		schema.meetingExtras.forEach((field, index) => this.extraRow({ ...field }, index));
 		this.extraRow({ key: "", value: "", updateOnSync: false });
 		this.target = this.containerEl;
@@ -285,7 +290,8 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private extraRow(draft: ExtraField, index?: number): void {
 		const row = new Setting(this.target).setName(index === undefined ? "New extra property" : `Extra property ${index + 1}`);
-		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
+		const error = row.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
 		let text = Array.isArray(draft.value) ? JSON.stringify(draft.value) : draft.value;
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Extra property name");
@@ -295,6 +301,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			input.inputEl.setAttribute("aria-label", "Extra property value");
 			input.setPlaceholder("Value").setValue(text).onChange((value) => { text = value; });
 		});
+		row.controlEl?.createEl("span", { text: "Update each sync", cls: "graft-inline-label" });
 		row.addToggle((input) => input.setTooltip("Update on every sync").setValue(draft.updateOnSync).onChange((value) => { draft.updateOnSync = value; }));
 		row.addButton((button) => button.setButtonText(index === undefined ? "Add" : "Save").onClick(async () => {
 			const field = { key: draft.key, value: parseExtraValue(text), updateOnSync: draft.updateOnSync };

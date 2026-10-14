@@ -1,0 +1,318 @@
+/* Graft: sync preview modal and settings tab.
+   Uses Obsidian theme variables only, and every rule is scoped to a graft- class. */
+
+/* Preview modal */
+
+.graft-preview-modal {
+	width: min(54rem, 94vw);
+}
+
+.graft-preview {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	max-height: 75vh;
+}
+
+.graft-preview-head h2 {
+	margin: 0 0 var(--size-4-1);
+}
+
+.graft-preview-head p {
+	margin: 0;
+}
+
+.graft-muted {
+	color: var(--text-muted);
+}
+
+.graft-preview-body {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	gap: var(--size-4-4);
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: var(--size-4-2);
+}
+
+.graft-summary {
+	margin: 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+	font-weight: var(--font-medium);
+}
+
+.graft-empty {
+	margin: 0;
+	padding: var(--size-4-6) 0;
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.graft-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.graft-section > h3 {
+	margin: 0;
+	padding-bottom: var(--size-4-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.graft-item {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+}
+
+.graft-item > summary {
+	padding: var(--size-4-2) var(--size-4-3);
+	cursor: pointer;
+	overflow-wrap: anywhere;
+}
+
+.graft-item > summary:hover {
+	background: var(--background-modifier-hover);
+}
+
+.graft-item[open] > summary {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.graft-item-clean > summary {
+	color: var(--text-muted);
+}
+
+.graft-item-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+}
+
+.graft-item-body p {
+	margin: 0;
+}
+
+.graft-scroll {
+	overflow-x: auto;
+}
+
+.graft-changes {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-ui-small);
+}
+
+.graft-changes th {
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	text-align: left;
+}
+
+.graft-changes td {
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.graft-changes tr:last-child td {
+	border-bottom: 0;
+}
+
+.graft-old,
+.graft-new {
+	width: 40%;
+	min-width: 7rem;
+}
+
+.graft-field {
+	width: 1%;
+	white-space: nowrap;
+	font-family: var(--font-monospace);
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+}
+
+.graft-old {
+	background: rgba(var(--color-red-rgb), 0.1);
+}
+
+.graft-new {
+	background: rgba(var(--color-green-rgb), 0.12);
+}
+
+.graft-fields {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	gap: var(--size-4-1) var(--size-4-4);
+	margin: 0;
+	font-size: var(--font-ui-small);
+}
+
+.graft-fields dt {
+	font-family: var(--font-monospace);
+	font-size: var(--font-smaller);
+	color: var(--text-muted);
+}
+
+.graft-fields dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.graft-note-body {
+	max-height: 14em;
+	margin: 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	overflow: auto;
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	font-size: var(--font-smaller);
+	white-space: pre-wrap;
+}
+
+.graft-note {
+	margin: 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-left: 3px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	overflow-wrap: anywhere;
+}
+
+.graft-note-skipped {
+	color: var(--text-muted);
+}
+
+.graft-note-warning {
+	border-left-color: var(--text-warning);
+	background: rgba(var(--color-yellow-rgb), 0.1);
+}
+
+.graft-note-error {
+	border-left-color: var(--text-error);
+	background: rgba(var(--color-red-rgb), 0.1);
+}
+
+.graft-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.graft-actions .graft-blocked {
+	flex: 1 1 auto;
+	margin: 0;
+	font-size: var(--font-ui-small);
+}
+
+/* Settings tab */
+
+.graft-settings .graft-intro {
+	margin-top: 0;
+	color: var(--text-muted);
+}
+
+.graft-settings .graft-heading {
+	margin: var(--size-4-8) 0 var(--size-4-2);
+	padding-bottom: var(--size-4-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-medium);
+}
+
+.graft-settings .graft-help {
+	margin: 0 0 var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.graft-settings .graft-error {
+	margin-top: var(--size-4-1);
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-settings .graft-error:empty {
+	display: none;
+}
+
+.graft-settings .graft-schema {
+	margin-top: var(--size-4-8);
+	padding: 0 var(--size-4-4) var(--size-4-4);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.graft-settings .graft-schema > summary {
+	padding: var(--size-4-3) 0;
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+}
+
+.graft-settings .graft-schema > .graft-heading:first-of-type {
+	margin-top: var(--size-4-4);
+}
+
+.graft-settings .graft-rule-row .setting-item-info {
+	flex: 0 0 auto;
+	min-width: 8rem;
+	white-space: nowrap;
+}
+
+.graft-settings .graft-rule-row .setting-item-control {
+	flex: 1 1 auto;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+}
+
+.graft-settings .graft-rule-row input[type="text"] {
+	flex: 1 1 10rem;
+	min-width: 0;
+}
+
+.graft-settings .graft-inline-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+.graft-settings .graft-rule-new {
+	border-top: 1px dashed var(--background-modifier-border);
+}
+
+.graft-settings .graft-wide-row {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--size-4-2);
+}
+
+.graft-settings .graft-wide-row .setting-item-control {
+	width: 100%;
+}
+
+.graft-settings .graft-wide-row textarea {
+	width: 100%;
+	min-height: 9rem;
+	font-family: var(--font-monospace);
+	font-size: var(--font-smaller);
+	resize: vertical;
+}

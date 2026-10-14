@@ -18,66 +18,81 @@ export class SyncPreviewModal extends Modal {
 	}
 
 	onOpen() {
-		const root = this.contentEl;
-		root.empty();
-		root.createEl("h2", { text: "Graft sync preview" });
-		root.createEl("p", { text: "Dry run. No notes have been written." });
+		this.modalEl?.classList?.add("graft-preview-modal");
+		this.contentEl.empty();
+		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
+		const head = root.createEl("div", { cls: "graft-preview-head" });
+		head.createEl("h2", { text: "Graft sync preview" });
+		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
+		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
-		root.createEl("p", { text: `${newMeetings.length} new Meetings, ${updates.length} existing Meetings, ${personStubs.length} Person stubs, ${seriesStubs.length} Series stubs, ${skipped.length} skipped.` });
+		body.createEl("p", { text: `${newMeetings.length} new Meetings, ${updates.length} existing Meetings, ${personStubs.length} Person stubs, ${seriesStubs.length} Series stubs, ${skipped.length} skipped.`, cls: "graft-summary" });
 		if (!newMeetings.length && !updates.length && !personStubs.length && !seriesStubs.length) {
-			root.createEl("p", { text: "No note changes planned." });
+			body.createEl("p", { text: "No note changes planned.", cls: "graft-empty" });
 		}
 		if (newMeetings.length) {
-			root.createEl("h3", { text: "New Meeting notes" });
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: "New Meeting notes" });
 			for (const { path, note } of newMeetings) {
-				const details = root.createEl("details");
+				const details = section.createEl("details", { cls: "graft-item" });
 				details.createEl("summary", { text: path });
-				showFields(details, note.frontmatter);
-				details.createEl("pre", { text: note.body });
+				const content = details.createEl("div", { cls: "graft-item-body" });
+				showFields(content, note.frontmatter);
+				content.createEl("pre", { text: note.body, cls: "graft-note-body" });
 			}
 		}
 		if (updates.length) {
-			root.createEl("h3", { text: "Existing Meeting notes" });
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: "Existing Meeting notes" });
 			for (const { path, changes } of updates) {
-				const details = root.createEl("details");
+				const details = section.createEl("details", { cls: changes.length ? "graft-item" : "graft-item graft-item-clean" });
 				details.createEl("summary", { text: `${path} (${changes.length} changes)` });
-				if (!changes.length) details.createEl("p", { text: "No field changes." });
+				const content = details.createEl("div", { cls: "graft-item-body" });
+				if (!changes.length) content.createEl("p", { text: "No field changes.", cls: "graft-muted" });
 				else {
-					const table = details.createEl("table");
+					const table = content.createEl("div", { cls: "graft-scroll" }).createEl("table", { cls: "graft-changes" });
 					const heading = table.createEl("tr");
 					for (const text of ["Field", "Old", "New"]) heading.createEl("th", { text });
 					for (const change of changes) {
 						const row = table.createEl("tr");
-						for (const text of [change.field, displayValue(change.before), displayValue(change.after)]) row.createEl("td", { text });
+						row.createEl("td", { text: change.field, cls: "graft-field" });
+						row.createEl("td", { text: displayValue(change.before), cls: "graft-old" });
+						row.createEl("td", { text: displayValue(change.after), cls: "graft-new" });
 					}
 				}
 			}
 		}
 		for (const [label, stubs] of [["New Person stubs", personStubs], ["New Series stubs", seriesStubs]] as const) {
 			if (!stubs.length) continue;
-			root.createEl("h3", { text: label });
-			for (const { path, stub, body } of stubs) {
-				const details = root.createEl("details");
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: label });
+			for (const { path, stub, body: stubBody } of stubs) {
+				const details = section.createEl("details", { cls: "graft-item" });
 				details.createEl("summary", { text: path });
-				showFields(details, stub.frontmatter);
-				if (body) details.createEl("pre", { text: body });
+				const content = details.createEl("div", { cls: "graft-item-body" });
+				showFields(content, stub.frontmatter);
+				if (stubBody) content.createEl("pre", { text: stubBody, cls: "graft-note-body" });
 			}
 		}
 		if (skipped.length) {
-			root.createEl("h3", { text: "Skipped events" });
-			for (const { event, reason } of skipped) root.createEl("p", { text: `${event.summary}: ${reason}` });
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: "Skipped events" });
+			for (const { event, reason } of skipped) section.createEl("p", { text: `${event.summary}: ${reason}`, cls: "graft-note graft-note-skipped" });
 		}
 		if (warnings.length) {
-			root.createEl("h3", { text: "Warnings" });
-			for (const warning of warnings) root.createEl("p", { text: `${warning.subject}: ${warningText[warning.kind]}` });
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: "Warnings" });
+			for (const warning of warnings) section.createEl("p", { text: `${warning.subject}: ${warningText[warning.kind]}`, cls: "graft-note graft-note-warning" });
 		}
 		if (errors.length) {
-			root.createEl("h3", { text: "Feed errors" });
-			root.createEl("p", { text: "Some feeds could not be read. This preview is incomplete." });
-			for (const error of errors) root.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.` });
+			const section = body.createEl("div", { cls: "graft-section" });
+			section.createEl("h3", { text: "Feed errors" });
+			section.createEl("p", { text: "Some feeds could not be read. This preview is incomplete.", cls: "graft-note graft-note-error" });
+			for (const error of errors) section.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		}
+		const actions = root.createEl("div", { cls: "graft-actions" });
 		if (this.apply) {
-			const button = root.createEl("button", { text: "Apply", attr: { type: "button" } });
+			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
 			button.addEventListener("click", async () => {
 				if (this.applying || this.consumed) return;
 				this.consumed = true;
@@ -86,8 +101,8 @@ export class SyncPreviewModal extends Modal {
 				try { await this.apply!(); }
 				finally { this.applying = false; this.close(); }
 			});
-		} else root.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan." });
-		root.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
+		} else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
+		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 	}
 
 	onClose() {
@@ -98,7 +113,7 @@ export class SyncPreviewModal extends Modal {
 }
 
 function showFields(container: HTMLElement, fields: Record<string, unknown>) {
-	const list = container.createEl("dl");
+	const list = container.createEl("dl", { cls: "graft-fields" });
 	for (const [field, value] of Object.entries(fields)) {
 		list.createEl("dt", { text: field });
 		list.createEl("dd", { text: displayValue(value) });

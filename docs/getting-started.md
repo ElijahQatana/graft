@@ -12,7 +12,7 @@ npm test
 npm run build
 ```
 
-Use `npm run dev` to rebuild `main.js` while editing. To load the plugin in a development vault, place `manifest.json` and the generated `main.js` in `.obsidian/plugins/graft/`, then enable Graft in Obsidian.
+Use `npm run dev` to rebuild `main.js` while editing. To load the plugin in a development vault, place `manifest.json`, `styles.css`, and the generated `main.js` in `.obsidian/plugins/graft/`, then enable Graft in Obsidian.
 
 Configure feeds and destination folders in Graft settings. See [Configuration](configuration.md) for the available fields.
 
