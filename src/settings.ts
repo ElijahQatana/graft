@@ -37,7 +37,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		containerEl.empty();
 		this.target = containerEl;
 		containerEl.createEl("h2", { text: "Graft" });
-		containerEl.createEl("p", { text: "Settings save automatically. Calendar feeds stay read-only. Sync commands and preview are still being connected; these settings do not start a sync yet." });
+		containerEl.createEl("p", { text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
 
 		this.heading("Calendar feeds");
 		containerEl.createEl("p", { text: "Feed URLs are private and stored in this vault's plugin settings. Keep them out of shared notes, screenshots, and logs. Leave a URL blank to leave that feed unconfigured." });
@@ -84,7 +84,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			["createSeriesStubs", "Create Series stubs", "Create a minimal Series note when a recurring event has no match."],
 			["strictCompanyLinks", "Strict Company links", "Require Company links to resolve to existing Company notes."],
 			["previewBeforeApply", "Preview before apply", "Show planned changes before writing notes."],
-			["autoRunOnStartup", "Sync on startup", "Run sync when the plugin loads, once the sync commands are connected."],
+			["autoRunOnStartup", "Sync on startup", "Run Sync now when Obsidian starts. Follows the preview setting."],
 		] as const) {
 			new Setting(containerEl).setName(name).setDesc(desc).addToggle((toggle) => toggle
 				.setValue(settings[key]).onChange(async (value) => {
