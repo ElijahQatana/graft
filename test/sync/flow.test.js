@@ -70,6 +70,105 @@ function fixture() {
 	return { app, settings, fetch, files, texts, writes, put };
 }
 
+const calendarEntry = (name, type, invitedAs) => ({ name, type, url: `https://example.com/${name.toLowerCase()}.ics`, invitedAs });
+
+test("settings saved with the old fixed feeds sync as two calendars", async () => {
+	const f = fixture();
+	assert.deepEqual(clean(f.settings.calendars.map(({ name, invitedAs }) => [name, invitedAs])), [["Google", "one@example.com"], ["Outlook", "two@example.com"]]);
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	const invitedAs = prepared.preview.newMeetings.map(({ note }) => note.frontmatter.invited_as);
+	assert.deepEqual(clean(invitedAs).sort(), ["one@example.com", "one@example.com", "two@example.com"]);
+});
+
+test("sync with no calendars asks for one and writes nothing", async () => {
+	const f = fixture();
+	f.settings.calendars = [];
+	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /Configure at least one calendar/);
+	assert.equal(f.writes.length, 0);
+	const blank = loadGraftSettings({ feeds: { google: { url: "", invitedAs: "x" }, outlook: { url: " " } } });
+	await assert.rejects(() => prepareSync(f.app, blank, f.fetch, now), /Configure at least one calendar/);
+});
+
+test("sync with one calendar reads only that calendar", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Outlook", "outlook", "two@example.com")];
+	const requested = [];
+	const prepared = await prepareSync(f.app, f.settings, async (url) => { requested.push(url); return f.fetch(url); }, now);
+	assert.deepEqual(requested, ["https://example.com/outlook.ics"]);
+	assert.equal(prepared.preview.newMeetings.length, 1);
+	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.invited_as, "two@example.com");
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get(prepared.preview.newMeetings[0].path)).invited_as, "two@example.com");
+});
+
+test("several calendars each write their own invited_as, even with the same type", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Team", "google", "team@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
+	const fetch = async (url) => calendar(`${url.split("/").at(-1)}`, `Meeting from ${url.split("/").at(-1)}`);
+	const prepared = await prepareSync(f.app, f.settings, fetch, now);
+	const byTitle = Object.fromEntries(prepared.preview.newMeetings.map(({ note }) => [note.frontmatter.title, note.frontmatter.invited_as]));
+	assert.deepEqual(clean(byTitle), { "Meeting from work.ics": "work@example.com", "Meeting from team.ics": "team@example.com", "Meeting from home.ics": "home@example.com" });
+	assert.equal(prepared.canApply, true);
+	await applySync(f.app, prepared);
+});
+
+test("one event in several calendars becomes one Meeting note from the earliest calendar", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
+	const fetch = async (url) => calendar("shared@example.com", url.includes("work") ? "Shared meeting" : "Shared meeting copy");
+	const prepared = await prepareSync(f.app, f.settings, fetch, now);
+	assert.equal(prepared.preview.newMeetings.length, 1);
+	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.title, "Shared meeting");
+	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.invited_as, "work@example.com");
+	assert.deepEqual(clean(prepared.preview.skipped.map(({ event, reason }) => [event.source, reason])), [["Home", "Same event as one in Work"]]);
+	assert.equal(prepared.canApply, true);
+	await applySync(f.app, prepared);
+	assert.equal(f.writes.filter((path) => path.startsWith("Meetings/")).length, 1);
+	// Reordering the list changes which calendar is used.
+	f.settings.calendars.reverse();
+	const reordered = await prepareSync(f.app, f.settings, fetch, now);
+	assert.equal(reordered.preview.updates.length, 1);
+	assert.deepEqual(clean(reordered.preview.updates[0].changes.map(({ field, after }) => [field, after]).filter(([field]) => field === "invited_as" || field === "title")), [["title", "Shared meeting copy"], ["invited_as", "home@example.com"]]);
+	assert.equal(reordered.preview.warnings.some((item) => item.kind === "vanished-event"), false);
+	await applySync(f.app, reordered);
+});
+
+test("an existing Meeting note for a shared event is updated once, not reported as a conflict", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
+	f.put("Meetings/Shared.md", note({ type: "Meeting", ics_uid: "shared@example.com", title: "Old", date: "2026-10-04", invited_as: "work@example.com" }, "## Invite Agenda\n\nOld"));
+	const prepared = await prepareSync(f.app, f.settings, async () => calendar("shared@example.com", "Shared meeting"), now);
+	assert.equal(prepared.preview.updates.length, 1);
+	assert.equal(prepared.preview.newMeetings.length, 0);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Shared.md")).title, "Shared meeting");
+});
+
+test("a failing calendar is named in the preview error and its URL is never shown", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Broken", "outlook", "broken@example.com")];
+	const fetch = async (url) => { if (url.includes("broken")) throw new Error(url); return calendar("work@example.com", "Work meeting"); };
+	const prepared = await prepareSync(f.app, f.settings, fetch, now);
+	assert.equal(prepared.canApply, false);
+	assert.deepEqual(clean(prepared.preview.errors), [{ feed: "Broken", message: "Calendar feed could not be fetched or parsed." }]);
+	const { SyncPreviewModal } = await load("src/preview/modal.ts");
+	const modal = new SyncPreviewModal(f.app, prepared.preview, undefined, () => {});
+	modal.open();
+	const text = elements(modal.contentEl).map((item) => item.text).join("\n");
+	assert.match(text, /Broken: Calendar feed could not be fetched or parsed/);
+	assert.equal(text.includes("broken.ics"), false);
+	assert.equal(text.includes("https://"), false);
+});
+
+test("vanished events are checked against every configured calendar's identity", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
+	f.put("Meetings/Gone.md", note({ type: "Meeting", ics_uid: "gone@example.com", title: "Gone", date: "2026-10-04", invited_as: "home@example.com" }));
+	f.put("Meetings/Other.md", note({ type: "Meeting", ics_uid: "other@example.com", title: "Other", date: "2026-10-04", invited_as: "removed@example.com" }));
+	const prepared = await prepareSync(f.app, f.settings, async () => calendar("here@example.com"), now);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
+});
+
 test("two feeds preview without writes, apply matches preview, and repeat sync reuses stubs", async () => {
 	const f = fixture();
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
@@ -224,8 +323,7 @@ test("invalid ignore lists, duplicate keys and invalid or conflicting filenames 
 
 async function pluginFixture(previewBeforeApply = true) {
 	const f = fixture();
-	feeds.set(f.settings.feeds.google.url, await f.fetch(f.settings.feeds.google.url));
-	feeds.set(f.settings.feeds.outlook.url, await f.fetch(f.settings.feeds.outlook.url));
+	for (const { url } of f.settings.calendars) feeds.set(url, await f.fetch(url));
 	const plugin = new GraftPlugin(f.app);
 	plugin.loadData = async () => ({ ...f.settings, previewBeforeApply });
 	await plugin.onload();
@@ -282,7 +380,10 @@ test("startup uses the same flow only when enabled, and failures remain generic"
 });
 
 function withFeeds(settings) {
-	settings.feeds = { google: { url: "https://example.com/google.ics", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } };
+	settings.calendars = [
+		{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "one@example.com" },
+		{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "two@example.com" },
+	];
 	settings.daysBack = 0;
 	settings.daysAhead = 2;
 	return settings;

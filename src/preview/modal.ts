@@ -86,8 +86,8 @@ export class SyncPreviewModal extends Modal {
 		}
 		if (errors.length) {
 			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "Feed errors" });
-			section.createEl("p", { text: "Some feeds could not be read. This preview is incomplete.", cls: "graft-note graft-note-error" });
+			section.createEl("h3", { text: "Calendar errors" });
+			section.createEl("p", { text: "Some calendars could not be read. This preview is incomplete.", cls: "graft-note graft-note-error" });
 			for (const error of errors) section.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		}
 		const actions = root.createEl("div", { cls: "graft-actions" });

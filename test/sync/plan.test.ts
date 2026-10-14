@@ -93,3 +93,48 @@ test("feed errors do not include request or parser details", async () => {
 	const malformed = await buildSyncPlan(feeds, WINDOW, [], [], async () => "Synthetic invalid ICS content");
 	assert.deepEqual(malformed.errors, [{ feed: "Google", message: "Calendar feed could not be fetched or parsed." }]);
 });
+
+test("an event in more than one calendar is used once, from the earlier calendar", async () => {
+	const feeds: FeedConfig[] = [
+		{ name: "Work", url: "https://work.example/feed.ics" },
+		{ name: "Home", url: "https://home.example/feed.ics" },
+		{ name: "Team", url: "https://team.example/feed.ics" },
+	];
+	const fakeFetch = async (url: string) => {
+		if (url.includes("work")) return icsWith(vevent("shared@example.com", "Shared"), vevent("work-only@example.com", "Work only"));
+		if (url.includes("home")) return icsWith(vevent("shared@example.com", "Shared copy"), vevent("home-only@example.com", "Home only"));
+		return icsWith(vevent("shared@example.com", "Shared again"));
+	};
+
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], fakeFetch);
+
+	assert.deepEqual(plan.toProcess.map((e) => [e.uid, e.source]), [["shared@example.com", "Work"], ["work-only@example.com", "Work"], ["home-only@example.com", "Home"]]);
+	assert.deepEqual(plan.skipped.map(({ event, reason }) => [event.source, reason]), [
+		["Home", "Same event as one in Work"],
+		["Team", "Same event as one in Work"],
+	]);
+	assert.equal(plan.errors.length, 0);
+});
+
+test("occurrences of one series are matched one by one across calendars", async () => {
+	const series = (count: number) => `BEGIN:VEVENT
+UID:series@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+RRULE:FREQ=DAILY;COUNT=${count}
+SUMMARY:Daily
+END:VEVENT
+`;
+	const feeds: FeedConfig[] = [{ name: "Work", url: "https://work.example/feed.ics" }, { name: "Home", url: "https://home.example/feed.ics" }];
+	const fakeFetch = async (url: string) => icsWith(series(url.includes("work") ? 2 : 3));
+
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], fakeFetch);
+
+	assert.deepEqual(plan.toProcess.map((e) => e.source), ["Work", "Work", "Home"]);
+	assert.deepEqual(plan.skipped.map(({ event }) => event.source), ["Home", "Home"]);
+});
+
+test("a calendar with no events and no calendars at all produce an empty plan", async () => {
+	assert.deepEqual(await buildSyncPlan([], WINDOW, [], [], async () => icsWith()), { toProcess: [], skipped: [], errors: [] });
+});

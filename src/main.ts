@@ -42,7 +42,7 @@ export default class GraftPlugin extends Plugin {
 				});
 				this.previewModal = undefined;
 			} else await apply();
-		} catch { new Notice("Graft could not prepare the sync. Check the feed settings, folders, templates, and ignore list."); }
+		} catch { new Notice("Graft could not prepare the sync. Check the calendar settings, folders, templates, and ignore list."); }
 		finally { this.syncing = false; }
 	}
 

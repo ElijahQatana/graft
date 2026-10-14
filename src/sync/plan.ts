@@ -4,7 +4,7 @@ import { filterByTitle, type TitleMatchRule } from "../filters/titleMatch.ts";
 import { filterByIgnoreList, type IgnoreListEntry } from "../filters/ignoreList.ts";
 
 export interface FeedConfig {
-	/** Feed name used to associate events and errors with their source. */
+	/** Calendar name used to associate events and errors with their source. */
 	name: string;
 	url: string;
 }
@@ -43,12 +43,26 @@ export async function buildSyncPlan(
 		}
 	}
 
-	const titleFiltered = filterByTitle(allEvents, titleMatchRules);
+	// The same event can sit in more than one calendar. The earlier calendar in the list is
+	// used and the other copies are reported as skipped, so each Meeting note has one source.
+	const firstSource = new Map<string, string>();
+	const events: CalendarEvent[] = [];
+	const duplicates: SyncPlan["skipped"] = [];
+	for (const event of allEvents) {
+		const key = JSON.stringify([event.uid, event.recurrenceId ?? ""]);
+		const first = firstSource.get(key);
+		if (first === undefined) {
+			firstSource.set(key, event.source ?? "");
+			events.push(event);
+		} else duplicates.push({ event, reason: `Same event as one in ${first}` });
+	}
+
+	const titleFiltered = filterByTitle(events, titleMatchRules);
 	const ignoreFiltered = filterByIgnoreList(titleFiltered.kept, ignoreListEntries);
 
 	return {
 		toProcess: ignoreFiltered.kept,
-		skipped: [...titleFiltered.skipped, ...ignoreFiltered.skipped],
+		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped],
 		errors,
 	};
 }

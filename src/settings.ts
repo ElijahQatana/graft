@@ -1,7 +1,8 @@
 import { App, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
 import {
-	isDayCount, isFeedUrl, isFilenameRule, isTimezone, isTitleRule, isVaultPath,
+	isCalendarType, isCalendarUrl, isDayCount, isFilenameRule, isTimezone, isTitleRule, isVaultPath, sameCalendarName,
+	type CalendarSettings,
 } from "./config/settings.ts";
 import {
 	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isExtraField, isFieldName, isHeading, isTypeValue,
@@ -46,15 +47,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: "Graft" });
 		containerEl.createEl("p", { cls: "graft-intro", text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
 
-		this.heading("Calendar feeds");
-		containerEl.createEl("p", { cls: "graft-help", text: "Feed URLs are private and stored in this vault's plugin settings. Keep them out of shared notes, screenshots, and logs. Leave a URL blank to leave that feed unconfigured." });
-		for (const [key, label] of [["google", "Google"], ["outlook", "Outlook / Microsoft 365"]] as const) {
-			this.text(`${label} ICS URL`, "Use the calendar's ICS subscription URL, preferably HTTPS.", settings.feeds[key].url,
-				(value) => { settings.feeds[key].url = value.trim(); },
-				(value) => isFeedUrl(value) ? undefined : "Use an HTTP or HTTPS URL without a username or password, or leave blank.", true);
-			this.text(`${label} invited as`, "Identity to write to the Meeting note's invited_as field.", settings.feeds[key].invitedAs,
-				(value) => { settings.feeds[key].invitedAs = value; });
-		}
+		this.calendars();
 
 		this.heading("Folders and templates");
 		for (const [key, label] of [["meeting", "Meeting"], ["person", "Person"], ["series", "Series"], ["company", "Company"]] as const) {
@@ -144,6 +137,52 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.text(name, "Whole number of days, zero or greater.", String(this.plugin.settings[key]),
 			(value) => { this.plugin.settings[key] = Number(value); },
 			(value) => /^\d+$/.test(value) && isDayCount(Number(value)) ? undefined : "Enter a whole number of days, zero or greater.");
+	}
+
+	private calendars(): void {
+		this.heading("Calendars");
+		this.target.createEl("p", { cls: "graft-help", text: "Add each calendar's private ICS URL, stored in this vault's plugin settings. Keep URLs out of shared notes, screenshots, and logs. Calendars sync from top to bottom; if two hold the same event, the earlier one is used. Removing a calendar does not change existing notes. Save each row after editing." });
+		const calendars = this.plugin.settings.calendars;
+		if (!calendars.length) this.target.createEl("p", { cls: "graft-help", text: "No calendars yet. Add one below to use Preview sync or Sync now." });
+		calendars.forEach((calendar, index) => this.calendarRow({ ...calendar }, index));
+		this.calendarRow({ name: "", type: "google", url: "", invitedAs: "" });
+	}
+
+	private calendarRow(draft: CalendarSettings, index?: number): void {
+		const row = new Setting(this.target).setName(index === undefined ? "New calendar" : `Calendar ${index + 1}`);
+		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
+		const error = row.descEl.createEl("div", { cls: "graft-error", attr: { role: "status", "aria-live": "polite" } });
+		row.addText((input) => {
+			input.inputEl.setAttribute("aria-label", "Calendar name");
+			input.setPlaceholder("Name, such as Work").setValue(draft.name).onChange((value) => { draft.name = value; });
+		});
+		row.addDropdown((input) => input.addOptions({ google: "Google", outlook: "Outlook / Microsoft 365" })
+			.setValue(draft.type).onChange((value) => { if (isCalendarType(value)) draft.type = value; }));
+		row.addText((input) => {
+			input.inputEl.setAttribute("aria-label", "Calendar ICS URL");
+			input.inputEl.type = "password";
+			input.inputEl.autocomplete = "off";
+			input.inputEl.spellcheck = false;
+			input.setPlaceholder("Private ICS URL").setValue(draft.url).onChange((value) => { draft.url = value; });
+		});
+		row.addText((input) => {
+			input.inputEl.setAttribute("aria-label", "Calendar invited as");
+			input.setPlaceholder("Invited as").setValue(draft.invitedAs).onChange((value) => { draft.invitedAs = value; });
+		});
+		row.addButton((button) => button.setButtonText(index === undefined ? "Add calendar" : "Save").onClick(async () => {
+			const calendars = this.plugin.settings.calendars;
+			const name = draft.name.trim();
+			const message = !name ? "Enter a calendar name."
+				: calendars.some((calendar, other) => other !== index && sameCalendarName(calendar.name, name)) ? "Another calendar already uses that name."
+				: !isCalendarUrl(draft.url) ? "Enter an HTTP or HTTPS ICS URL without a username or password."
+				: undefined;
+			if (message) { error.setText(`${message} Change not saved.`); return; }
+			const saved = { name, type: draft.type, url: draft.url.trim(), invitedAs: draft.invitedAs };
+			if (index === undefined) calendars.push(saved); else calendars[index] = saved;
+			this.display();
+			await this.plugin.saveSettings();
+		}));
+		if (index !== undefined) this.rowActions(row, this.plugin.settings.calendars, index);
 	}
 
 	private titleRules(): void {

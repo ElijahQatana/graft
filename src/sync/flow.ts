@@ -34,8 +34,7 @@ export interface PreparedSync {
 }
 
 export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: FeedFetcher, now = new Date()): Promise<PreparedSync> {
-	const feeds = (["google", "outlook"] as const).filter((key) => settings.feeds[key].url)
-		.map((key) => ({ name: key, url: settings.feeds[key].url }));
+	const feeds = settings.calendars.map(({ name, url }) => ({ name, url }));
 	if (!feeds.length) throw new Error("Configure at least one calendar feed in Graft settings.");
 	const day = DateTime.fromJSDate(now).setZone(settings.timezone).startOf("day");
 	const window = { start: day.minus({ days: settings.daysBack }).toJSDate(), end: day.plus({ days: settings.daysAhead + 1 }).toJSDate() };
@@ -74,6 +73,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const series = notes(settings.folders.series, schema.types.series).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.series.uid]), note }));
 	const meetings = notes(settings.folders.meeting, schema.types.meeting).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.meeting.uid]), icsRecurrenceId: stringValue(note.frontmatter[schema.meeting.recurrenceId]), note }));
 	const companies = notes(settings.folders.company, schema.types.company).map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter[schema.company.domain]) }));
+	const invitedAsBySource = new Map(settings.calendars.map((calendar) => [calendar.name, calendar.invitedAs]));
 	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: settings.strictCompanyLinks, warnings: [] };
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
@@ -122,11 +122,11 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		if (matches.length > 1) throw new Error("Multiple Meeting notes match one event. Check the Meeting folder.");
 		const existing = matches[0]?.note;
 		if (existing) {
-			if (targets.has(existing.file.path)) throw new Error("Multiple feed events target one Meeting note. Check the configured feeds.");
+			if (targets.has(existing.file.path)) throw new Error("Multiple feed events target one Meeting note. Check the configured calendars.");
 			targets.add(existing.file.path);
 		}
 		input.meetings.push({
-			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: settings.feeds[event.source as "google" | "outlook"].invitedAs, schema, timezone: settings.timezone, bodyTemplate: bodies.meeting },
+			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: invitedAsBySource.get(event.source ?? "") ?? "", schema, timezone: settings.timezone, bodyTemplate: bodies.meeting },
 			existing: existing ? { path: existing.file.path, frontmatter: existing.frontmatter, body: existing.body } : undefined,
 		});
 	}
@@ -134,7 +134,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const seen = [...plan.toProcess, ...plan.skipped.map(({ event }) => event)];
 		for (const meeting of meetings) {
 			const date = stringValue(meeting.note.frontmatter[schema.meeting.date]);
-			const configuredIdentity = feeds.some((feed) => settings.feeds[feed.name as "google" | "outlook"].invitedAs === meeting.note.frontmatter[schema.meeting.invitedAs]);
+			const configuredIdentity = settings.calendars.some((calendar) => calendar.invitedAs === meeting.note.frontmatter[schema.meeting.invitedAs]);
 			if (date && configuredIdentity && meeting.icsUid && date >= day.minus({ days: settings.daysBack }).toISODate()! && date <= day.plus({ days: settings.daysAhead }).toISODate()!
 				&& !seen.some((event) => matchMeeting(event.uid, event.recurrenceId, [meeting]))) {
 				input.warnings.push({ kind: "vanished-event", subject: meeting.path });

@@ -1,10 +1,18 @@
 # Settings
 
-Open Graft in Obsidian's settings. Text fields and toggles save automatically. Rule rows use **Add** and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
+Open Graft in Obsidian's settings. Text fields and toggles save automatically. Rows in lists use **Add** (or **Add calendar**) and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
 
 Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately.
 
-- **Feeds:** Google and Outlook ICS URLs and an `invited_as` identity for each. Blank URLs leave a feed unconfigured. URLs are masked on screen but saved as plain text in the vault's plugin settings. Prefer HTTPS.
+- **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one, then **Save**, **Up**, **Down**, and **Remove** on its row. Each calendar has:
+  - a **name**, which is required and must be unique (case is ignored). Previews use it to say which calendar had a problem.
+  - a **type**, Google or Outlook / Microsoft 365.
+  - the calendar's private **ICS URL**, which is required and must be an HTTP or HTTPS address without a username or password. URLs are masked on screen but saved as plain text in the vault's plugin settings. Prefer HTTPS. Errors never repeat the URL.
+  - an **invited as** identity, written to each Meeting note's `invited_as` property for events from that calendar.
+
+  Sync needs at least one calendar. Removing a calendar does not change existing notes. Settings saved before this list existed carry over: the old Google and Outlook feeds that had a URL become calendars named `Google` and `Outlook`, and blank ones are dropped.
+
+  If the same event appears in more than one calendar, such as an invite you received on two accounts, Graft writes one Meeting note, using the calendar that is higher in the list. The copies from the other calendars show up under **Skipped events** in the preview. Move a calendar up to make its `invited_as` and details win. Recurring events are matched one occurrence at a time.
 - **Folders:** Meeting, Person, Series, and Company folders. Defaults are `Meetings`, `People`, `Series`, and `Companies`. Company notes are maintained manually.
 - **Templates:** optional Markdown file paths for new Meeting, Person, and Series bodies. Blank selects the built-in body. Template frontmatter is ignored; Graft keeps its note fields. Graft uses `{{name}}` placeholders; it does not run Templater scripts. Meeting bodies can use `{{invite_agenda}}` and `{{series_agenda}}`.
 - **Meeting filenames:** default to `{{title}} {{date}}`. Unknown placeholders remain visible.
