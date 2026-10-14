@@ -9,18 +9,39 @@ const unsafe: Array<[string, string]> = [
 ];
 
 for (const [label, char] of unsafe) {
-	test(`replaces ${label} with a hyphen`, () => {
-		assert.equal(sanitizeFilename(`Team${char} Planning`), "Team- Planning");
+	test(`replaces ${label} with a hyphen, or a spaced hyphen next to whitespace`, () => {
 		assert.equal(sanitizeFilename(`Team${char}Planning`), "Team-Planning");
+		assert.equal(sanitizeFilename(`Team${char} Planning`), "Team - Planning");
+		assert.equal(sanitizeFilename(`Team ${char}Planning`), "Team - Planning");
+		assert.equal(sanitizeFilename(`Team ${char} Planning`), "Team - Planning");
 	});
 }
 
-test("replaces a run of unsafe characters with one hyphen", () => {
-	assert.equal(sanitizeFilename("What?! [Q3]: *plan*"), "What-! -Q3- -plan-");
+test("reads naturally for common titles", () => {
+	assert.equal(sanitizeFilename("Roadmap sync: milestones"), "Roadmap sync - milestones");
+	assert.equal(sanitizeFilename("Q3 plan | review"), "Q3 plan - review");
+	assert.equal(sanitizeFilename("Casey [QA] Tester"), "Casey - QA - Tester");
+	assert.equal(sanitizeFilename("A*B"), "A-B");
+});
+
+test("treats unsafe characters separated by spaces as one run", () => {
+	assert.equal(sanitizeFilename("What?! [Q3]: *plan* now"), "What-! - Q3 - plan - now");
+	assert.equal(sanitizeFilename("Private: dentist? [2026] #1"), "Private - dentist - 2026 - 1");
+	assert.equal(sanitizeFilename("a::b"), "a-b");
+	assert.equal(sanitizeFilename("a : : b"), "a - b");
+});
+
+test("drops unsafe runs at the start or end instead of leaving a hyphen", () => {
+	assert.equal(sanitizeFilename("Weekly sync?"), "Weekly sync");
+	assert.equal(sanitizeFilename("Weekly sync ?"), "Weekly sync");
+	assert.equal(sanitizeFilename("[Q3] plan"), "Q3 - plan");
+	assert.equal(sanitizeFilename("#1 priorities"), "1 priorities");
+	assert.equal(sanitizeFilename("Sync?.."), "Sync");
+	assert.equal(sanitizeFilename("***"), "Untitled");
 });
 
 test("replaces control characters", () => {
-	assert.equal(sanitizeFilename("Line\none\ttwo\u0000"), "Line-one-two-");
+	assert.equal(sanitizeFilename("Line\none\ttwo\u0000"), "Line-one-two");
 });
 
 test("keeps a spaced pipe readable", () => {
