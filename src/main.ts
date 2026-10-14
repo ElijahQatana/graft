@@ -3,6 +3,7 @@ import { GraftSettingTab } from "./settings.ts";
 import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal } from "./preview/modal.ts";
 import { prepareSync, applySync } from "./sync/flow.ts";
+import { UserFacingError } from "./sync/userFacingError.ts";
 import { fetchIcs } from "./ics/fetch.ts";
 
 /** Loads settings and connects the sync commands. */
@@ -33,7 +34,7 @@ export default class GraftPlugin extends Plugin {
 			const apply = async () => {
 				if (this.unloaded) return;
 				try { await applySync(this.app, prepared); new Notice("Graft sync finished."); }
-				catch { new Notice("Graft sync stopped. Check the vault and run Preview sync again."); }
+				catch (error) { new Notice(error instanceof UserFacingError ? error.message : "Graft sync stopped. Check the vault and run Preview sync again."); }
 			};
 			if (previewOnly || settings.previewBeforeApply || !prepared.canApply) {
 				await new Promise<void>((resolve) => {
@@ -42,7 +43,7 @@ export default class GraftPlugin extends Plugin {
 				});
 				this.previewModal = undefined;
 			} else await apply();
-		} catch { new Notice("Graft could not prepare the sync. Check the calendar settings, folders, templates, and ignore list."); }
+		} catch (error) { new Notice(error instanceof UserFacingError ? error.message : "Graft could not prepare the sync. Check the calendar settings, folders, templates, and ignore list."); }
 		finally { this.syncing = false; }
 	}
 
