@@ -29,6 +29,8 @@ const PERSON_MATCH: PersonFieldKey[] = ["email", "emailAliases"];
 export class GraftSettingTab extends PluginSettingTab {
 	/** Where settings rows are added; the schema section swaps in a collapsible block. */
 	private target!: HTMLElement;
+	/** Survives display() rebuilds so row saves and presets do not collapse the schema section. */
+	private schemaOpen = false;
 
 	constructor(app: App, private plugin: GraftPlugin) {
 		super(app, plugin);
@@ -37,6 +39,7 @@ export class GraftSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		const settings = this.plugin.settings;
+		const scrollTop = containerEl.scrollTop;
 		containerEl.empty();
 		this.target = containerEl;
 		containerEl.createEl("h2", { text: "Graft" });
@@ -96,6 +99,7 @@ export class GraftSettingTab extends PluginSettingTab {
 				}));
 		}
 		this.schemaSection();
+		containerEl.scrollTop = scrollTop;
 	}
 
 	private heading(text: string): void {
@@ -198,6 +202,8 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private schemaSection(): void {
 		const details = this.containerEl.createEl("details");
+		details.open = this.schemaOpen;
+		details.addEventListener("toggle", () => { this.schemaOpen = details.open; });
 		details.createEl("summary", { text: "Note schema (advanced)" });
 		this.target = details;
 		this.target.createEl("p", { text: "Property names, note types and headings Graft reads and writes. Defaults suit a new vault; change them to match your own notes. Existing notes keep their current names until you edit them." });
