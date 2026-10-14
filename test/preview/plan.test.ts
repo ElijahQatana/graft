@@ -14,6 +14,7 @@ export function fixture(): PreviewInput {
 		plan: { toProcess: [event], skipped: [], errors: [] },
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC" } }],
 		personStubs: [], seriesStubs: [], companies: [], meetingFolder: "Meetings", warnings: [],
+		features: { personStubs: true, seriesStubs: true, skipped: false },
 	};
 }
 
@@ -33,6 +34,16 @@ test("new notes use the generators, configured filenames, and validated links wi
 	assert.deepEqual(preview.seriesStubs, source.seriesStubs);
 	assert.deepEqual(preview.warnings, [{ kind: "unresolved-company", subject: "Synthetic sync" }]);
 	assert.equal(JSON.stringify(source), before);
+});
+
+test("no unresolved-Company warning is raised when strict links are off, as when Company linking is off", () => {
+	const source = fixture();
+	source.strictCompanyLinks = false;
+	source.meetings[0].input.organizer = { filename: "Alex Example", companyLinks: ["[[Missing]]"] };
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+	source.meetings[0].input.organizer = { filename: "Alex Example", companyLinks: [] };
+	source.strictCompanyLinks = true;
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
 });
 
 test("updates show only changed calendar fields and the Invite Agenda", () => {
@@ -106,4 +117,13 @@ test("unresolved or out-of-order events cannot silently disappear from the previ
 	const other = fixture();
 	other.meetings[0].input.event = makeEvent();
 	assert.throws(() => buildSyncPreview(other), /resolved input/);
+});
+
+test("the preview carries a copy of the enabled-feature flags", () => {
+	const source = fixture();
+	source.features = { personStubs: false, seriesStubs: true, skipped: true };
+	const preview = buildSyncPreview(source);
+	assert.deepEqual(preview.features, source.features);
+	source.features.personStubs = true;
+	assert.equal(preview.features.personStubs, false);
 });

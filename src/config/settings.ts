@@ -27,6 +27,8 @@ export interface GraftSettings {
 	daysAhead: number;
 	createPersonStubs: boolean;
 	createSeriesStubs: boolean;
+	/** Company matching, links and validation. Off on a new install; on for settings saved before it existed. */
+	companyLinking: boolean;
 	strictCompanyLinks: boolean;
 	previewBeforeApply: boolean;
 	autoRunOnStartup: boolean;
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	daysAhead: 30,
 	createPersonStubs: true,
 	createSeriesStubs: true,
+	companyLinking: false,
 	strictCompanyLinks: true,
 	previewBeforeApply: true,
 	autoRunOnStartup: false,
@@ -109,11 +112,13 @@ export function isFilenameRule(value: unknown): value is FilenameConventionRule 
 }
 
 /** Restores valid saved fields while supplying fresh nested defaults for older settings.
- * Settings saved before the schema existed keep the original schema so their notes still match. */
+ * Settings saved before the schema existed keep the original schema so their notes still match.
+ * Settings saved before Company linking was optional keep it on. */
 export function loadGraftSettings(saved: unknown): GraftSettings {
 	const result: GraftSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 	const input = record(saved);
 	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
+	result.companyLinking = Object.keys(input).length > 0;
 	result.schema = loadSchema(input.schema, hasSchema || !Object.keys(input).length ? MINIMAL_SCHEMA : ORIGINAL_SCHEMA);
 	result.calendars = loadCalendars(input);
 	const folders = record(input.folders);
@@ -138,7 +143,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}
-	for (const key of ["createPersonStubs", "createSeriesStubs", "strictCompanyLinks", "previewBeforeApply", "autoRunOnStartup"] as const) {
+	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "previewBeforeApply", "autoRunOnStartup"] as const) {
 		if (typeof input[key] === "boolean") result[key] = input[key];
 	}
 	return result;

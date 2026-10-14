@@ -73,9 +73,9 @@ async function loadModule(entry) {
 const { GraftSettingTab } = await loadModule("src/settings.ts");
 const { default: GraftPlugin } = await loadModule("src/main.ts");
 
-function fixture() {
+function fixture({ linking = false } = {}) {
 	const saves = [];
-	const plugin = { settings: loadGraftSettings({}), async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
+	const plugin = { settings: { ...loadGraftSettings({}), companyLinking: linking }, async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
 	const app = { vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
 	const tab = new GraftSettingTab(app, plugin);
 	tab.display();
@@ -87,6 +87,7 @@ function fixture() {
 
 test("settings controls update every scalar and nested field", async () => {
 	const { plugin, control, saves } = fixture();
+	await control("Company linking", "toggle").change(true);
 	const edits = [
 		["Meeting folder", "Custom/Meetings"], ["Person folder", "Custom/People"], ["Series folder", "Custom/Series"], ["Company folder", "Custom/Companies"],
 		["Meeting template", "Templates/Meeting.md"], ["Person template", "Templates/Meeting.md"], ["Series template", "Templates/Meeting.md"],
@@ -96,7 +97,7 @@ test("settings controls update every scalar and nested field", async () => {
 	for (const [name, value] of edits) await control(name, "text").change(value);
 	for (const name of ["Create Person stubs", "Create Series stubs", "Strict Company links", "Preview before apply"]) await control(name, "toggle").change(false);
 	await control("Sync on startup", "toggle").change(true);
-	assert.equal(saves.length, edits.length + 5);
+	assert.equal(saves.length, edits.length + 6);
 	assert.deepEqual(loadGraftSettings(saves.at(-1)), plugin.settings);
 	assert.equal(plugin.settings.daysBack, 0);
 	assert.equal(plugin.settings.autoRunOnStartup, true);
@@ -297,7 +298,7 @@ test("schema section edits names, types, headings, body, and extras with conflic
 });
 
 test("matching and type properties warn that renaming does not update existing notes", () => {
-	const { row } = fixture();
+	const { row } = fixture({ linking: true });
 	const warned = [
 		"Type property", "Meeting type value", "Person type value", "Series type value", "Company type value",
 		"Meeting property: Event UID", "Meeting property: Recurrence ID", "Person property: Email",
@@ -371,4 +372,29 @@ test("schema section stays open and keeps scroll across re-renders", async () =>
 	tab.display();
 	assert.equal(details().open, false);
 	assert.ok(row("Schema preset"));
+});
+
+const COMPANY_ROWS = ["Company folder", "Strict Company links", "Company type value", "Person property: Company links", "Company property: Domain"];
+
+test("Company settings are hidden while Company linking is off", () => {
+	const { row, control, plugin } = fixture();
+	assert.equal(plugin.settings.companyLinking, false);
+	assert.equal(control("Company linking", "toggle").value, false);
+	for (const name of COMPANY_ROWS) assert.equal(row(name), undefined, name);
+	assert.ok(row("Person property: Email"));
+	assert.ok(row("Series property: Event UID"));
+	assert.ok(row("Preview before apply"));
+});
+
+test("turning Company linking on shows the Company settings, and off hides them again", async () => {
+	const { row, control, plugin, saves } = fixture();
+	await control("Company linking", "toggle").change(true);
+	assert.equal(plugin.settings.companyLinking, true);
+	assert.equal(saves.at(-1).companyLinking, true);
+	for (const name of COMPANY_ROWS) assert.ok(row(name), name);
+	assert.equal(control("Strict Company links", "toggle").value, true);
+	await control("Company linking", "toggle").change(false);
+	assert.equal(plugin.settings.companyLinking, false);
+	for (const name of COMPANY_ROWS) assert.equal(row(name), undefined, name);
+	assert.equal(plugin.settings.strictCompanyLinks, true);
 });

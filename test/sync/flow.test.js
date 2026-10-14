@@ -192,6 +192,24 @@ test("two feeds preview without writes, apply matches preview, and repeat sync r
 	assert.equal(f.writes.length, count);
 });
 
+test("preview feature flags come from settings", async () => {
+	const cases = [
+		[{}, { personStubs: true, seriesStubs: true, skipped: false }],
+		[{ createPersonStubs: false }, { personStubs: false, seriesStubs: true, skipped: false }],
+		[{ createSeriesStubs: false }, { personStubs: true, seriesStubs: false, skipped: false }],
+		[{ ignoreListPath: "Ignore.md" }, { personStubs: true, seriesStubs: true, skipped: true }],
+		[{ titleMatchRules: [{ mode: "contains", value: "sample" }] }, { personStubs: true, seriesStubs: true, skipped: true }],
+	];
+	for (const [override, expected] of cases) {
+		const f = fixture();
+		if (override.ignoreListPath) f.put(override.ignoreListPath, "");
+		const settings = { ...f.settings, ...override };
+		const prepared = await prepareSync(f.app, settings, f.fetch, now);
+		assert.deepEqual(clean(prepared.preview.features), expected);
+		assert.deepEqual(clean(prepared.input.features), expected);
+	}
+});
+
 test("updates preserve handwritten fields and body, use existing Series agenda and Company links", async () => {
 	const f = fixture();
 	f.put("People/Alex Example.md", note({ type: "Person", email_aliases: ["alex@example.com"], company: ["[[Example Co]]", "[[Missing]]"] }));
@@ -208,6 +226,36 @@ test("updates preserve handwritten fields and body, use existing Series agenda a
 	assert.deepEqual(actual.participants, ["[[Manual]]"]);
 	assert.deepEqual(actual.companies, ["[[Example Co]]"]);
 	assert.ok(f.texts.get("Meetings/Original.md").includes("Keep this"));
+});
+
+test("with Company linking off there is no Company matching, warning or company property", async () => {
+	const f = fixture();
+	f.settings.companyLinking = false;
+	f.put("People/Alex Example.md", note({ type: "Person", email_aliases: ["alex@example.com"], company: ["[[Example Co]]", "[[Missing]]"] }));
+	f.put("Companies/Example Co.md", note({ type: "Company", domain: "example.com" }));
+	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04", companies: ["[[Handwritten]]"] }, "## Invite Agenda\n\nOld agenda"));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.deepEqual(clean(prepared.input.companies), []);
+	assert.equal(prepared.input.strictCompanyLinks, false);
+	assert.equal(prepared.preview.warnings.some((item) => item.kind === "unresolved-company"), false);
+	assert.ok(prepared.input.personStubs.length > 0);
+	for (const { stub } of prepared.input.personStubs) assert.equal("company" in stub.frontmatter, false);
+	for (const { note: created } of prepared.preview.newMeetings) assert.equal("companies" in created.frontmatter, false);
+	await applySync(f.app, prepared);
+	assert.deepEqual(fields(f.texts.get("Meetings/Original.md")).companies, ["[[Handwritten]]"]);
+	assert.equal(fields(f.texts.get("Meetings/Original.md")).title, "Outlook sample");
+});
+
+test("with Company linking on a new Person stub links the matching Company and strict links apply", async () => {
+	const f = fixture();
+	f.put("Companies/Example Co.md", note({ type: "Company", domain: "example.com" }));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(prepared.input.strictCompanyLinks, true);
+	assert.equal(prepared.input.companies.length, 1);
+	const linked = prepared.input.personStubs.filter(({ stub }) => stub.companyLinks.length);
+	assert.ok(linked.length > 0);
+	for (const { stub } of linked) assert.deepEqual(clean(stub.frontmatter.company), ["[[Example Co]]"]);
+	for (const { stub } of prepared.input.personStubs) assert.ok("company" in stub.frontmatter);
 });
 
 test("a matched Meeting note without the invite heading warns, is left unchanged, and still applies", async () => {

@@ -1,5 +1,6 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
+import { buildSummary, count } from "./summary.ts";
 
 const warningText = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
@@ -26,7 +27,7 @@ export class SyncPreviewModal extends Modal {
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
-		body.createEl("p", { text: `${newMeetings.length} new Meetings, ${updates.length} existing Meetings, ${personStubs.length} Person stubs, ${seriesStubs.length} Series stubs, ${skipped.length} skipped.`, cls: "graft-summary" });
+		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
 		if (!newMeetings.length && !updates.length && !personStubs.length && !seriesStubs.length) {
 			body.createEl("p", { text: "No note changes planned.", cls: "graft-empty" });
 		}
@@ -46,7 +47,7 @@ export class SyncPreviewModal extends Modal {
 			section.createEl("h3", { text: "Existing Meeting notes" });
 			for (const { path, changes } of updates) {
 				const details = section.createEl("details", { cls: changes.length ? "graft-item" : "graft-item graft-item-clean" });
-				details.createEl("summary", { text: `${path} (${changes.length} changes)` });
+				details.createEl("summary", { text: `${path} (${count(changes.length, "change")})` });
 				const content = details.createEl("div", { cls: "graft-item-body" });
 				if (!changes.length) content.createEl("p", { text: "No field changes.", cls: "graft-muted" });
 				else {
