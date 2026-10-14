@@ -83,10 +83,10 @@ test("settings saved with the old fixed feeds sync as two calendars", async () =
 test("sync with no calendars asks for one and writes nothing", async () => {
 	const f = fixture();
 	f.settings.calendars = [];
-	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /Configure at least one calendar/);
+	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /Add a calendar in Graft settings/);
 	assert.equal(f.writes.length, 0);
 	const blank = loadGraftSettings({ feeds: { google: { url: "", invitedAs: "x" }, outlook: { url: " " } } });
-	await assert.rejects(() => prepareSync(f.app, blank, f.fetch, now), /Configure at least one calendar/);
+	await assert.rejects(() => prepareSync(f.app, blank, f.fetch, now), /Add a calendar in Graft settings/);
 });
 
 test("sync with one calendar reads only that calendar", async () => {
@@ -293,7 +293,7 @@ test("feed failure or ambiguous people allow preview but prevent all writes", as
 		const fetch = kind === "feed" ? async (url) => { if (url.includes("outlook")) throw new Error("synthetic private response"); return f.fetch(url); } : f.fetch;
 		const prepared = await prepareSync(f.app, f.settings, fetch, now);
 		assert.equal(prepared.canApply, false);
-		await assert.rejects(() => applySync(f.app, prepared), /incomplete or ambiguous/);
+		await assert.rejects(() => applySync(f.app, prepared), /sync plan has errors/);
 		assert.equal(f.writes.length, 0);
 		assert.equal(JSON.stringify(prepared.preview).includes("synthetic private response"), false);
 	}
@@ -507,4 +507,42 @@ test("a fresh install writes the minimal schema without vault-specific propertie
 	const again = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(again.preview.newMeetings.length, 0);
 	assert.equal(again.preview.seriesStubs.length, 0);
+});
+
+const generic = "Graft could not prepare the sync. Check the calendar settings, folders, templates, and ignore list.";
+
+test("deliberate prepare errors show their own message in the notice", async () => {
+	const cases = {
+		"Add a calendar in Graft settings.": (f) => { f.plugin.settings.calendars = []; },
+		"The ignore list is not valid JSON. Fix the file or clear the ignore list setting.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", "{ not json"); },
+		"The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); },
+		"A template file set in Graft settings was not found. Fix the template path or clear it.": (f) => { f.plugin.settings.templates.meeting = "Templates/Missing.md"; },
+		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f) => { f.plugin.settings.meetingFilenamePattern = "Invalid:filename"; },
+		"Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.": (f) => { f.plugin.settings.meetingFilenamePattern = "Same"; },
+		"More than one Meeting note has the same event UID. Remove the duplicate from the Meeting folder.": (f) => { for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" })); },
+	};
+	for (const [message, arrange] of Object.entries(cases)) {
+		const f = await pluginFixture(true);
+		arrange(f);
+		await f.plugin.runSync(true);
+		assert.equal(notices.at(-1), message);
+		assert.equal(f.writes.length, 0);
+	}
+});
+
+test("an unexpected error shows the generic notice and never echoes a feed URL or note text", async () => {
+	const f = await pluginFixture(true);
+	f.app.vault.getMarkdownFiles = () => { throw new Error("failed for https://example.com/secret-token.ics: synthetic private note text"); };
+	await f.plugin.runSync(true);
+	assert.equal(notices.at(-1), generic);
+	assert.equal(/example\.com|synthetic private/.test(notices.at(-1)), false);
+});
+
+test("a plain Error with a deliberate-looking message stays generic", async () => {
+	const f = await pluginFixture(true);
+	f.plugin.settings.ignoreListPath = "ignore.json";
+	f.put("ignore.json", "{}");
+	f.app.vault.read = async () => { throw new Error("Add a calendar in Graft settings."); };
+	await f.plugin.runSync(true);
+	assert.equal(notices.at(-1), generic);
 });
