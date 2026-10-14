@@ -362,11 +362,32 @@ test("invalid ignore lists, duplicate keys and invalid or conflicting filenames 
 		const f = fixture();
 		if (kind === "ignore") { f.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); }
 		if (kind === "collision") f.settings.meetingFilenamePattern = "Same";
-		if (kind === "invalid") f.settings.meetingFilenamePattern = "Invalid:filename";
+		if (kind === "invalid") f.settings.folders.meeting = "Bad:folder";
 		if (kind === "duplicate") for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" }));
 		await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now));
 		assert.equal(f.writes.length, 0);
 	}
+});
+
+test("event titles with a colon preview and apply with cleaned filenames", async () => {
+	const f = fixture();
+	f.settings.createSeriesStubs = false;
+	f.fetch = async (url) => url.includes("google") ? calendar("colon@example.com", "Sync: Planning") : calendar("private@example.com", "Private: dentist? [2026] #1");
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(prepared.preview.newMeetings.length, 2);
+	assert.deepEqual(clean(prepared.preview.newMeetings.map((item) => item.path).sort()), ["Meetings/Private- dentist- -2026- -1 2026-10-04.md", "Meetings/Sync- Planning 2026-10-04.md"]);
+	assert.equal(prepared.preview.newMeetings.find((item) => item.path.startsWith("Meetings/Sync")).note.frontmatter.title, "Sync: Planning");
+	await applySync(f.app, prepared);
+	assert.ok(f.texts.has("Meetings/Sync- Planning 2026-10-04.md"));
+	const again = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(again.preview.newMeetings.length, 0);
+});
+
+test("two titles that clean to the same filename are reported as a planned-name conflict", async () => {
+	const f = fixture();
+	f.fetch = async (url) => url.includes("google") ? calendar("a@example.com", "Sync: Planning") : calendar("b@example.com", "Sync? Planning");
+	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /conflict/);
+	assert.equal(f.writes.length, 0);
 });
 
 async function pluginFixture(previewBeforeApply = true) {
