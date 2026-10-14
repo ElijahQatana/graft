@@ -251,6 +251,12 @@ export class GraftSettingTab extends PluginSettingTab {
 			});
 		});
 
+		this.heading("Status and recurrence values");
+		this.schemaText("Status value: scheduled", "Written to the occurrence status property for a live event.", "type", (s) => s.statusValues.scheduled, (s, v) => { s.statusValues.scheduled = v; });
+		this.schemaText("Status value: cancelled", "Written when the calendar marks an occurrence cancelled.", "type", (s) => s.statusValues.cancelled, (s, v) => { s.statusValues.cancelled = v; });
+		this.schemaText("Recurrence value: series", "{{recurrence}} for a Meeting that belongs to a Series note.", "type", (s) => s.recurrenceValues.series, (s, v) => { s.recurrenceValues.series = v; });
+		this.schemaText("Recurrence value: one-off", "{{recurrence}} for a Meeting without a Series note.", "type", (s) => s.recurrenceValues.oneOff, (s, v) => { s.recurrenceValues.oneOff = v; });
+
 		this.heading("Extra Meeting properties");
 		this.target.createEl("p", { text: "Extra properties written to new Meeting notes. Turn on Update to refresh one on every sync. Values can use {{title}}, {{date}}, {{week}}, {{month}}, {{year}}, {{weekday}}, {{recurrence}} and {{companies}}. Write a list as [\"a\", \"b\"]. Save each row after editing." });
 		schema.meetingExtras.forEach((field, index) => this.extraRow({ ...field }, index));
@@ -268,10 +274,12 @@ export class GraftSettingTab extends PluginSettingTab {
 		const schema = this.plugin.settings.schema;
 		this.text(name, matches ? `${description} ${RENAME_NOTE}` : description, read(schema), (value) => write(schema, value), (value) => {
 			const valid = kind === "heading" ? isHeading(value) : kind === "type" ? isTypeValue(value) : kind === "optionalName" ? value === "" || isFieldName(value) : isFieldName(value);
-			if (!valid) return kind === "heading" ? "Use a Markdown heading such as ## Title." : "Enter a non-empty name without colons or surrounding spaces.";
+			if (!valid) return kind === "heading" ? "Use a Markdown heading such as ## Title." : kind === "type" ? "Enter a non-empty value without surrounding spaces." : "Enter a non-empty name without colons or surrounding spaces.";
 			const candidate = cloneSchema(schema);
 			write(candidate, value);
-			return schemaConflict(candidate) ? "Another property of this note type already uses that name." : undefined;
+			const conflict = schemaConflict(candidate);
+			if (!conflict) return undefined;
+			return conflict.startsWith("Two ") ? "Another property of this note type already uses that name." : conflict;
 		});
 	}
 

@@ -114,6 +114,30 @@ test("updates include only extras marked to update on every sync", () => {
 	assert.deepEqual(Object.keys(evaluateExtras(extras, context)), ["kept", "orgs"]);
 });
 
+test("status and recurrence values default to the original output and load from saved settings", () => {
+	for (const schema of [MINIMAL_SCHEMA, ORIGINAL_SCHEMA]) {
+		assert.deepEqual(schema.statusValues, { scheduled: "Scheduled", cancelled: "Cancelled" });
+		assert.deepEqual(schema.recurrenceValues, { series: "RegularSync", oneOff: "OneOff" });
+	}
+	const { statusValues, recurrenceValues, ...older } = cloneSchema(MINIMAL_SCHEMA);
+	assert.deepEqual(loadSchema(older, MINIMAL_SCHEMA), MINIMAL_SCHEMA);
+	assert.deepEqual(loadGraftSettings({ daysBack: 3 }).schema.statusValues, ORIGINAL_SCHEMA.statusValues);
+	const saved = cloneSchema(MINIMAL_SCHEMA);
+	saved.statusValues = { scheduled: "Planned", cancelled: "Called off" };
+	saved.recurrenceValues = { series: "Recurring", oneOff: "Single" };
+	assert.deepEqual(loadSchema(JSON.parse(JSON.stringify(saved)), MINIMAL_SCHEMA), saved);
+});
+
+test("invalid or clashing status and recurrence values fall back", () => {
+	const loaded = loadSchema({ statusValues: { scheduled: " Planned", cancelled: "Dropped" }, recurrenceValues: { series: "", oneOff: 5 } }, MINIMAL_SCHEMA);
+	assert.deepEqual(loaded.statusValues, { scheduled: "Scheduled", cancelled: "Dropped" });
+	assert.deepEqual(loaded.recurrenceValues, MINIMAL_SCHEMA.recurrenceValues);
+	assert.deepEqual(loadSchema({ statusValues: { scheduled: "Same", cancelled: "Same" } }, MINIMAL_SCHEMA), MINIMAL_SCHEMA);
+	const clash = cloneSchema(MINIMAL_SCHEMA);
+	clash.recurrenceValues.series = clash.recurrenceValues.oneOff;
+	assert.ok(schemaConflict(clash));
+});
+
 test("the original schema does not refresh channel, and stored copies that did are corrected", () => {
 	const channel = (schema: typeof ORIGINAL_SCHEMA) => schema.meetingExtras.find((field) => field.key === "channel");
 	assert.equal(channel(ORIGINAL_SCHEMA)?.updateOnSync, false);

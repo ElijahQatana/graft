@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingNote, type MeetingNoteInput } from "../../src/generate/meetingNote.ts";
-import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
+import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 function baseInput(overrides: Partial<MeetingNoteInput> = {}): MeetingNoteInput {
@@ -62,6 +62,18 @@ test("occurrence_status reflects an explicitly cancelled invite", () => {
 test("occurrence_status defaults to Scheduled otherwise", () => {
 	const note = buildMeetingNote(baseInput());
 	assert.equal(note.frontmatter.occurrence_status, "Scheduled");
+});
+
+test("configured status and recurrence values are written", () => {
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.statusValues = { scheduled: "Planned", cancelled: "Called off" };
+	schema.recurrenceValues = { series: "Recurring", oneOff: "Single" };
+	const live = buildMeetingNote(baseInput({ schema }));
+	assert.equal(live.frontmatter.occurrence_status, "Planned");
+	assert.equal(live.frontmatter.subtype, "Single");
+	const cancelled = buildMeetingNote(baseInput({ schema, event: makeEvent({ status: "CANCELLED" }), series: { filename: "S" } }));
+	assert.equal(cancelled.frontmatter.occurrence_status, "Called off");
+	assert.equal(cancelled.frontmatter.subtype, "Recurring");
 });
 
 test("company links are deduplicated across organizer and invited", () => {

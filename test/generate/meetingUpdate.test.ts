@@ -2,7 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
-import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
+import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 const companies: CompanyRecord[] = [{ path: "companies/Acme.md", name: "Acme", domain: "acme.example" }];
@@ -45,6 +45,19 @@ test("occurrence_status is only set when the invite is explicitly cancelled", ()
 		companies,
 	);
 	assert.equal(cancelled.occurrence_status, "Cancelled");
+});
+
+test("configured values are used, and the cancelled value only on an explicit cancellation", () => {
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.statusValues = { scheduled: "Planned", cancelled: "Called off" };
+	schema.recurrenceValues = { series: "Recurring", oneOff: "Single" };
+	const live = buildMeetingFrontmatterUpdate(baseInput({ schema, series: { filename: "S" } }), companies);
+	assert.equal("occurrence_status" in live, false);
+	const cancelled = buildMeetingFrontmatterUpdate(baseInput({ schema, event: makeEvent({ status: "CANCELLED" }) }), companies);
+	assert.equal(cancelled.occurrence_status, "Called off");
+	const extras = { ...schema, meetingExtras: [{ key: "subtype", value: "{{recurrence}}", updateOnSync: true }] };
+	assert.equal(buildMeetingFrontmatterUpdate(baseInput({ schema: extras, series: { filename: "S" } }), companies).subtype, "Recurring");
+	assert.equal(buildMeetingFrontmatterUpdate(baseInput({ schema: extras }), companies).subtype, "Single");
 });
 
 test("companies are validated against the real directory, not trusted", () => {

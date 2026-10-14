@@ -57,11 +57,11 @@ export function buildMeetingFrontmatterUpdate(
 	put(names.recurrenceId, input.event.recurrenceId ?? "");
 	Object.assign(update, evaluateExtras(schema.meetingExtras, {
 		title: input.event.summary, date: start.date, week: start.week, month: start.month, year: start.year,
-		weekday: start.weekday, recurrence: input.series ? "RegularSync" : "OneOff", companies: companyLinks,
+		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies: companyLinks,
 	}, true));
 
 	if (input.event.status === "CANCELLED") {
-		put(names.occurrenceStatus, "Cancelled");
+		put(names.occurrenceStatus, schema.statusValues.cancelled);
 	}
 
 	return update;
