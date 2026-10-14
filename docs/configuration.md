@@ -6,6 +6,8 @@ Each group of settings is a collapsible section: Calendars, Folders and template
 
 The search box at the top filters rows by name and description as you type. Every word you type must appear in a row. Sections with no match are hidden, sections with a match open, and an empty result shows a short message. Clear the box, select **Clear**, or press Escape to go back to the normal view, with your sections as you left them. A row that is showing an error message stays visible during a search, and a section holding one cannot be collapsed until the problem is fixed. Searching and collapsing never change a saved value.
 
+For a first-run walk-through, see [Getting started](getting-started.md).
+
 Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately.
 
 - **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one, then **Save**, **Up**, **Down**, and **Remove** on its row. Each calendar has:
@@ -18,7 +20,7 @@ Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the p
 
   If the same event appears in more than one calendar, such as an invite you received on two accounts, Graft writes one Meeting note, using the calendar that is higher in the list. The copies from the other calendars show up under **Skipped events** in the preview. Move a calendar up to make its `invited_as` and details win. Recurring events are matched one occurrence at a time.
 - **Folders:** Meeting, Person, and Series folders, plus the Company folder when Company linking is on. Defaults are `Meetings`, `People`, `Series`, and `Companies`. Company notes are maintained manually.
-- **Templates:** optional Markdown file paths for new Meeting, Person, and Series bodies. Blank selects the built-in body. Template frontmatter is ignored; Graft keeps its note fields. Graft uses `{{name}}` placeholders; it does not run Templater scripts. Meeting bodies can use `{{invite_agenda}}` and `{{series_agenda}}`.
+- **Templates:** optional Markdown file paths for new Meeting, Person, and Series bodies. Blank selects the built-in body. Template frontmatter is ignored; Graft keeps its note fields. Graft uses `{{name}}` placeholders; it does not run Templater scripts. Meeting bodies can use `{{invite_agenda}}` and `{{series_agenda}}`. See [Custom templates](templates.md) for every placeholder.
 - **Meeting filenames:** default to `{{title}} {{date}}`. Unknown placeholders remain visible. In every Meeting, Person, and Series filename, characters Obsidian does not allow (`\ / : * ? " < > |`) and ones that break links (`# ^ [ ]`) become a hyphen. The note title and properties keep the original text. If two names become the same, the preview reports a filename conflict.
 - **Filters:** an optional ignore-list JSON path and ordered title skip rules. Title rules support exact, prefix, suffix, and contains, with optional case sensitivity. The first match wins. A blank or missing ignore list ignores nothing.
 - **Person filenames:** ordered domain rules for full name, first name, or initial and last name. The first match wins; unlisted domains use full names.
@@ -44,4 +46,4 @@ An edit that would give two properties the same name, or leave a required name e
 
 Paths are relative to the vault root and cannot contain parent traversal. Templates must exist when selected; folders can be created later.
 
-Keep feed URLs and real calendar data out of shared notes, screenshots, logs, and vault copies.
+Keep feed URLs and real calendar data out of shared notes, screenshots, logs, and vault copies. See [Troubleshooting](troubleshooting.md) for notices and the privacy note.
