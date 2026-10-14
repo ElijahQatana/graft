@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 import { buildSyncPreview } from "../../src/preview/plan.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 import { extractSection } from "../../src/util/markdownSections.ts";
 
@@ -40,7 +41,7 @@ function fixture() {
 	const event = makeEvent({ summary: "<img src=x onerror=alert(1)>", description: "New agenda" });
 	return {
 		plan: { toProcess: [event], skipped: [{ event: makeEvent({ summary: "Skipped example" }), reason: "Ignored" }], errors: [{ feed: "Outlook", message: "synthetic private response" }] },
-		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", timezone: "UTC", organizer: { filename: "Alex Example", companyLinks: ["[[Missing]]"] } } }],
+		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC", organizer: { filename: "Alex Example", companyLinks: ["[[Missing]]"] } } }],
 		personStubs: [{ path: "People/Alex Example.md", stub: { filename: "Alex Example", frontmatter: { full_name: "Alex Example", email: "alex@example.com", company: [] } } }],
 		seriesStubs: [{ path: "Series/Example.md", stub: { filename: "Example", frontmatter: { series_title: "Example", google_recurring_event_id: "series@example.com" } } }],
 		companies: [], meetingFolder: "Meetings", warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }],

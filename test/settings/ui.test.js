@@ -40,6 +40,7 @@ class Setting {
 	setDesc(description) { this.description = description; return this; }
 	add(kind, setup) { const control = new Control(); control.kind = kind; this.controls.push(control); setup(control); return this; }
 	addText(setup) { return this.add("text", setup); }
+	addTextArea(setup) { return this.add("textarea", setup); }
 	addDropdown(setup) { return this.add("dropdown", setup); }
 	addToggle(setup) { return this.add("toggle", setup); }
 	addButton(setup) { return this.add("button", setup); }
@@ -74,7 +75,8 @@ function fixture() {
 	const app = { vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
 	const tab = new GraftSettingTab(app, plugin);
 	tab.display();
-	function row(name) { return tab.containerEl.children.find((child) => child.name === name); }
+	function find(parent, name) { for (const child of parent.children ?? []) { if (child.name === name) return child; const nested = find(child, name); if (nested) return nested; } }
+	function row(name) { return find(tab.containerEl, name); }
 	function control(name, kind, label) { return row(name).controls.find((item) => item.kind === kind && (label === undefined || item.label === label)); }
 	return { plugin, tab, saves, row, control };
 }
@@ -186,4 +188,81 @@ test("plugin settings writes remain ordered, use snapshots, and recover after fa
 	plugin.saveData = async (snapshot) => { writes.push(snapshot.daysBack); };
 	await plugin.saveSettings();
 	assert.deepEqual(writes, [1, 2, 3]);
+});
+
+test("schema section edits names, types, headings, body, and extras with conflict checks", async () => {
+	const { plugin, control, saves, row } = fixture();
+	await control("Type property", "text").change("kind");
+	await control("Meeting type value", "text").change("Call");
+	await control("Meeting property: Event UID", "text").change("cal_uid");
+	await control("Meeting property: Occurrence status", "text").change("");
+	await control("Series property: Event UID", "text").change("cal_uid");
+	await control("Invite agenda heading", "text").change("### Invite");
+	await control("Built-in Meeting body", "textarea").change("{{invite_section}}\n");
+	const schema = plugin.settings.schema;
+	assert.equal(schema.typeField, "kind");
+	assert.equal(schema.types.meeting, "Call");
+	assert.equal(schema.meeting.uid, "cal_uid");
+	assert.equal(schema.meeting.occurrenceStatus, "");
+	assert.equal(schema.series.uid, "cal_uid");
+	assert.equal(schema.headings.inviteAgenda, "### Invite");
+	assert.equal(schema.meetingBody, "{{invite_section}}\n");
+	assert.equal(saves.length, 7);
+	assert.deepEqual(loadGraftSettings(saves.at(-1)).schema, schema);
+
+	for (const [name, value] of [
+		["Meeting property: Title", "date"], ["Meeting property: Date", ""], ["Meeting property: Event UID", "a:b"],
+		["Type property", "title"], ["Person property: Email", "full_name"], ["Invite agenda heading", "Invite"],
+		["Meeting type value", " Call"],
+	]) {
+		const before = JSON.stringify(plugin.settings.schema);
+		await control(name, "text").change(value);
+		assert.match(row(name).descEl.children[0].text, /Change not saved/);
+		assert.equal(JSON.stringify(plugin.settings.schema), before);
+	}
+	await control("Built-in Meeting body", "textarea").change("no sections");
+	assert.equal(plugin.settings.schema.meetingBody, "{{invite_section}}\n");
+	assert.equal(saves.length, 7);
+});
+
+test("extra Meeting properties can be added, edited, reordered, removed, and rejected on conflict", async () => {
+	const { plugin, control, saves, row } = fixture();
+	const add = async (key, value, update = false) => {
+		control("New extra property", "text").change(key);
+		const values = row("New extra property").controls.filter((item) => item.kind === "text");
+		values[1].change(value);
+		control("New extra property", "toggle").change(update);
+		await control("New extra property", "button", "Add").click();
+	};
+	await add("", "x");
+	await add("title", "x");
+	assert.equal(saves.length, 0);
+	assert.match(row("New extra property").descEl.children[0].text, /Change not saved/);
+	await add("tags", '["Meeting"]');
+	await add("orgs", "{{companies}}", true);
+	await add("bad", '["unterminated');
+	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.schema.meetingExtras)), [
+		{ key: "tags", value: ["Meeting"], updateOnSync: false },
+		{ key: "orgs", value: "{{companies}}", updateOnSync: true },
+	]);
+	assert.equal(saves.length, 2);
+	row("Extra property 1").controls.filter((item) => item.kind === "text")[1].change("plain");
+	await control("Extra property 1", "button", "Save").click();
+	await control("Extra property 2", "button", "Up").click();
+	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field) => field.key)], ["orgs", "tags"]);
+	assert.equal(plugin.settings.schema.meetingExtras[1].value, "plain");
+	await control("Extra property 1", "button", "Remove").click();
+	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field) => field.key)], ["tags"]);
+});
+
+test("schema presets replace the whole schema and save", async () => {
+	const { plugin, control, saves } = fixture();
+	await control("Schema preset", "button", "Use original").click();
+	assert.equal(plugin.settings.schema.series.uid, "google_recurring_event_id");
+	assert.ok(plugin.settings.schema.meetingExtras.length > 5);
+	await control("Schema preset", "button", "Use minimal").click();
+	assert.equal(plugin.settings.schema.series.uid, "ics_uid");
+	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.schema.meetingExtras)), []);
+	await Promise.resolve();
+	assert.equal(saves.length, 2);
 });

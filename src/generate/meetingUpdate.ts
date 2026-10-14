@@ -3,11 +3,12 @@ import type { ResolvedAttendee } from "./meetingNote.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 import { extractSection, replaceSection } from "../util/markdownSections.ts";
+import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
 
 /** Avoid rewriting body spacing when the invite text has not changed. */
-export function buildMeetingBodyUpdate(body: string, description?: string): string {
+export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string): string {
 	const agenda = description?.trim() || "No agenda provided";
-	return extractSection(body, "## Invite Agenda") === agenda ? body : replaceSection(body, "## Invite Agenda", agenda);
+	return extractSection(body, heading) === agenda ? body : replaceSection(body, heading, agenda);
 }
 
 export interface MeetingUpdateInput {
@@ -16,6 +17,7 @@ export interface MeetingUpdateInput {
 	invited: ResolvedAttendee[];
 	series?: { filename: string };
 	invitedAs: string;
+	schema: NoteSchema;
 	timezone: string;
 }
 
@@ -38,23 +40,28 @@ export function buildMeetingFrontmatterUpdate(
 		...input.invited.flatMap((person) => person.companyLinks),
 	]);
 
-	const update: Record<string, unknown> = {
-		title: input.event.summary,
-		channel: "",
-		organizer: input.organizer ? `[[${input.organizer.filename}]]` : "",
-		invited: input.invited.map((person) => `[[${person.filename}]]`),
-		invited_as: input.invitedAs,
-		series: input.series ? `[[${input.series.filename}]]` : "",
-		scheduled_start: start.time,
-		scheduled_end: end.time,
-		invite_updated: input.event.lastModified ?? "",
-		companies: strictCompanyLinks ? validateCompanyLinks(rawCompanies, companies) : rawCompanies,
-		ics_uid: input.event.uid,
-		ics_recurrence_id: input.event.recurrenceId ?? "",
-	};
+	const companyLinks = strictCompanyLinks ? validateCompanyLinks(rawCompanies, companies) : rawCompanies;
+	const { schema } = input;
+	const names = schema.meeting;
+	const update: Record<string, unknown> = {};
+	const put = (key: string, value: unknown) => { if (key) update[key] = value; };
+	put(names.title, input.event.summary);
+	put(names.organizer, input.organizer ? `[[${input.organizer.filename}]]` : "");
+	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
+	put(names.invitedAs, input.invitedAs);
+	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
+	put(names.scheduledStart, start.time);
+	put(names.scheduledEnd, end.time);
+	put(names.inviteUpdated, input.event.lastModified ?? "");
+	put(names.uid, input.event.uid);
+	put(names.recurrenceId, input.event.recurrenceId ?? "");
+	Object.assign(update, evaluateExtras(schema.meetingExtras, {
+		title: input.event.summary, date: start.date, week: start.week, month: start.month, year: start.year,
+		weekday: start.weekday, recurrence: input.series ? "RegularSync" : "OneOff", companies: companyLinks,
+	}, true));
 
 	if (input.event.status === "CANCELLED") {
-		update.occurrence_status = "Cancelled";
+		put(names.occurrenceStatus, "Cancelled");
 	}
 
 	return update;

@@ -3,10 +3,30 @@ import type GraftPlugin from "./main.ts";
 import {
 	isDayCount, isFeedUrl, isFilenameRule, isTimezone, isTitleRule, isVaultPath,
 } from "./config/settings.ts";
+import {
+	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isExtraField, isFieldName, isHeading, isTypeValue,
+	schemaConflict, type ExtraField, type MeetingFieldKey, type NoteSchema, type PersonFieldKey, type SeriesFieldKey,
+} from "./config/schema.ts";
 import type { TitleMatchRule } from "./filters/titleMatch.ts";
 import type { FilenameConventionRule } from "./generate/personStub.ts";
 
+type Kind = "name" | "optionalName" | "type" | "heading";
+
+const LABEL = { meeting: "Meeting", person: "Person", series: "Series", company: "Company" } as const;
+const MEETING_LABELS: Record<MeetingFieldKey, string> = {
+	title: "Title", date: "Date", scheduledStart: "Scheduled start", scheduledEnd: "Scheduled end", organizer: "Organizer",
+	invited: "Invited", series: "Series link", invitedAs: "Invited as", inviteUpdated: "Invite updated", uid: "Event UID",
+	recurrenceId: "Recurrence ID", occurrenceStatus: "Occurrence status",
+};
+const PERSON_LABELS: Record<PersonFieldKey, string> = {
+	email: "Email", emailAliases: "Email aliases", company: "Company links", fullName: "Full name", firstName: "First name", lastName: "Last name",
+};
+const SERIES_LABELS: Record<SeriesFieldKey, string> = { uid: "Event UID", title: "Title" };
+
 export class GraftSettingTab extends PluginSettingTab {
+	/** Where settings rows are added; the schema section swaps in a collapsible block. */
+	private target!: HTMLElement;
+
 	constructor(app: App, private plugin: GraftPlugin) {
 		super(app, plugin);
 	}
@@ -15,6 +35,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		const settings = this.plugin.settings;
 		containerEl.empty();
+		this.target = containerEl;
 		containerEl.createEl("h2", { text: "Graft" });
 		containerEl.createEl("p", { text: "Settings save automatically. Calendar feeds stay read-only. Sync commands and preview are still being connected; these settings do not start a sync yet." });
 
@@ -71,17 +92,18 @@ export class GraftSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		}
+		this.schemaSection();
 	}
 
 	private heading(text: string): void {
-		this.containerEl.createEl("h3", { text });
+		this.target.createEl("h3", { text });
 	}
 
 	private text(
 		name: string, description: string, value: string, update: (value: string) => void,
 		validate: (value: string) => string | undefined = () => undefined, masked = false,
 	): void {
-		const setting = new Setting(this.containerEl).setName(name).setDesc(description);
+		const setting = new Setting(this.target).setName(name).setDesc(description);
 		const error = setting.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
 		setting.addText((input) => {
 			input.setValue(value);
@@ -118,14 +140,14 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private titleRules(): void {
 		this.heading("Title skip rules");
-		this.containerEl.createEl("p", { text: "The first matching rule skips the event. Rules run from top to bottom. Save each row after editing." });
+		this.target.createEl("p", { text: "The first matching rule skips the event. Rules run from top to bottom. Save each row after editing." });
 		const rules = this.plugin.settings.titleMatchRules;
 		rules.forEach((rule, index) => this.titleRow({ ...rule }, index));
 		this.titleRow({ mode: "contains", value: "", caseSensitive: false });
 	}
 
 	private titleRow(draft: TitleMatchRule, index?: number): void {
-		const row = new Setting(this.containerEl).setName(index === undefined ? "New title rule" : `Title rule ${index + 1}`);
+		const row = new Setting(this.target).setName(index === undefined ? "New title rule" : `Title rule ${index + 1}`);
 		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
 		row.addDropdown((input) => input.addOptions({ exact: "Exact", prefix: "Prefix", suffix: "Suffix", contains: "Contains" })
 			.setValue(draft.mode).onChange((value) => { draft.mode = value as TitleMatchRule["mode"]; }));
@@ -147,13 +169,13 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private filenameRules(): void {
 		this.heading("Person filename conventions");
-		this.containerEl.createEl("p", { text: "The first matching email domain selects the filename style. Unlisted domains use the full name. Save each row after editing." });
+		this.target.createEl("p", { text: "The first matching email domain selects the filename style. Unlisted domains use the full name. Save each row after editing." });
 		this.plugin.settings.personFilenameRules.forEach((rule, index) => this.filenameRow({ ...rule }, index));
 		this.filenameRow({ domain: "", style: "full" });
 	}
 
 	private filenameRow(draft: FilenameConventionRule, index?: number): void {
-		const row = new Setting(this.containerEl).setName(index === undefined ? "New filename rule" : `Filename rule ${index + 1}`);
+		const row = new Setting(this.target).setName(index === undefined ? "New filename rule" : `Filename rule ${index + 1}`);
 		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Email domain");
@@ -171,6 +193,106 @@ export class GraftSettingTab extends PluginSettingTab {
 		if (index !== undefined) this.rowActions(row, this.plugin.settings.personFilenameRules, index);
 	}
 
+	private schemaSection(): void {
+		const details = this.containerEl.createEl("details");
+		details.createEl("summary", { text: "Note schema (advanced)" });
+		this.target = details;
+		this.target.createEl("p", { text: "Property names, note types and headings Graft reads and writes. Defaults suit a new vault; change them to match your own notes. Existing notes keep their current names until you edit them." });
+		new Setting(this.target).setName("Schema preset").setDesc("Replaces every schema setting below. Minimal is the default for new vaults. Original matches the schema used before these settings existed.")
+			.addButton((button) => button.setButtonText("Use minimal").onClick(async () => this.applyPreset(MINIMAL_SCHEMA)))
+			.addButton((button) => button.setButtonText("Use original").onClick(async () => this.applyPreset(ORIGINAL_SCHEMA)));
+		const schema = this.plugin.settings.schema;
+
+		this.heading("Note types");
+		this.schemaText("Type property", "Property that holds the note type.", "name", (s) => s.typeField, (s, v) => { s.typeField = v; });
+		for (const key of ["meeting", "person", "series", "company"] as const) {
+			this.schemaText(`${LABEL[key]} type value`, "Value of the type property for these notes.", "type", (s) => s.types[key], (s, v) => { s.types[key] = v; });
+		}
+
+		this.heading("Meeting properties");
+		for (const key of Object.keys(MEETING_LABELS) as MeetingFieldKey[]) {
+			const optional = OPTIONAL_MEETING_FIELDS.includes(key);
+			this.schemaText(`Meeting property: ${MEETING_LABELS[key]}`, optional ? "Property name. Leave blank to skip it." : "Property name.", optional ? "optionalName" : "name", (s) => s.meeting[key], (s, v) => { s.meeting[key] = v; });
+		}
+		this.heading("Person properties");
+		for (const key of Object.keys(PERSON_LABELS) as PersonFieldKey[]) {
+			this.schemaText(`Person property: ${PERSON_LABELS[key]}`, "Property name.", "name", (s) => s.person[key], (s, v) => { s.person[key] = v; });
+		}
+		this.heading("Series and Company properties");
+		for (const key of Object.keys(SERIES_LABELS) as SeriesFieldKey[]) {
+			this.schemaText(`Series property: ${SERIES_LABELS[key]}`, key === "uid" ? "Property that stores the calendar event UID." : "Property name.", "name", (s) => s.series[key], (s, v) => { s.series[key] = v; });
+		}
+		this.schemaText("Company property: Domain", "Property that holds a Company's email domain.", "name", (s) => s.company.domain, (s, v) => { s.company.domain = v; });
+
+		this.heading("Headings");
+		this.schemaText("Invite agenda heading", "Heading Graft keeps up to date, such as ## Invite Agenda.", "heading", (s) => s.headings.inviteAgenda, (s, v) => { s.headings.inviteAgenda = v; });
+		this.schemaText("Series agenda heading", "Heading for the Series agenda in new built-in Meeting bodies.", "heading", (s) => s.headings.seriesAgenda, (s, v) => { s.headings.seriesAgenda = v; });
+		this.schemaText("Standing agenda heading", "Heading in a Series note whose content is copied into new Meetings.", "heading", (s) => s.headings.standingAgenda, (s, v) => { s.headings.standingAgenda = v; });
+
+		const body = new Setting(this.target).setName("Built-in Meeting body").setDesc("Used when no Meeting template is set. Placeholders: {{series_section}} and {{invite_section}}; the invite section is required.");
+		const bodyError = body.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		body.addTextArea((input) => {
+			input.inputEl.setAttribute("aria-label", "Built-in Meeting body");
+			input.setValue(schema.meetingBody).onChange(async (value) => {
+				const message = value.includes("{{invite_section}}") ? undefined : "Include {{invite_section}}.";
+				bodyError.setText(message ? `${message} Change not saved.` : "");
+				if (message) return;
+				schema.meetingBody = value;
+				await this.plugin.saveSettings();
+			});
+		});
+
+		this.heading("Extra Meeting properties");
+		this.target.createEl("p", { text: "Extra properties written to new Meeting notes. Turn on Update to refresh one on every sync. Values can use {{title}}, {{date}}, {{week}}, {{month}}, {{year}}, {{weekday}}, {{recurrence}} and {{companies}}. Write a list as [\"a\", \"b\"]. Save each row after editing." });
+		schema.meetingExtras.forEach((field, index) => this.extraRow({ ...field }, index));
+		this.extraRow({ key: "", value: "", updateOnSync: false });
+		this.target = this.containerEl;
+	}
+
+	private applyPreset(preset: NoteSchema): void {
+		this.plugin.settings.schema = cloneSchema(preset);
+		this.display();
+		void this.plugin.saveSettings();
+	}
+
+	private schemaText(name: string, description: string, kind: Kind, read: (schema: NoteSchema) => string, write: (schema: NoteSchema, value: string) => void): void {
+		const schema = this.plugin.settings.schema;
+		this.text(name, description, read(schema), (value) => write(schema, value), (value) => {
+			const valid = kind === "heading" ? isHeading(value) : kind === "type" ? isTypeValue(value) : kind === "optionalName" ? value === "" || isFieldName(value) : isFieldName(value);
+			if (!valid) return kind === "heading" ? "Use a Markdown heading such as ## Title." : "Enter a non-empty name without colons or surrounding spaces.";
+			const candidate = cloneSchema(schema);
+			write(candidate, value);
+			return schemaConflict(candidate) ? "Another property of this note type already uses that name." : undefined;
+		});
+	}
+
+	private extraRow(draft: ExtraField, index?: number): void {
+		const row = new Setting(this.target).setName(index === undefined ? "New extra property" : `Extra property ${index + 1}`);
+		const error = row.descEl.createEl("div", { attr: { role: "status", "aria-live": "polite" } });
+		let text = Array.isArray(draft.value) ? JSON.stringify(draft.value) : draft.value;
+		row.addText((input) => {
+			input.inputEl.setAttribute("aria-label", "Extra property name");
+			input.setPlaceholder("Property name").setValue(draft.key).onChange((value) => { draft.key = value; });
+		});
+		row.addText((input) => {
+			input.inputEl.setAttribute("aria-label", "Extra property value");
+			input.setPlaceholder("Value").setValue(text).onChange((value) => { text = value; });
+		});
+		row.addToggle((input) => input.setTooltip("Update on every sync").setValue(draft.updateOnSync).onChange((value) => { draft.updateOnSync = value; }));
+		row.addButton((button) => button.setButtonText(index === undefined ? "Add" : "Save").onClick(async () => {
+			const field = { key: draft.key, value: parseExtraValue(text), updateOnSync: draft.updateOnSync };
+			if (!isExtraField(field)) { error.setText("Enter a property name and a text or list value. Change not saved."); return; }
+			const schema = this.plugin.settings.schema;
+			const candidate = cloneSchema(schema);
+			if (index === undefined) candidate.meetingExtras.push(field); else candidate.meetingExtras[index] = field;
+			if (schemaConflict(candidate)) { error.setText("Another Meeting property already uses that name. Change not saved."); return; }
+			schema.meetingExtras = candidate.meetingExtras;
+			this.display();
+			await this.plugin.saveSettings();
+		}));
+		if (index !== undefined) this.rowActions(row, this.plugin.settings.schema.meetingExtras, index);
+	}
+
 	private rowActions<T>(row: Setting, rules: T[], index: number): void {
 		for (const [label, offset] of [["Up", -1], ["Down", 1]] as const) {
 			row.addButton((button) => button.setButtonText(label).setDisabled(index + offset < 0 || index + offset >= rules.length)
@@ -186,4 +308,10 @@ export class GraftSettingTab extends PluginSettingTab {
 			await this.plugin.saveSettings();
 		}));
 	}
+}
+
+/** Text is a literal value; text that starts with [ must be a JSON list of strings. */
+function parseExtraValue(text: string): unknown {
+	if (!text.trim().startsWith("[")) return text;
+	try { return JSON.parse(text); } catch { return undefined; }
 }

@@ -62,8 +62,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 			preview.warnings.push({ kind: "unresolved-company", subject: existing?.path ?? input.event.summary });
 		}
 		if (!existing) {
-			const note = buildMeetingNote(input, source.filenamePattern);
-			if (source.strictCompanyLinks !== false) note.frontmatter.companies = validateCompanyLinks(note.frontmatter.companies as string[], source.companies);
+			const note = buildMeetingNote(input, source.filenamePattern, { companies: source.companies, strictCompanyLinks: source.strictCompanyLinks !== false });
 			preview.newMeetings.push({ path: `${source.meetingFolder}/${note.filename}.md`, note });
 			continue;
 		}
@@ -73,10 +72,11 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 			const before = existing.frontmatter[field];
 			if (!sameValue(before, after)) changes.push({ field, before, after });
 		}
-		const body = buildMeetingBodyUpdate(existing.body, input.event.description);
+		const heading = input.schema.headings.inviteAgenda;
+		const body = buildMeetingBodyUpdate(existing.body, input.event.description, heading);
 		if (body !== existing.body) {
-			const before = extractSection(existing.body, "## Invite Agenda");
-			const after = extractSection(body, "## Invite Agenda");
+			const before = extractSection(existing.body, heading);
+			const after = extractSection(body, heading);
 			changes.push({ field: "Invite Agenda", before, after });
 		}
 		preview.updates.push({ path: existing.path, changes });

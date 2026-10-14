@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingNote, type MeetingNoteInput } from "../../src/generate/meetingNote.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 function baseInput(overrides: Partial<MeetingNoteInput> = {}): MeetingNoteInput {
@@ -8,6 +9,7 @@ function baseInput(overrides: Partial<MeetingNoteInput> = {}): MeetingNoteInput 
 		event: makeEvent(),
 		invited: [],
 		invitedAs: "me@example.com",
+		schema: ORIGINAL_SCHEMA,
 		timezone: "America/New_York",
 		...overrides,
 	};

@@ -68,11 +68,12 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		templates.push({ file, text });
 		bodies[key] = splitNote(text).body;
 	}
-	const notes = (folder: string, type: string) => snapshots.filter((note) => isInFolder(note.file, folder) && note.frontmatter.type === type);
-	const people = notes(settings.folders.person, "Person").map((note) => ({ path: note.file.path, email: stringValue(note.frontmatter.email), emailAliases: links(note.frontmatter.email_aliases), note }));
-	const series = notes(settings.folders.series, "Series").map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter.google_recurring_event_id), note }));
-	const meetings = notes(settings.folders.meeting, "Meeting").map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter.ics_uid), icsRecurrenceId: stringValue(note.frontmatter.ics_recurrence_id), note }));
-	const companies = notes(settings.folders.company, "Company").map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter.domain) }));
+	const { schema } = settings;
+	const notes = (folder: string, type: string) => snapshots.filter((note) => isInFolder(note.file, folder) && note.frontmatter[schema.typeField] === type);
+	const people = notes(settings.folders.person, schema.types.person).map((note) => ({ path: note.file.path, email: stringValue(note.frontmatter[schema.person.email]), emailAliases: links(note.frontmatter[schema.person.emailAliases]), note }));
+	const series = notes(settings.folders.series, schema.types.series).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.series.uid]), note }));
+	const meetings = notes(settings.folders.meeting, schema.types.meeting).map((note) => ({ path: note.file.path, icsUid: stringValue(note.frontmatter[schema.meeting.uid]), icsRecurrenceId: stringValue(note.frontmatter[schema.meeting.recurrenceId]), note }));
+	const companies = notes(settings.folders.company, schema.types.company).map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter[schema.company.domain]) }));
 	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: settings.strictCompanyLinks, warnings: [] };
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
@@ -86,15 +87,15 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const matches = people.filter((person) => matchPerson(attendee, [person]));
 		if (matches.length > 1) input.warnings.push({ kind: "ambiguous-person", subject: attendee.name || "Calendar attendee" });
 		const person = matches[0];
-		if (person) return { filename: person.note.file.basename, companyLinks: links(person.note.frontmatter.company) };
+		if (person) return { filename: person.note.file.basename, companyLinks: links(person.note.frontmatter[schema.person.company]) };
 		const key = attendee.email.toLowerCase();
 		if (newPeople.has(key)) return newPeople.get(key);
 		if (!settings.createPersonStubs) return undefined;
-		const stub = buildPersonStub(attendee, settings.personFilenameRules, companies);
+		const stub = buildPersonStub(attendee, settings.personFilenameRules, companies, schema);
 		const path = `${settings.folders.person}/${stub.filename}.md`;
 		reserve(path);
 		input.personStubs.push({ path, stub, body: stubBody(bodies.person, stub.frontmatter) });
-		const resolved = { filename: stub.filename, companyLinks: stub.frontmatter.company };
+		const resolved = { filename: stub.filename, companyLinks: stub.companyLinks };
 		newPeople.set(key, resolved);
 		return resolved;
 	}
@@ -105,15 +106,15 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		if (event.isRecurring || event.recurrenceId) {
 			const matches = series.filter((item) => matchSeries(event.uid, [item]));
 			if (matches.length > 1) throw new Error("Multiple Series notes match one event. Check the Series folder.");
-			if (matches[0]) resolvedSeries = { filename: matches[0].note.file.basename, standingAgenda: extractSection(matches[0].note.body, "## Standing Agenda") };
+			if (matches[0]) resolvedSeries = { filename: matches[0].note.file.basename, standingAgenda: extractSection(matches[0].note.body, schema.headings.standingAgenda) };
 			else if (newSeries.has(event.uid)) resolvedSeries = newSeries.get(event.uid);
 			else if (settings.createSeriesStubs) {
-				const stub = buildSeriesStub(event);
+				const stub = buildSeriesStub(event, schema);
 				const path = `${settings.folders.series}/${stub.filename}.md`;
 				reserve(path);
 				const body = stubBody(bodies.series, stub.frontmatter);
 				input.seriesStubs.push({ path, stub, body });
-				resolvedSeries = { filename: stub.filename, standingAgenda: extractSection(body, "## Standing Agenda") };
+				resolvedSeries = { filename: stub.filename, standingAgenda: extractSection(body, schema.headings.standingAgenda) };
 				newSeries.set(event.uid, resolvedSeries);
 			}
 		}
@@ -125,15 +126,15 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			targets.add(existing.file.path);
 		}
 		input.meetings.push({
-			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: settings.feeds[event.source as "google" | "outlook"].invitedAs, timezone: settings.timezone, bodyTemplate: bodies.meeting },
+			input: { event, organizer, invited, series: resolvedSeries, seriesStandingAgenda: resolvedSeries?.standingAgenda, invitedAs: settings.feeds[event.source as "google" | "outlook"].invitedAs, schema, timezone: settings.timezone, bodyTemplate: bodies.meeting },
 			existing: existing ? { path: existing.file.path, frontmatter: existing.frontmatter, body: existing.body } : undefined,
 		});
 	}
 	if (!plan.errors.length) {
 		const seen = [...plan.toProcess, ...plan.skipped.map(({ event }) => event)];
 		for (const meeting of meetings) {
-			const date = stringValue(meeting.note.frontmatter.date);
-			const configuredIdentity = feeds.some((feed) => settings.feeds[feed.name as "google" | "outlook"].invitedAs === meeting.note.frontmatter.invited_as);
+			const date = stringValue(meeting.note.frontmatter[schema.meeting.date]);
+			const configuredIdentity = feeds.some((feed) => settings.feeds[feed.name as "google" | "outlook"].invitedAs === meeting.note.frontmatter[schema.meeting.invitedAs]);
 			if (date && configuredIdentity && meeting.icsUid && date >= day.minus({ days: settings.daysBack }).toISODate()! && date <= day.plus({ days: settings.daysAhead }).toISODate()!
 				&& !seen.some((event) => matchMeeting(event.uid, event.recurrenceId, [meeting]))) {
 				input.warnings.push({ kind: "vanished-event", subject: meeting.path });

@@ -2,6 +2,8 @@ import type { CalendarEvent } from "../types.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { sanitizeFilename } from "../util/filename.ts";
 import { renderTemplate } from "../templates/engine.ts";
+import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
+import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
 
 /** Default filename pattern; callers can supply their own. */
 export const DEFAULT_FILENAME_PATTERN = "{{title}} {{date}}";
@@ -20,6 +22,7 @@ export interface MeetingNoteInput {
 	/** Absent means subtype: OneOff. */
 	series?: { filename: string };
 	invitedAs: string;
+	schema: NoteSchema;
 	/** Timezone used for Meeting dates and times. */
 	timezone: string;
 	/** Content from the Series note's Standing Agenda, if present. */
@@ -33,56 +36,56 @@ export interface MeetingNote {
 	body: string;
 }
 
+export interface MeetingNoteOptions {
+	companies?: CompanyRecord[];
+	/** Drops Company links that do not match a Company note. Needs the companies list. */
+	strictCompanyLinks?: boolean;
+}
+
 /** Builds frontmatter and body content. The caller serializes the frontmatter. */
 export function buildMeetingNote(
 	input: MeetingNoteInput,
 	filenamePattern: string = DEFAULT_FILENAME_PATTERN,
+	options: MeetingNoteOptions = {},
 ): MeetingNote {
+	const { schema } = input;
+	const names = schema.meeting;
 	const start = wallClockFor(input.event.start, input.event.allDay, input.timezone);
 	const end = wallClockFor(input.event.end, input.event.allDay, input.timezone);
 
-	const companies = dedupe([
+	const rawCompanies = dedupe([
 		...(input.organizer?.companyLinks ?? []),
 		...input.invited.flatMap((person) => person.companyLinks),
 	]);
+	const companies = options.strictCompanyLinks && options.companies
+		? validateCompanyLinks(rawCompanies, options.companies) : rawCompanies;
 
-	const frontmatter = {
-		type: "Meeting",
-		subtype: input.series ? "RegularSync" : "OneOff",
-		status: "Open",
-		occurrence_status: input.event.status === "CANCELLED" ? "Cancelled" : "Scheduled",
-		date: start.date,
-		week: start.week,
-		month: start.month,
-		year: start.year,
-		weekday: start.weekday,
-		title: input.event.summary,
-		channel: "",
-		organizer: input.organizer ? `[[${input.organizer.filename}]]` : "",
-		invited: input.invited.map((person) => `[[${person.filename}]]`),
-		participants: [],
-		invited_as: input.invitedAs,
-		series: input.series ? `[[${input.series.filename}]]` : "",
-		scheduled_start: start.time,
-		scheduled_end: end.time,
-		actual_start: "",
-		actual_end: "",
-		invite_updated: input.event.lastModified ?? "",
-		output_notes: "",
-		companies,
-		projects: "",
-		transcript: "",
-		ai_notes: "",
-		ics_uid: input.event.uid,
-		ics_recurrence_id: input.event.recurrenceId ?? "",
-		Tags: ["Meeting"],
-	};
+	const frontmatter: Record<string, unknown> = { [schema.typeField]: schema.types.meeting };
+	const put = (key: string, value: unknown) => { if (key) frontmatter[key] = value; };
+	put(names.occurrenceStatus, input.event.status === "CANCELLED" ? "Cancelled" : "Scheduled");
+	put(names.date, start.date);
+	put(names.title, input.event.summary);
+	put(names.organizer, input.organizer ? `[[${input.organizer.filename}]]` : "");
+	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
+	put(names.invitedAs, input.invitedAs);
+	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
+	put(names.scheduledStart, start.time);
+	put(names.scheduledEnd, end.time);
+	put(names.inviteUpdated, input.event.lastModified ?? "");
+	put(names.uid, input.event.uid);
+	put(names.recurrenceId, input.event.recurrenceId ?? "");
+	Object.assign(frontmatter, evaluateExtras(schema.meetingExtras, {
+		title: input.event.summary, date: start.date, week: start.week, month: start.month, year: start.year,
+		weekday: start.weekday, recurrence: input.series ? "RegularSync" : "OneOff", companies,
+	}));
 
-	const body = input.bodyTemplate === undefined ? buildBody(input.event.description, input.seriesStandingAgenda)
+	const inviteAgenda = input.event.description?.trim() || "No agenda provided";
+	const seriesAgenda = input.seriesStandingAgenda?.trim() || "";
+	const body = input.bodyTemplate === undefined ? buildBody(schema, inviteAgenda, seriesAgenda)
 		: renderTemplate(input.bodyTemplate, {
 			...Object.fromEntries(Object.entries(frontmatter).map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)])),
-			invite_agenda: input.event.description?.trim() || "No agenda provided",
-			series_agenda: input.seriesStandingAgenda?.trim() || "",
+			invite_agenda: inviteAgenda,
+			series_agenda: seriesAgenda,
 		});
 
 	const filename = sanitizeFilename(
@@ -96,34 +99,11 @@ function wallClockFor(value: string, allDay: boolean, timezone: string) {
 	return allDay ? wallClockFromDate(value) : toWallClock(value, timezone);
 }
 
-/** Keep blank lines between the default body sections. */
-function buildBody(description: string | undefined, seriesStandingAgenda: string | undefined): string {
-	const inviteAgenda = description && description.trim() ? description.trim() : "No agenda provided";
-
-	const lines = ["# Agenda"];
-	if (seriesStandingAgenda && seriesStandingAgenda.trim()) {
-		lines.push("## Series Agenda", "", seriesStandingAgenda.trim(), "", "");
-	}
-	lines.push(
-		"## Invite Agenda",
-		"",
-		inviteAgenda,
-		"",
-		"",
-		"# Context",
-		"## Pre Reads",
-		"",
-		"",
-		"## Pre Notes",
-		"",
-		"",
-		"## Attachments",
-		"",
-		"",
-		"# Human Notes (yay)",
-		"",
-	);
-	return lines.join("\n");
+/** Fills the schema's built-in body. The sections keep blank lines around them. */
+function buildBody(schema: NoteSchema, inviteAgenda: string, seriesAgenda: string): string {
+	const seriesSection = seriesAgenda ? `${schema.headings.seriesAgenda}\n\n${seriesAgenda}\n\n\n` : "";
+	const inviteSection = `${schema.headings.inviteAgenda}\n\n${inviteAgenda}`;
+	return renderTemplate(schema.meetingBody, { series_section: seriesSection, invite_section: inviteSection });
 }
 
 function dedupe(items: string[]): string[] {

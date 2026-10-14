@@ -2,6 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 const companies: CompanyRecord[] = [{ path: "companies/Acme.md", name: "Acme", domain: "acme.example" }];
@@ -11,6 +12,7 @@ function baseInput(overrides: Partial<MeetingUpdateInput> = {}): MeetingUpdateIn
 		event: makeEvent(),
 		invited: [],
 		invitedAs: "me@example.com",
+		schema: ORIGINAL_SCHEMA,
 		timezone: "America/New_York",
 		...overrides,
 	};

@@ -1,5 +1,6 @@
 import type { TitleMatchRule } from "../filters/titleMatch.ts";
 import type { FilenameConventionRule } from "../generate/personStub.ts";
+import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, loadSchema, type NoteSchema } from "./schema.ts";
 
 export interface CalendarSettings {
 	url: string;
@@ -23,6 +24,8 @@ export interface GraftSettings {
 	strictCompanyLinks: boolean;
 	previewBeforeApply: boolean;
 	autoRunOnStartup: boolean;
+	/** Note types, property names and headings Graft reads and writes. */
+	schema: NoteSchema;
 }
 
 export const DEFAULT_SETTINGS: GraftSettings = {
@@ -41,6 +44,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	strictCompanyLinks: true,
 	previewBeforeApply: true,
 	autoRunOnStartup: false,
+	schema: cloneSchema(MINIMAL_SCHEMA),
 };
 
 export function isFeedUrl(value: string): boolean {
@@ -85,10 +89,13 @@ export function isFilenameRule(value: unknown): value is FilenameConventionRule 
 		&& typeof rule.style === "string" && ["full", "firstOnly", "initialLast"].includes(rule.style);
 }
 
-/** Restores valid saved fields while supplying fresh nested defaults for older settings. */
+/** Restores valid saved fields while supplying fresh nested defaults for older settings.
+ * Settings saved before the schema existed keep the original schema so their notes still match. */
 export function loadGraftSettings(saved: unknown): GraftSettings {
 	const result: GraftSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 	const input = record(saved);
+	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
+	result.schema = loadSchema(input.schema, hasSchema || !Object.keys(input).length ? MINIMAL_SCHEMA : ORIGINAL_SCHEMA);
 	const feeds = record(input.feeds);
 	for (const key of ["google", "outlook"] as const) {
 		const feed = record(feeds[key]);

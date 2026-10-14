@@ -5,13 +5,14 @@ import { buildMeetingNote } from "../../src/generate/meetingNote.ts";
 import { buildMeetingFrontmatterUpdate } from "../../src/generate/meetingUpdate.ts";
 import { buildPersonStub } from "../../src/generate/personStub.ts";
 import { buildSeriesStub } from "../../src/generate/seriesStub.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 export function fixture(): PreviewInput {
 	const event = makeEvent({ summary: "Synthetic sync", description: "New agenda", isRecurring: true });
 	return {
 		plan: { toProcess: [event], skipped: [], errors: [] },
-		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", timezone: "UTC" } }],
+		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC" } }],
 		personStubs: [], seriesStubs: [], companies: [], meetingFolder: "Meetings", warnings: [],
 	};
 }
@@ -20,14 +21,13 @@ test("new notes use the generators, configured filenames, and validated links wi
 	const source = fixture();
 	source.filenamePattern = "{{date}} {{title}}";
 	source.meetings[0].input.organizer = { filename: "Alex Example", companyLinks: ["[[Missing]]"] };
-	const person = buildPersonStub({ email: "alex@example.com", name: "Alex Example" }, [], []);
-	const series = buildSeriesStub(source.plan.toProcess[0]);
+	const person = buildPersonStub({ email: "alex@example.com", name: "Alex Example" }, [], [], ORIGINAL_SCHEMA);
+	const series = buildSeriesStub(source.plan.toProcess[0], ORIGINAL_SCHEMA);
 	source.personStubs.push({ path: "People/Alex Example.md", stub: person });
 	source.seriesStubs.push({ path: "Series/Synthetic sync.md", stub: series });
 	const before = JSON.stringify(source);
 	const preview = buildSyncPreview(source);
-	const expected = buildMeetingNote(source.meetings[0].input, source.filenamePattern);
-	expected.frontmatter.companies = [];
+	const expected = buildMeetingNote(source.meetings[0].input, source.filenamePattern, { companies: [], strictCompanyLinks: true });
 	assert.deepEqual(preview.newMeetings, [{ path: "Meetings/2026-09-01 Synthetic sync.md", note: expected }]);
 	assert.deepEqual(preview.personStubs, source.personStubs);
 	assert.deepEqual(preview.seriesStubs, source.seriesStubs);

@@ -1,6 +1,6 @@
 import { stringifyYaml, type App, type TFile } from "obsidian";
 import { buildMeetingNote, type MeetingNoteInput } from "./meetingNote.ts";
-import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
+import type { CompanyRecord } from "../match/companyMatch.ts";
 
 /** Serializes and creates a Meeting note, checking for an existing file first. */
 export async function writeMeetingNote(
@@ -11,11 +11,7 @@ export async function writeMeetingNote(
 	filenamePattern?: string,
 	strictCompanyLinks = true,
 ): Promise<TFile> {
-	const note = buildMeetingNote(input, filenamePattern);
-	if (strictCompanyLinks) note.frontmatter.companies = validateCompanyLinks(
-		note.frontmatter.companies as string[],
-		companies,
-	);
+	const note = buildMeetingNote(input, filenamePattern, { companies, strictCompanyLinks });
 
 	const path = `${folder}/${note.filename}.md`;
 	if (app.vault.getAbstractFileByPath(path)) {

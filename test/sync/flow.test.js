@@ -252,3 +252,82 @@ test("startup uses the same flow only when enabled, and failures remain generic"
 	await f.plugin.runSync(true);
 	assert.equal(notices.at(-1).includes("synthetic private"), false);
 });
+
+function withFeeds(settings) {
+	settings.feeds = { google: { url: "https://example.com/google.ics", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } };
+	settings.daysBack = 0;
+	settings.daysAhead = 2;
+	return settings;
+}
+
+test("a vault with different folders, types, properties, and headings syncs from settings alone", async () => {
+	const f = fixture();
+	f.settings = withFeeds(loadGraftSettings({
+		folders: { meeting: "Calls", person: "Contacts", series: "Recurring", company: "Orgs" },
+		schema: {
+			typeField: "kind",
+			types: { meeting: "Call", person: "Contact", series: "Recurring", company: "Org" },
+			meeting: { title: "name", date: "day", scheduledStart: "from", scheduledEnd: "to", organizer: "host", invited: "guests", series: "recurring", invitedAs: "me", inviteUpdated: "", uid: "cal_uid", recurrenceId: "cal_rid", occurrenceStatus: "" },
+			person: { email: "mail", emailAliases: "mail_aliases", company: "org", fullName: "name", firstName: "given", lastName: "family" },
+			series: { uid: "cal_uid", title: "name" },
+			company: { domain: "site" },
+			headings: { inviteAgenda: "## From the invite", seriesAgenda: "## Recurring agenda", standingAgenda: "## Usual agenda" },
+			meetingBody: "{{series_section}}{{invite_section}}\n",
+			meetingExtras: [{ key: "orgs", value: "{{companies}}", updateOnSync: true }, { key: "shape", value: "{{recurrence}}", updateOnSync: false }],
+		},
+	}));
+	f.put("Contacts/Alex Example.md", note({ kind: "Contact", mail_aliases: ["alex@example.com"], org: ["[[Example Co]]"] }));
+	f.put("Orgs/Example Co.md", note({ kind: "Org", site: "example.com" }));
+	f.put("Recurring/Existing.md", note({ kind: "Recurring", cal_uid: "google@example.com" }, "## Usual agenda\n\nStanding example"));
+	f.put("Calls/Original.md", note({ kind: "Call", cal_uid: "outlook@example.com", name: "Old title", day: "2026-10-04" }, "## From the invite\n\nOld agenda\n\n# Notes\nKeep this"));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(prepared.preview.newMeetings.length, 2);
+	assert.equal(prepared.preview.personStubs.length, 1);
+	assert.equal(prepared.preview.seriesStubs.length, 0);
+	await applySync(f.app, prepared);
+
+	const created = prepared.preview.newMeetings.map(({ path }) => path);
+	assert.ok(created.every((path) => path.startsWith("Calls/")));
+	const first = fields(f.texts.get(created[0]));
+	for (const absent of ["type", "title", "date", "ics_uid", "scheduled_start", "occurrence_status", "invite_updated", "week", "Tags"]) assert.equal(absent in first, false, absent);
+	assert.equal(first.kind, "Call");
+	assert.equal(first.cal_uid, "google@example.com");
+	assert.equal(first.shape, "RegularSync");
+	assert.deepEqual(first.orgs, ["[[Example Co]]"]);
+	assert.equal(first.recurring, "[[Existing]]");
+	assert.ok(f.texts.get(created[0]).includes("## Recurring agenda\n\nStanding example"));
+	assert.ok(f.texts.get(created[0]).includes("## From the invite\n\nNew agenda"));
+
+	const stub = fields(f.texts.get("Contacts/Pat Example.md"));
+	assert.deepEqual(stub, { kind: "Contact", name: "Pat Example", given: "Pat", family: "Example", org: ["[[Example Co]]"], mail: "pat@example.com" });
+
+	const updated = fields(f.texts.get("Calls/Original.md"));
+	assert.equal(updated.name, "Outlook sample");
+	assert.equal(updated.me, "two@example.com");
+	assert.ok(f.texts.get("Calls/Original.md").includes("## From the invite\n\nNew agenda"));
+	assert.ok(f.texts.get("Calls/Original.md").includes("Keep this"));
+
+	const again = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(again.preview.newMeetings.length, 0);
+	assert.equal(again.preview.personStubs.length, 0);
+	assert.equal(again.preview.updates.every((item) => item.changes.length === 0), true);
+});
+
+test("a fresh install writes the minimal schema without vault-specific properties", async () => {
+	const f = fixture();
+	f.settings = withFeeds(loadGraftSettings({}));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	await applySync(f.app, prepared);
+	const path = prepared.preview.newMeetings[0].path;
+	assert.deepEqual(Object.keys(fields(f.texts.get(path))).sort(), [
+		"date", "ics_recurrence_id", "ics_uid", "invite_updated", "invited", "invited_as", "occurrence_status", "organizer",
+		"scheduled_end", "scheduled_start", "series", "title", "type",
+	]);
+	assert.ok(f.texts.get(path).endsWith("# Notes\n"));
+	assert.ok(!f.texts.get(path).includes("Human Notes"));
+	const series = fields(f.texts.get(prepared.preview.seriesStubs[0].path));
+	assert.deepEqual(Object.keys(series).sort(), ["ics_uid", "series_title", "type"]);
+	const again = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(again.preview.newMeetings.length, 0);
+	assert.equal(again.preview.seriesStubs.length, 0);
+});

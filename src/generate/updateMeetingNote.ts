@@ -2,7 +2,7 @@ import type { App, TFile } from "obsidian";
 import { buildMeetingFrontmatterUpdate, buildMeetingBodyUpdate, type MeetingUpdateInput } from "./meetingUpdate.ts";
 import type { CompanyRecord } from "../match/companyMatch.ts";
 
-/** Updates calendar-owned frontmatter and Invite Agenda. Other body sections stay unchanged. */
+/** Updates calendar-owned frontmatter and the invite agenda section. Other body sections stay unchanged. */
 export async function updateMeetingNote(
 	app: App,
 	file: TFile,
@@ -16,5 +16,5 @@ export async function updateMeetingNote(
 		Object.assign(frontmatter, frontmatterUpdate);
 	});
 
-	await app.vault.process(file, (data) => buildMeetingBodyUpdate(data, input.event.description));
+	await app.vault.process(file, (data) => buildMeetingBodyUpdate(data, input.event.description, input.schema.headings.inviteAgenda));
 }

@@ -1,6 +1,7 @@
 import type { Attendee } from "../types.ts";
 import { sanitizeFilename } from "../util/filename.ts";
 import { matchCompanyByDomain, type CompanyRecord } from "../match/companyMatch.ts";
+import type { NoteSchema } from "../config/schema.ts";
 
 export type FilenameStyle = "full" | "firstOnly" | "initialLast";
 
@@ -13,14 +14,9 @@ export interface FilenameConventionRule {
 export interface PersonStub {
 	/** Filename without its folder or extension. */
 	filename: string;
-	frontmatter: {
-		type: "Person";
-		full_name: string;
-		first_name: string;
-		last_name: string;
-		company: string[];
-		email: string;
-	};
+	frontmatter: Record<string, unknown>;
+	/** Company links written to the stub. */
+	companyLinks: string[];
 }
 
 /** Builds a Person stub, with a company link when the domain matches an existing Company note. */
@@ -28,20 +24,24 @@ export function buildPersonStub(
 	attendee: Attendee,
 	rules: FilenameConventionRule[],
 	companies: CompanyRecord[],
+	schema: NoteSchema,
 ): PersonStub {
 	const { first, last } = splitName(attendee);
 	const fullName = last ? `${first} ${last}` : first;
 	const company = matchCompanyByDomain(attendee.email, companies);
+	const names = schema.person;
+	const companyLinks = company ? [`[[${company.name}]]`] : [];
 
 	return {
 		filename: sanitizeFilename(applyStyle(first, last, styleFor(attendee.email, rules))),
+		companyLinks,
 		frontmatter: {
-			type: "Person",
-			full_name: fullName,
-			first_name: first,
-			last_name: last,
-			company: company ? [`[[${company.name}]]`] : [],
-			email: attendee.email,
+			[schema.typeField]: schema.types.person,
+			[names.fullName]: fullName,
+			[names.firstName]: first,
+			[names.lastName]: last,
+			[names.company]: companyLinks,
+			[names.email]: attendee.email,
 		},
 	};
 }

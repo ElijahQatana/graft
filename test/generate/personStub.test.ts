@@ -2,6 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildPersonStub, type FilenameConventionRule } from "../../src/generate/personStub.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 
 const rules: FilenameConventionRule[] = [
 	{ domain: "solo.example", style: "firstOnly" },
@@ -15,6 +16,7 @@ test("firstOnly style uses just the first name", () => {
 		{ email: "charlie@solo.example", name: "Charlie Example" },
 		rules,
 		companies,
+		ORIGINAL_SCHEMA,
 	);
 	assert.equal(stub.filename, "Charlie");
 	assert.equal(stub.frontmatter.full_name, "Charlie Example");
@@ -27,27 +29,28 @@ test("initialLast style abbreviates the first name", () => {
 		{ email: "f.delduca@vendor.example", name: "Frank Delduca" },
 		rules,
 		companies,
+		ORIGINAL_SCHEMA,
 	);
 	assert.equal(stub.filename, "F. Delduca");
 });
 
 test("an unlisted domain falls back to the full-name style", () => {
-	const stub = buildPersonStub({ email: "lara@other.example", name: "Lara Example" }, rules, companies);
+	const stub = buildPersonStub({ email: "lara@other.example", name: "Lara Example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.equal(stub.filename, "Lara Example");
 });
 
 test("a missing CN falls back to the email's local part rather than being blank", () => {
-	const stub = buildPersonStub({ email: "j.doe@other.example" }, rules, companies);
+	const stub = buildPersonStub({ email: "j.doe@other.example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.equal(stub.frontmatter.first_name, "j.doe");
 	assert.equal(stub.frontmatter.last_name, "");
 	assert.equal(stub.filename, "j.doe");
 });
 
 test("a slash or pipe in the name doesn't break the filename", () => {
-	const withSlash = buildPersonStub({ email: "x@other.example", name: "A/B Example" }, rules, companies);
+	const withSlash = buildPersonStub({ email: "x@other.example", name: "A/B Example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.doesNotMatch(withSlash.filename, /\//);
 
-	const withPipe = buildPersonStub({ email: "y@other.example", name: "A|B Example" }, rules, companies);
+	const withPipe = buildPersonStub({ email: "y@other.example", name: "A|B Example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.doesNotMatch(withPipe.filename, /\|/);
 });
 
@@ -56,11 +59,12 @@ test("sets a company link when the attendee's domain matches an existing Company
 		{ email: "charlie@solo.example", name: "Charlie Example" },
 		rules,
 		companies,
+		ORIGINAL_SCHEMA,
 	);
 	assert.deepEqual(stub.frontmatter.company, ["[[Acme]]"]);
 });
 
 test("leaves company empty when nothing matches, rather than inventing one", () => {
-	const stub = buildPersonStub({ email: "lara@other.example", name: "Lara Example" }, rules, companies);
+	const stub = buildPersonStub({ email: "lara@other.example", name: "Lara Example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.deepEqual(stub.frontmatter.company, []);
 });
