@@ -120,3 +120,85 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 		} else assert.equal(actualBody, body);
 	}
 });
+
+// Drives GraftPlugin.runSync with a Modal that tracks how many are open.
+async function loadPlugin(canApply = true) {
+	const stubs = {
+		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [] } });
+			export const applySync = async () => globalThis.__applySync();`,
+		"./ics/fetch.ts": "export const fetchIcs = async () => '';",
+	};
+	const result = await build({
+		entryPoints: ["src/main.ts"], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"],
+		plugins: [{ name: "stubs", setup(b) {
+			b.onResolve({ filter: /^\.\/(sync\/flow|ics\/fetch)\.ts$/ }, (args) => ({ path: args.path, namespace: "stub" }));
+			b.onLoad({ filter: /.*/, namespace: "stub" }, (args) => ({ contents: stubs[args.path], loader: "ts" }));
+		} }],
+	});
+	const state = { open: new Set(), maxOpen: 0, notices: [], applySync: async () => {} };
+	class TrackedModal extends Modal {
+		open() { state.open.add(this); state.maxOpen = Math.max(state.maxOpen, state.open.size); this.onOpen(); }
+		close() { state.open.delete(this); super.close(); }
+	}
+	class Plugin { constructor() { this.app = { workspace: { onLayoutReady() {} } }; } addCommand() {} addSettingTab() {} async loadData() { return { previewBeforeApply: true }; } }
+	class Notice { constructor(message) { state.notices.push(message); } }
+	const module = { exports: {} };
+	runInNewContext(result.outputFiles[0].text, {
+		module, exports: module.exports, Promise, JSON, globalThis: { __applySync: () => state.applySync() },
+		require: () => ({ Modal: TrackedModal, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v) => JSON.stringify(v) }),
+	});
+	const plugin = new module.exports.default();
+	await plugin.loadSettings();
+	return { plugin, state };
+}
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const buttons = (modal) => allElements(modal.contentEl).filter((element) => element.tag === "button");
+const button = (modal, label) => buttons(modal).find((element) => element.text === label);
+const only = (state) => { assert.equal(state.open.size, 1); return [...state.open][0]; };
+
+test("a second preview cannot open while one is open, however the first is dismissed", async () => {
+	for (const dismiss of ["Close button", "Escape or X", "Apply"]) {
+		const { plugin, state } = await loadPlugin();
+		void plugin.runSync(true);
+		await tick();
+		const first = only(state);
+		void plugin.runSync(true);
+		void plugin.runSync(false);
+		await tick();
+		assert.equal(state.open.size, 1, `${dismiss}: still one modal`);
+		assert.equal(state.notices.length, 2);
+		if (dismiss === "Close button") button(first, "Close").listeners.click();
+		else if (dismiss === "Escape or X") first.close();
+		else await button(first, "Apply").listeners.click();
+		await tick();
+		assert.equal(state.open.size, 0, `${dismiss}: closed`);
+		void plugin.runSync(true);
+		await tick();
+		assert.notEqual(only(state), first, `${dismiss}: a fresh preview opens afterwards`);
+		assert.equal(state.maxOpen, 1, `${dismiss}: never stacked`);
+	}
+});
+
+test("dismissing a preview mid-apply does not let another open until apply finishes", async () => {
+	const { plugin, state } = await loadPlugin();
+	let finish;
+	state.applySync = () => new Promise((resolve) => { finish = resolve; });
+	void plugin.runSync(true);
+	await tick();
+	const first = only(state);
+	void button(first, "Apply").listeners.click();
+	await tick();
+	button(first, "Close").listeners.click(); // ignored while applying
+	assert.equal(state.open.size, 1);
+	first.close(); // Escape or X during apply
+	void plugin.runSync(true);
+	await tick();
+	assert.equal(state.open.size, 0);
+	assert.equal(state.maxOpen, 1);
+	finish();
+	await tick();
+	void plugin.runSync(true);
+	await tick();
+	assert.equal(state.open.size, 1);
+	assert.equal(state.maxOpen, 1);
+});
