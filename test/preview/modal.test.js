@@ -93,9 +93,24 @@ const summaryOf = (preview) => {
 test("summary lists only the enabled features, in every combination", () => {
 	const counts = { newMeetings: 2, updates: 3, personStubs: 4, seriesStubs: 5, skipped: 6 };
 	for (const personStubs of [false, true]) for (const seriesStubs of [false, true]) for (const skipped of [false, true]) {
-		const expected = ["2 new Meetings", "3 existing Meetings", ...(personStubs ? ["4 Person stubs"] : []), ...(seriesStubs ? ["5 Series stubs"] : []), ...(skipped ? ["6 skipped"] : [])].join(", ") + ".";
+		const expected = ["2 new Meetings", "3 existing Meetings", ...(personStubs ? ["4 Person stubs"] : []), ...(seriesStubs ? ["5 Series stubs"] : []), "6 skipped"].join(", ") + ".";
 		assert.equal(summaryOf(emptyPreview({ personStubs, seriesStubs, skipped }, counts)), expected);
 	}
+});
+
+test("skipped shows only when filters are on or something was skipped", () => {
+	const off = { personStubs: false, seriesStubs: false, skipped: false };
+	const on = { ...off, skipped: true };
+	// Duplicate-event skips with no filters configured.
+	const duplicates = emptyPreview(off, { newMeetings: 8, skipped: 8 });
+	duplicates.skipped = duplicates.skipped.map((item) => ({ ...item, reason: "Same event as one in Work" }));
+	assert.equal(summaryOf(duplicates), "8 new Meetings, 0 existing Meetings, 8 skipped.");
+	assert.equal(summaryOf(emptyPreview(off, { skipped: 1 })), "0 new Meetings, 0 existing Meetings, 1 skipped.");
+	// Nothing skipped: hidden without filters, a zero with them.
+	assert.equal(summaryOf(emptyPreview(off, { newMeetings: 2 })), "2 new Meetings, 0 existing Meetings.");
+	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 2 })), "2 new Meetings, 0 existing Meetings, 0 skipped.");
+	// Filters configured with skips.
+	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 2, skipped: 5 })), "2 new Meetings, 0 existing Meetings, 5 skipped.");
 });
 
 test("an enabled feature with nothing to report still shows its zero", () => {
