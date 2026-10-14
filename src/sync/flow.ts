@@ -77,7 +77,8 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	// With linking off, a {{companies}} extra would write an empty list over links already in a note.
 	const meetingSchema = linking ? schema : { ...schema, meetingExtras: schema.meetingExtras.filter((field) => ![field.value].flat().some((item) => item.trim() === "{{companies}}")) };
 	const companies = !linking ? [] : notes(settings.folders.company, schema.types.company).map((note) => ({ path: note.file.path, name: note.file.basename, domain: stringValue(note.frontmatter[schema.company.domain]) }));
-	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: linking && settings.strictCompanyLinks, warnings: [] };
+	const input: PreviewInput = { plan, meetings: [], personStubs: [], seriesStubs: [], companies, meetingFolder: settings.folders.meeting, filenamePattern: settings.meetingFilenamePattern, strictCompanyLinks: linking && settings.strictCompanyLinks, warnings: [],
+		features: { personStubs: settings.createPersonStubs, seriesStubs: settings.createSeriesStubs, skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "" } };
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
 	const targets = new Set<string>();
