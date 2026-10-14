@@ -68,3 +68,11 @@ test("leaves company empty when nothing matches, rather than inventing one", () 
 	const stub = buildPersonStub({ email: "lara@other.example", name: "Lara Example" }, rules, companies, ORIGINAL_SCHEMA);
 	assert.deepEqual(stub.frontmatter.company, []);
 });
+
+test("with company linking off the stub has no company property and no match is made", () => {
+	const stub = buildPersonStub({ email: "charlie@solo.example", name: "Charlie Example" }, rules, companies, ORIGINAL_SCHEMA, false);
+	assert.equal("company" in stub.frontmatter, false);
+	assert.deepEqual(stub.companyLinks, []);
+	assert.equal(stub.frontmatter.email, "charlie@solo.example");
+	assert.equal(stub.frontmatter.full_name, "Charlie Example");
+});

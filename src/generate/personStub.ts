@@ -19,30 +19,34 @@ export interface PersonStub {
 	companyLinks: string[];
 }
 
-/** Builds a Person stub, with a company link when the domain matches an existing Company note. */
+/** Builds a Person stub, with a company link when the domain matches an existing Company note.
+ * With `linkCompanies` off the stub has no company property and no matching runs. */
 export function buildPersonStub(
 	attendee: Attendee,
 	rules: FilenameConventionRule[],
 	companies: CompanyRecord[],
 	schema: NoteSchema,
+	linkCompanies = true,
 ): PersonStub {
 	const { first, last } = splitName(attendee);
 	const fullName = last ? `${first} ${last}` : first;
-	const company = matchCompanyByDomain(attendee.email, companies);
+	const company = linkCompanies ? matchCompanyByDomain(attendee.email, companies) : undefined;
 	const names = schema.person;
 	const companyLinks = company ? [`[[${company.name}]]`] : [];
+
+	const frontmatter: Record<string, unknown> = {
+		[schema.typeField]: schema.types.person,
+		[names.fullName]: fullName,
+		[names.firstName]: first,
+		[names.lastName]: last,
+	};
+	if (linkCompanies) frontmatter[names.company] = companyLinks;
+	frontmatter[names.email] = attendee.email;
 
 	return {
 		filename: sanitizeFilename(applyStyle(first, last, styleFor(attendee.email, rules))),
 		companyLinks,
-		frontmatter: {
-			[schema.typeField]: schema.types.person,
-			[names.fullName]: fullName,
-			[names.firstName]: first,
-			[names.lastName]: last,
-			[names.company]: companyLinks,
-			[names.email]: attendee.email,
-		},
+		frontmatter,
 	};
 }
 

@@ -58,6 +58,7 @@ export class GraftSettingTab extends PluginSettingTab {
 
 		this.heading("Folders and templates");
 		for (const [key, label] of [["meeting", "Meeting"], ["person", "Person"], ["series", "Series"], ["company", "Company"]] as const) {
+			if (key === "company" && !settings.companyLinking) continue;
 			this.text(`${label} folder`, key === "company" ? "Folder containing existing Company notes. Graft does not create Company notes." : "Vault-relative folder for matching and new notes.", settings.folders[key],
 				(value) => { settings.folders[key] = value; },
 				(value) => isVaultPath(value, false) ? undefined : "Use a non-empty vault-relative path without parent traversal.");
@@ -89,14 +90,17 @@ export class GraftSettingTab extends PluginSettingTab {
 		for (const [key, name, desc] of [
 			["createPersonStubs", "Create Person stubs", "Create a minimal Person note when an attendee has no match."],
 			["createSeriesStubs", "Create Series stubs", "Create a minimal Series note when a recurring event has no match."],
+			["companyLinking", "Company linking", "Link Person and Meeting notes to existing Company notes. Off by default. Turn on to set the Company folder, type, domain property and strict links."],
 			["strictCompanyLinks", "Strict Company links", "Require Company links to resolve to existing Company notes."],
 			["previewBeforeApply", "Preview before apply", "Show planned changes before writing notes."],
 			["autoRunOnStartup", "Sync on startup", "Run Sync now when Obsidian starts. Follows the preview setting."],
 		] as const) {
+			if (key === "strictCompanyLinks" && !settings.companyLinking) continue;
 			new Setting(containerEl).setName(name).setDesc(desc).addToggle((toggle) => toggle
 				.setValue(settings[key]).onChange(async (value) => {
 					settings[key] = value;
 					await this.plugin.saveSettings();
+					if (key === "companyLinking") this.display();
 				}));
 		}
 		this.schemaSection();
@@ -218,7 +222,9 @@ export class GraftSettingTab extends PluginSettingTab {
 
 		this.heading("Note types");
 		this.schemaText("Type property", "Property that holds the note type.", "name", (s) => s.typeField, (s, v) => { s.typeField = v; }, true);
+		const linking = this.plugin.settings.companyLinking;
 		for (const key of ["meeting", "person", "series", "company"] as const) {
+			if (key === "company" && !linking) continue;
 			this.schemaText(`${LABEL[key]} type value`, "Value of the type property for these notes.", "type", (s) => s.types[key], (s, v) => { s.types[key] = v; }, true);
 		}
 
@@ -229,13 +235,14 @@ export class GraftSettingTab extends PluginSettingTab {
 		}
 		this.heading("Person properties");
 		for (const key of Object.keys(PERSON_LABELS) as PersonFieldKey[]) {
+			if (key === "company" && !linking) continue;
 			this.schemaText(`Person property: ${PERSON_LABELS[key]}`, "Property name.", "name", (s) => s.person[key], (s, v) => { s.person[key] = v; }, PERSON_MATCH.includes(key));
 		}
-		this.heading("Series and Company properties");
+		this.heading(linking ? "Series and Company properties" : "Series properties");
 		for (const key of Object.keys(SERIES_LABELS) as SeriesFieldKey[]) {
 			this.schemaText(`Series property: ${SERIES_LABELS[key]}`, key === "uid" ? "Property that stores the calendar event UID." : "Property name.", "name", (s) => s.series[key], (s, v) => { s.series[key] = v; }, key === "uid");
 		}
-		this.schemaText("Company property: Domain", "Property that holds a Company's email domain.", "name", (s) => s.company.domain, (s, v) => { s.company.domain = v; }, true);
+		if (linking) this.schemaText("Company property: Domain", "Property that holds a Company's email domain.", "name", (s) => s.company.domain, (s, v) => { s.company.domain = v; }, true);
 
 		this.heading("Headings");
 		this.schemaText("Invite agenda heading", "Heading Graft keeps up to date, such as ## Invite Agenda.", "heading", (s) => s.headings.inviteAgenda, (s, v) => { s.headings.inviteAgenda = v; });

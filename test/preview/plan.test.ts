@@ -36,6 +36,16 @@ test("new notes use the generators, configured filenames, and validated links wi
 	assert.equal(JSON.stringify(source), before);
 });
 
+test("no unresolved-Company warning is raised when strict links are off, as when Company linking is off", () => {
+	const source = fixture();
+	source.strictCompanyLinks = false;
+	source.meetings[0].input.organizer = { filename: "Alex Example", companyLinks: ["[[Missing]]"] };
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+	source.meetings[0].input.organizer = { filename: "Alex Example", companyLinks: [] };
+	source.strictCompanyLinks = true;
+	assert.deepEqual(buildSyncPreview(source).warnings, []);
+});
+
 test("updates show only changed calendar fields and the Invite Agenda", () => {
 	const source = fixture();
 	const input = source.meetings[0].input;
