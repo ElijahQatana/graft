@@ -2,6 +2,10 @@
 
 Open Graft in Obsidian's settings. Text fields and toggles save automatically. Rows in lists use **Add** (or **Add calendar**) and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
 
+Each group of settings is a collapsible section: Calendars, Folders and templates, Filters, Sync window, Sync behavior, and Note schema, which has collapsible sub-groups of its own. Select a heading, or tab to it and press Enter or Space, to open or close it. Sections stay open or closed when you save, move, or remove a row, and when you close and reopen the settings in the same session. Note schema and its sub-groups start closed.
+
+The search box at the top filters rows by name and description as you type. Every word you type must appear in a row. Sections with no match are hidden, sections with a match open, and an empty result shows a short message. Clear the box, select **Clear**, or press Escape to go back to the normal view, with your sections as you left them. A row that is showing an error message stays visible during a search, and a section holding one cannot be collapsed until the problem is fixed. Searching and collapsing never change a saved value.
+
 Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately.
 
 - **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one, then **Save**, **Up**, **Down**, and **Remove** on its row. Each calendar has:

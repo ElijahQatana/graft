@@ -254,21 +254,69 @@
 	display: none;
 }
 
-.graft-settings .graft-schema {
-	margin-top: var(--size-4-8);
-	padding: 0 var(--size-4-4) var(--size-4-4);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
+.graft-settings [hidden] {
+	display: none !important;
 }
 
-.graft-settings .graft-schema > summary {
+.graft-settings .graft-search {
+	display: flex;
+	gap: var(--size-4-2);
+	margin: var(--size-4-4) 0;
+}
+
+.graft-settings .graft-search-input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.graft-settings .graft-search-clear {
+	flex: 0 0 auto;
+}
+
+.graft-settings .graft-no-results:empty {
+	display: none;
+}
+
+.graft-settings .graft-group {
+	margin-top: var(--size-4-4);
+	padding: 0 var(--size-4-4) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+}
+
+.graft-settings .graft-group > summary {
 	padding: var(--size-4-3) 0;
 	cursor: pointer;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
 	font-weight: var(--font-semibold);
 }
 
-.graft-settings .graft-schema > .graft-heading:first-of-type {
-	margin-top: var(--size-4-4);
+.graft-settings .graft-group > summary:hover {
+	color: var(--text-accent);
+}
+
+.graft-settings .graft-group > summary:focus-visible {
+	border-radius: var(--radius-s);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	outline: none;
+}
+
+.graft-settings .graft-group[open] > summary {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.graft-settings .graft-group-body {
+	padding-top: var(--size-4-2);
+}
+
+.graft-settings .graft-subgroup {
+	background: var(--background-secondary);
+}
+
+.graft-settings .graft-subgroup > summary {
+	font-size: var(--font-ui-small);
 }
 
 .graft-settings .graft-rule-row .setting-item-info {
