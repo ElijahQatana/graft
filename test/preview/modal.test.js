@@ -51,12 +51,13 @@ function fixture() {
 test("modal displays each section as literal text and never shows raw feed errors or writes", () => {
 	const source = fixture();
 	const preview = buildSyncPreview(source);
+	preview.warnings.push({ kind: "missing-invite-heading", subject: "Meetings/Existing.md" });
 	preview.updates.push({ path: "Meetings/Existing.md", changes: [{ field: "title", before: "Old title", after: "New title" }] });
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.equal(elements.filter((element) => element.tag === "button").length, 1);
 	modal.onOpen();

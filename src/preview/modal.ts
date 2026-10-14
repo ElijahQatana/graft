@@ -5,6 +5,7 @@ const warningText = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
 	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
 	"vanished-event": "Event missing from the feed. This does not mark it cancelled.",
+	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
 
 /** Displays a prepared plan. Applying never fetches the feeds again. */

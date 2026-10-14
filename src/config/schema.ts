@@ -70,7 +70,7 @@ export const ORIGINAL_SCHEMA: NoteSchema = {
 		{ key: "month", value: "{{month}}", updateOnSync: false },
 		{ key: "year", value: "{{year}}", updateOnSync: false },
 		{ key: "weekday", value: "{{weekday}}", updateOnSync: false },
-		{ key: "channel", value: "", updateOnSync: true },
+		{ key: "channel", value: "", updateOnSync: false },
 		{ key: "participants", value: [], updateOnSync: false },
 		{ key: "actual_start", value: "", updateOnSync: false },
 		{ key: "actual_end", value: "", updateOnSync: false },
@@ -134,6 +134,12 @@ function record(value: unknown): Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+/** The original schema used to refresh a blank `channel` on every sync, wiping hand-entered values.
+ * Copies of it saved before the fix still carry that setting, so it is switched off on load. */
+function isStaleChannelReset(field: ExtraField): boolean {
+	return field.key === "channel" && field.value === "";
+}
+
 /** Restores valid saved schema values and falls back to `base` for the rest. */
 export function loadSchema(saved: unknown, base: NoteSchema): NoteSchema {
 	const result = cloneSchema(base);
@@ -166,7 +172,7 @@ export function loadSchema(saved: unknown, base: NoteSchema): NoteSchema {
 	}
 	if (typeof input.meetingBody === "string" && input.meetingBody.trim()) result.meetingBody = input.meetingBody;
 	if (Array.isArray(input.meetingExtras) && input.meetingExtras.every(isExtraField)) {
-		result.meetingExtras = input.meetingExtras.map((field) => ({ key: field.key, value: Array.isArray(field.value) ? [...field.value] : field.value, updateOnSync: field.updateOnSync }));
+		result.meetingExtras = input.meetingExtras.map((field) => ({ key: field.key, value: Array.isArray(field.value) ? [...field.value] : field.value, updateOnSync: field.updateOnSync && !isStaleChannelReset(field) }));
 	}
 	return schemaConflict(result) ? cloneSchema(base) : result;
 }

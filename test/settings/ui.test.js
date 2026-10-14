@@ -8,15 +8,19 @@ class Element {
 	children = [];
 	attributes = {};
 	text = "";
+	scrollTop = 0;
+	listeners = {};
 	createEl(tag, options = {}) {
 		const child = new Element();
 		child.text = options.text ?? "";
 		child.attributes = options.attr ?? {};
+		child.tag = tag;
 		this.children.push(child);
 		return child;
 	}
 	empty() { this.children = []; }
 	setText(text) { this.text = text; }
+	addEventListener(type, listener) { this.listeners[type] = listener; }
 	setAttribute(key, value) { this.attributes[key] = value; }
 }
 
@@ -225,6 +229,19 @@ test("schema section edits names, types, headings, body, and extras with conflic
 	assert.equal(saves.length, 7);
 });
 
+test("matching and type properties warn that renaming does not update existing notes", () => {
+	const { row } = fixture();
+	const warned = [
+		"Type property", "Meeting type value", "Person type value", "Series type value", "Company type value",
+		"Meeting property: Event UID", "Meeting property: Recurrence ID", "Person property: Email",
+		"Person property: Email aliases", "Series property: Event UID", "Company property: Domain",
+	];
+	for (const name of warned) assert.match(row(name).description, /does not rename it in existing notes/, name);
+	for (const name of ["Meeting property: Title", "Meeting property: Date", "Person property: Full name", "Series property: Title", "Invite agenda heading"]) {
+		assert.doesNotMatch(row(name).description, /rename/, name);
+	}
+});
+
 test("extra Meeting properties can be added, edited, reordered, removed, and rejected on conflict", async () => {
 	const { plugin, control, saves, row } = fixture();
 	const add = async (key, value, update = false) => {
@@ -265,4 +282,26 @@ test("schema presets replace the whole schema and save", async () => {
 	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.schema.meetingExtras)), []);
 	await Promise.resolve();
 	assert.equal(saves.length, 2);
+});
+
+test("schema section stays open and keeps scroll across re-renders", async () => {
+	const { tab, control, row } = fixture();
+	const details = () => tab.containerEl.children.find((child) => child.tag === "details");
+	assert.equal(details().open, false);
+	details().open = true;
+	details().listeners.toggle();
+	tab.containerEl.scrollTop = 240;
+	await control("Schema preset", "button", "Use original").click();
+	assert.equal(details().open, true);
+	assert.equal(tab.containerEl.scrollTop, 240);
+	control("New extra property", "text").change("tags");
+	row("New extra property").controls.filter((item) => item.kind === "text")[1].change('["Meeting"]');
+	await control("New extra property", "button", "Add").click();
+	assert.equal(details().open, true);
+	assert.equal(tab.containerEl.scrollTop, 240);
+	details().open = false;
+	details().listeners.toggle();
+	tab.display();
+	assert.equal(details().open, false);
+	assert.ok(row("Schema preset"));
 });

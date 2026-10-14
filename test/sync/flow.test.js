@@ -111,6 +111,34 @@ test("updates preserve handwritten fields and body, use existing Series agenda a
 	assert.ok(f.texts.get("Meetings/Original.md").includes("Keep this"));
 });
 
+test("a matched Meeting note without the invite heading warns, is left unchanged, and still applies", async () => {
+	const f = fixture();
+	const body = "# Human Notes (yay)\nKeep this";
+	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04" }, body));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item) => item.kind === "missing-invite-heading")), [{ kind: "missing-invite-heading", subject: "Meetings/Original.md" }]);
+	assert.equal(prepared.canApply, true);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Original.md")).title, "Outlook sample");
+	assert.ok(f.texts.get("Meetings/Original.md").endsWith(body));
+	assert.equal(f.texts.get("Meetings/Original.md").includes("New agenda"), false);
+	const fresh = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(fresh.preview.warnings.some((item) => item.kind === "missing-invite-heading" && item.subject !== "Meetings/Original.md"), false);
+});
+
+test("a hand-entered channel survives repeat syncs under the original schema", async () => {
+	const f = fixture();
+	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04", channel: "#team-chat" }, "Keep this"));
+	for (let run = 0; run < 2; run++) {
+		await applySync(f.app, await prepareSync(f.app, f.settings, f.fetch, now));
+		const actual = fields(f.texts.get("Meetings/Original.md"));
+		assert.equal(actual.title, "Outlook sample");
+		assert.equal(actual.channel, "#team-chat");
+	}
+	const created = [...f.texts].find(([path]) => path !== "Meetings/Original.md" && path.startsWith("Meetings/"));
+	assert.equal(fields(created[1]).channel, "");
+});
+
 test("feed failure or ambiguous people allow preview but prevent all writes", async () => {
 	for (const kind of ["feed", "person"]) {
 		const f = fixture();
