@@ -19,7 +19,7 @@ export interface MeetingNoteInput {
 	event: CalendarEvent;
 	organizer?: ResolvedAttendee;
 	invited: ResolvedAttendee[];
-	/** Absent means subtype: OneOff. */
+	/** Absent means the schema's one-off recurrence value. */
 	series?: { filename: string };
 	invitedAs: string;
 	schema: NoteSchema;
@@ -62,7 +62,7 @@ export function buildMeetingNote(
 
 	const frontmatter: Record<string, unknown> = { [schema.typeField]: schema.types.meeting };
 	const put = (key: string, value: unknown) => { if (key) frontmatter[key] = value; };
-	put(names.occurrenceStatus, input.event.status === "CANCELLED" ? "Cancelled" : "Scheduled");
+	put(names.occurrenceStatus, input.event.status === "CANCELLED" ? schema.statusValues.cancelled : schema.statusValues.scheduled);
 	put(names.date, start.date);
 	put(names.title, input.event.summary);
 	put(names.organizer, input.organizer ? `[[${input.organizer.filename}]]` : "");
@@ -76,7 +76,7 @@ export function buildMeetingNote(
 	put(names.recurrenceId, input.event.recurrenceId ?? "");
 	Object.assign(frontmatter, evaluateExtras(schema.meetingExtras, {
 		title: input.event.summary, date: start.date, week: start.week, month: start.month, year: start.year,
-		weekday: start.weekday, recurrence: input.series ? "RegularSync" : "OneOff", companies,
+		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies,
 	}));
 
 	const inviteAgenda = input.event.description?.trim() || "No agenda provided";
