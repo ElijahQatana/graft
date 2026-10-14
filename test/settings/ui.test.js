@@ -9,10 +9,15 @@ class Element {
 	attributes = {};
 	text = "";
 	scrollTop = 0;
+	hidden = false;
+	open = false;
+	value = "";
 	listeners = {};
+	focus() { this.focused = true; }
 	createEl(tag, options = {}) {
 		const child = new Element();
 		child.text = options.text ?? "";
+		child.cls = options.cls ?? "";
 		child.attributes = options.attr ?? {};
 		child.tag = tag;
 		this.children.push(child);
@@ -39,6 +44,7 @@ class Control {
 class Setting {
 	controls = [];
 	descEl = new Element();
+	settingEl = new Element();
 	constructor(container) { container.children.push(this); }
 	setName(name) { this.name = name; return this; }
 	setDesc(description) { this.description = description; return this; }
@@ -84,6 +90,15 @@ function fixture({ linking = false } = {}) {
 	function control(name, kind, label) { return row(name).controls.find((item) => item.kind === kind && (label === undefined || item.label === label)); }
 	return { plugin, tab, saves, row, control };
 }
+
+function walk(parent, visit) { for (const child of parent.children ?? []) { visit(child); walk(child, visit); } }
+function group(tab, id) { let found; walk(tab.containerEl, (child) => { if (child.attributes?.["data-graft-group"] === id) found = child; }); return found; }
+function byClass(tab, cls) { let found; walk(tab.containerEl, (child) => { if (child.cls?.split(" ").includes(cls)) found ??= child; }); return found; }
+function search(tab, text) { const input = byClass(tab, "graft-search-input"); input.value = text; input.listeners.input(); }
+function toggle(tab, id, open) { const details = group(tab, id); details.open = open; details.listeners.toggle(); }
+function isHidden(row) { return row.settingEl.hidden; }
+const TOP = ["calendars", "folders", "filters", "window", "behavior", "schema"];
+const SUB = ["schema.types", "schema.meeting", "schema.person", "schema.series", "schema.headings", "schema.values", "schema.extras"];
 
 test("settings controls update every scalar and nested field", async () => {
 	const { plugin, control, saves } = fixture();
@@ -354,7 +369,7 @@ test("schema presets replace the whole schema and save", async () => {
 
 test("schema section stays open and keeps scroll across re-renders", async () => {
 	const { tab, control, row } = fixture();
-	const details = () => tab.containerEl.children.find((child) => child.tag === "details");
+	const details = () => group(tab, "schema");
 	assert.equal(details().open, false);
 	details().open = true;
 	details().listeners.toggle();
@@ -397,4 +412,220 @@ test("turning Company linking on shows the Company settings, and off hides them 
 	assert.equal(plugin.settings.companyLinking, false);
 	for (const name of COMPANY_ROWS) assert.equal(row(name), undefined, name);
 	assert.equal(plugin.settings.strictCompanyLinks, true);
+});
+
+test("every section and every Note schema sub-group is a collapsible details element", () => {
+	const { tab } = fixture();
+	for (const id of [...TOP, ...SUB]) {
+		const details = group(tab, id);
+		assert.equal(details.tag, "details", id);
+		assert.ok(details.children.some((child) => child.tag === "summary" && child.text), id);
+	}
+	assert.equal(group(tab, "schema").open, false);
+	assert.equal(group(tab, "schema.types").open, false);
+	for (const id of TOP.slice(0, 5)) assert.equal(group(tab, id).open, true, id);
+});
+
+test("search matches row names and descriptions, ignoring case, and needs every word", () => {
+	const { tab, row } = fixture();
+	search(tab, "TIMEZONE");
+	assert.equal(isHidden(row("Timezone")), false);
+	assert.equal(isHidden(row("Days back")), true);
+	search(tab, "minimal person note");
+	assert.equal(isHidden(row("Create Person stubs")), false);
+	assert.equal(isHidden(row("Create Series stubs")), true);
+	search(tab, "person note minimal zzz");
+	assert.equal(isHidden(row("Create Person stubs")), true);
+	search(tab, "   whole   number ");
+	assert.equal(isHidden(row("Days back")), false);
+	assert.equal(isHidden(row("Days ahead")), false);
+	assert.equal(isHidden(row("Timezone")), true);
+});
+
+test("search hides sections without a match and opens the ones with a match", () => {
+	const { tab } = fixture();
+	search(tab, "days ahead");
+	assert.equal(group(tab, "window").hidden, false);
+	assert.equal(group(tab, "window").open, true);
+	for (const id of TOP.filter((id) => id !== "window")) assert.equal(group(tab, id).hidden, true, id);
+	search(tab, "meeting property: scheduled start");
+	assert.equal(group(tab, "schema").hidden, false);
+	assert.equal(group(tab, "schema").open, true);
+	assert.equal(group(tab, "schema.meeting").open, true);
+	assert.equal(group(tab, "schema.meeting").hidden, false);
+	for (const id of SUB.filter((id) => id !== "schema.meeting")) assert.equal(group(tab, id).hidden, true, id);
+	assert.equal(group(tab, "calendars").hidden, true);
+});
+
+test("an empty box or the clear button restores the normal view and remembered state", () => {
+	const { tab, row } = fixture();
+	toggle(tab, "window", false);
+	search(tab, "meeting property: scheduled start");
+	assert.equal(group(tab, "schema").open, true);
+	assert.equal(group(tab, "window").hidden, true);
+	byClass(tab, "graft-search-clear").listeners.click();
+	assert.equal(byClass(tab, "graft-search-input").value, "");
+	assert.equal(byClass(tab, "graft-search-clear").hidden, true);
+	for (const id of [...TOP, ...SUB]) assert.equal(group(tab, id).hidden, false, id);
+	assert.equal(group(tab, "schema").open, false);
+	assert.equal(group(tab, "schema.meeting").open, false);
+	assert.equal(group(tab, "window").open, false);
+	assert.equal(group(tab, "folders").open, true);
+	assert.equal(isHidden(row("Timezone")), false);
+	search(tab, "timezone");
+	assert.equal(byClass(tab, "graft-search-clear").hidden, false);
+	search(tab, "");
+	assert.equal(isHidden(row("Days back")), false);
+	assert.equal(group(tab, "window").open, false);
+});
+
+test("Escape in the search box clears it", () => {
+	const { tab } = fixture();
+	search(tab, "timezone");
+	const input = byClass(tab, "graft-search-input");
+	let stopped = false;
+	input.listeners.keydown({ key: "Escape", stopPropagation() { stopped = true; } });
+	assert.equal(input.value, "");
+	assert.equal(stopped, true);
+	assert.equal(group(tab, "window").hidden, false);
+});
+
+test("a search with no match shows a message, and clearing removes it", () => {
+	const { tab } = fixture();
+	const message = () => byClass(tab, "graft-no-results").text;
+	assert.equal(message(), "");
+	search(tab, "no such setting anywhere");
+	assert.match(message(), /No settings match/);
+	for (const id of [...TOP, ...SUB]) assert.equal(group(tab, id).hidden, true, id);
+	search(tab, "timezone");
+	assert.equal(message(), "");
+	search(tab, "zzz");
+	search(tab, "");
+	assert.equal(message(), "");
+});
+
+test("searching and collapsing never change saved values", async () => {
+	const { plugin, tab, saves } = fixture();
+	const before = JSON.stringify(plugin.settings);
+	search(tab, "timezone");
+	search(tab, "zzz");
+	search(tab, "");
+	for (const id of [...TOP, ...SUB]) { toggle(tab, id, true); toggle(tab, id, false); }
+	assert.equal(JSON.stringify(plugin.settings), before);
+	assert.equal(saves.length, 0);
+});
+
+test("open and closed state survives re-renders from saving, moving and removing rows", async () => {
+	const { tab, control, row } = fixture();
+	const ids = ["calendars", "filters", "schema", "schema.extras", "schema.types", "window"];
+	toggle(tab, "calendars", false);
+	toggle(tab, "filters", false);
+	toggle(tab, "schema", true);
+	toggle(tab, "schema.extras", true);
+	const want = [false, false, true, true, false, true];
+	const state = () => ids.map((id) => group(tab, id).open);
+	assert.deepEqual(state(), want);
+	for (const [name, url] of [["Work", "https://example.com/work.ics"], ["Home", "https://example.com/home.ics"]]) {
+		const [nameInput, urlInput] = row("New calendar").controls.filter((item) => item.kind === "text");
+		nameInput.change(name); urlInput.change(url);
+		await control("New calendar", "button", "Add calendar").click();
+		assert.deepEqual(state(), want);
+	}
+	await control("Calendar 2", "button", "Up").click();
+	assert.deepEqual(state(), want);
+	await control("Calendar 1", "button", "Remove").click();
+	assert.deepEqual(state(), want);
+	control("New extra property", "text").change("tags");
+	await control("New extra property", "button", "Add").click();
+	assert.deepEqual(state(), want);
+	await control("Company linking", "toggle").change(true);
+	assert.deepEqual(state(), want);
+	await control("Schema preset", "button", "Use original").click();
+	assert.deepEqual(state(), want);
+});
+
+test("open and closed state is remembered when the tab is displayed again", () => {
+	const { tab } = fixture();
+	toggle(tab, "folders", false);
+	toggle(tab, "schema.values", true);
+	tab.hide();
+	tab.display();
+	assert.equal(group(tab, "folders").open, false);
+	assert.equal(group(tab, "schema.values").open, true);
+	assert.equal(group(tab, "schema").open, false);
+	assert.equal(group(tab, "calendars").open, true);
+});
+
+test("a section the user opened stays open after a search is cleared", () => {
+	const { tab } = fixture();
+	toggle(tab, "schema", true);
+	search(tab, "timezone");
+	assert.equal(group(tab, "schema").hidden, true);
+	search(tab, "");
+	assert.equal(group(tab, "schema").open, true);
+	assert.equal(group(tab, "schema").hidden, false);
+});
+
+test("a search stays applied across re-renders and is cleared when the tab closes", async () => {
+	const { tab, control, row } = fixture();
+	search(tab, "days");
+	await control("Days back", "text").change("3");
+	tab.display();
+	assert.equal(byClass(tab, "graft-search-input").value, "days");
+	assert.equal(isHidden(row("Timezone")), true);
+	assert.equal(isHidden(row("Days back")), false);
+	assert.equal(group(tab, "calendars").hidden, true);
+	tab.hide();
+	tab.display();
+	assert.equal(byClass(tab, "graft-search-input").value, "");
+	assert.equal(isHidden(row("Timezone")), false);
+	assert.equal(group(tab, "calendars").hidden, false);
+});
+
+test("opening or closing sections during a search does not change what is remembered", () => {
+	const { tab } = fixture();
+	search(tab, "days ahead");
+	toggle(tab, "window", false);
+	search(tab, "");
+	assert.equal(group(tab, "window").open, true);
+	assert.equal(group(tab, "schema").open, false);
+});
+
+test("rows with an error message stay visible while searching", async () => {
+	const { tab, control, row, plugin } = fixture();
+	await control("Timezone", "text").change("Not/AZone");
+	assert.match(row("Timezone").descEl.children[0].text, /Change not saved/);
+	assert.notEqual(plugin.settings.timezone, "Not/AZone");
+	search(tab, "meeting property: scheduled start");
+	assert.equal(isHidden(row("Timezone")), false);
+	assert.equal(group(tab, "window").hidden, false);
+	assert.equal(isHidden(row("Days back")), true);
+	assert.equal(byClass(tab, "graft-no-results").text, "");
+	await control("Timezone", "text").change("Europe/London");
+	assert.equal(row("Timezone").descEl.children[0].text, "");
+	assert.equal(isHidden(row("Timezone")), true);
+	assert.equal(group(tab, "window").hidden, true);
+});
+
+test("a section holding an error message cannot be collapsed over it", async () => {
+	const { tab, control } = fixture();
+	await control("Days back", "text").change("-1");
+	toggle(tab, "window", false);
+	assert.equal(group(tab, "window").open, true);
+	await control("Days back", "text").change("4");
+	toggle(tab, "window", false);
+	assert.equal(group(tab, "window").open, false);
+	assert.equal(group(tab, "window").hidden, false);
+});
+
+test("errors in a nested schema group keep it and its parent visible", async () => {
+	const { tab, control, row } = fixture();
+	await control("Type property", "text").change("");
+	search(tab, "timezone");
+	assert.equal(isHidden(row("Type property")), false);
+	assert.equal(group(tab, "schema.types").hidden, false);
+	assert.equal(group(tab, "schema").hidden, false);
+	assert.equal(group(tab, "schema").open, true);
+	toggle(tab, "schema.types", false);
+	assert.equal(group(tab, "schema.types").open, true);
 });
