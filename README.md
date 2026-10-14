@@ -15,7 +15,7 @@ npm run dev
 npm run build
 ```
 
-To try it locally, copy `main.js` and `manifest.json` into `.obsidian/plugins/graft/` in a test vault, then enable Graft.
+To try it locally, copy `main.js`, `manifest.json`, and `styles.css` into `.obsidian/plugins/graft/` in a test vault, then enable Graft.
 
 - [Setup](docs/getting-started.md)
 - [Settings](docs/configuration.md)
