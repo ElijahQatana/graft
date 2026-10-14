@@ -22,6 +22,9 @@ const PERSON_LABELS: Record<PersonFieldKey, string> = {
 	email: "Email", emailAliases: "Email aliases", company: "Company links", fullName: "Full name", firstName: "First name", lastName: "Last name",
 };
 const SERIES_LABELS: Record<SeriesFieldKey, string> = { uid: "Event UID", title: "Title" };
+const RENAME_NOTE = "Changing this does not rename it in existing notes, which may then show as new.";
+const MEETING_MATCH: MeetingFieldKey[] = ["uid", "recurrenceId"];
+const PERSON_MATCH: PersonFieldKey[] = ["email", "emailAliases"];
 
 export class GraftSettingTab extends PluginSettingTab {
 	/** Where settings rows are added; the schema section swaps in a collapsible block. */
@@ -204,25 +207,25 @@ export class GraftSettingTab extends PluginSettingTab {
 		const schema = this.plugin.settings.schema;
 
 		this.heading("Note types");
-		this.schemaText("Type property", "Property that holds the note type.", "name", (s) => s.typeField, (s, v) => { s.typeField = v; });
+		this.schemaText("Type property", "Property that holds the note type.", "name", (s) => s.typeField, (s, v) => { s.typeField = v; }, true);
 		for (const key of ["meeting", "person", "series", "company"] as const) {
-			this.schemaText(`${LABEL[key]} type value`, "Value of the type property for these notes.", "type", (s) => s.types[key], (s, v) => { s.types[key] = v; });
+			this.schemaText(`${LABEL[key]} type value`, "Value of the type property for these notes.", "type", (s) => s.types[key], (s, v) => { s.types[key] = v; }, true);
 		}
 
 		this.heading("Meeting properties");
 		for (const key of Object.keys(MEETING_LABELS) as MeetingFieldKey[]) {
 			const optional = OPTIONAL_MEETING_FIELDS.includes(key);
-			this.schemaText(`Meeting property: ${MEETING_LABELS[key]}`, optional ? "Property name. Leave blank to skip it." : "Property name.", optional ? "optionalName" : "name", (s) => s.meeting[key], (s, v) => { s.meeting[key] = v; });
+			this.schemaText(`Meeting property: ${MEETING_LABELS[key]}`, optional ? "Property name. Leave blank to skip it." : "Property name.", optional ? "optionalName" : "name", (s) => s.meeting[key], (s, v) => { s.meeting[key] = v; }, MEETING_MATCH.includes(key));
 		}
 		this.heading("Person properties");
 		for (const key of Object.keys(PERSON_LABELS) as PersonFieldKey[]) {
-			this.schemaText(`Person property: ${PERSON_LABELS[key]}`, "Property name.", "name", (s) => s.person[key], (s, v) => { s.person[key] = v; });
+			this.schemaText(`Person property: ${PERSON_LABELS[key]}`, "Property name.", "name", (s) => s.person[key], (s, v) => { s.person[key] = v; }, PERSON_MATCH.includes(key));
 		}
 		this.heading("Series and Company properties");
 		for (const key of Object.keys(SERIES_LABELS) as SeriesFieldKey[]) {
-			this.schemaText(`Series property: ${SERIES_LABELS[key]}`, key === "uid" ? "Property that stores the calendar event UID." : "Property name.", "name", (s) => s.series[key], (s, v) => { s.series[key] = v; });
+			this.schemaText(`Series property: ${SERIES_LABELS[key]}`, key === "uid" ? "Property that stores the calendar event UID." : "Property name.", "name", (s) => s.series[key], (s, v) => { s.series[key] = v; }, key === "uid");
 		}
-		this.schemaText("Company property: Domain", "Property that holds a Company's email domain.", "name", (s) => s.company.domain, (s, v) => { s.company.domain = v; });
+		this.schemaText("Company property: Domain", "Property that holds a Company's email domain.", "name", (s) => s.company.domain, (s, v) => { s.company.domain = v; }, true);
 
 		this.heading("Headings");
 		this.schemaText("Invite agenda heading", "Heading Graft keeps up to date, such as ## Invite Agenda.", "heading", (s) => s.headings.inviteAgenda, (s, v) => { s.headings.inviteAgenda = v; });
@@ -255,9 +258,9 @@ export class GraftSettingTab extends PluginSettingTab {
 		void this.plugin.saveSettings();
 	}
 
-	private schemaText(name: string, description: string, kind: Kind, read: (schema: NoteSchema) => string, write: (schema: NoteSchema, value: string) => void): void {
+	private schemaText(name: string, description: string, kind: Kind, read: (schema: NoteSchema) => string, write: (schema: NoteSchema, value: string) => void, matches = false): void {
 		const schema = this.plugin.settings.schema;
-		this.text(name, description, read(schema), (value) => write(schema, value), (value) => {
+		this.text(name, matches ? `${description} ${RENAME_NOTE}` : description, read(schema), (value) => write(schema, value), (value) => {
 			const valid = kind === "heading" ? isHeading(value) : kind === "type" ? isTypeValue(value) : kind === "optionalName" ? value === "" || isFieldName(value) : isFieldName(value);
 			if (!valid) return kind === "heading" ? "Use a Markdown heading such as ## Title." : "Enter a non-empty name without colons or surrounding spaces.";
 			const candidate = cloneSchema(schema);

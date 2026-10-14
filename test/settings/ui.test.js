@@ -225,6 +225,19 @@ test("schema section edits names, types, headings, body, and extras with conflic
 	assert.equal(saves.length, 7);
 });
 
+test("matching and type properties warn that renaming does not update existing notes", () => {
+	const { row } = fixture();
+	const warned = [
+		"Type property", "Meeting type value", "Person type value", "Series type value", "Company type value",
+		"Meeting property: Event UID", "Meeting property: Recurrence ID", "Person property: Email",
+		"Person property: Email aliases", "Series property: Event UID", "Company property: Domain",
+	];
+	for (const name of warned) assert.match(row(name).description, /does not rename it in existing notes/, name);
+	for (const name of ["Meeting property: Title", "Meeting property: Date", "Person property: Full name", "Series property: Title", "Invite agenda heading"]) {
+		assert.doesNotMatch(row(name).description, /rename/, name);
+	}
+});
+
 test("extra Meeting properties can be added, edited, reordered, removed, and rejected on conflict", async () => {
 	const { plugin, control, saves, row } = fixture();
 	const add = async (key, value, update = false) => {
