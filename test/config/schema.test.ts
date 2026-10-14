@@ -113,3 +113,24 @@ test("updates include only extras marked to update on every sync", () => {
 	assert.deepEqual(evaluateExtras(extras, context, true), { orgs: ["[[Acme]]", "[[Beta]]"] });
 	assert.deepEqual(Object.keys(evaluateExtras(extras, context)), ["kept", "orgs"]);
 });
+
+test("the original schema does not refresh channel, and stored copies that did are corrected", () => {
+	const channel = (schema: typeof ORIGINAL_SCHEMA) => schema.meetingExtras.find((field) => field.key === "channel");
+	assert.equal(channel(ORIGINAL_SCHEMA)?.updateOnSync, false);
+	const stale = cloneSchema(ORIGINAL_SCHEMA);
+	stale.meetingExtras = stale.meetingExtras.map((field) => field.key === "channel" ? { ...field, updateOnSync: true } : field);
+	const loaded = loadGraftSettings(JSON.parse(JSON.stringify({ daysBack: 3, schema: stale }))).schema;
+	assert.equal(channel(loaded)?.updateOnSync, false);
+	assert.equal(loaded.meetingExtras.find((field) => field.key === "companies")?.updateOnSync, true);
+	const custom = cloneSchema(ORIGINAL_SCHEMA);
+	custom.meetingExtras = [{ key: "channel", value: "#general", updateOnSync: true }];
+	assert.equal(channel(loadSchema(custom, MINIMAL_SCHEMA))?.updateOnSync, true);
+});
+
+test("the original schema's new-note extras are unchanged", () => {
+	const context = { title: "T", date: "2026-10-04", week: "W40", month: "October", year: "2026", weekday: "Sunday", recurrence: "OneOff", companies: ["[[Acme]]"] };
+	const created = evaluateExtras(ORIGINAL_SCHEMA.meetingExtras, context);
+	assert.equal(created.channel, "");
+	assert.deepEqual(Object.keys(created), ORIGINAL_SCHEMA.meetingExtras.map((field) => field.key));
+	assert.deepEqual(Object.keys(evaluateExtras(ORIGINAL_SCHEMA.meetingExtras, context, true)), ["companies"]);
+});

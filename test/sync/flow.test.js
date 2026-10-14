@@ -126,6 +126,19 @@ test("a matched Meeting note without the invite heading warns, is left unchanged
 	assert.equal(fresh.preview.warnings.some((item) => item.kind === "missing-invite-heading" && item.subject !== "Meetings/Original.md"), false);
 });
 
+test("a hand-entered channel survives repeat syncs under the original schema", async () => {
+	const f = fixture();
+	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04", channel: "#team-chat" }, "Keep this"));
+	for (let run = 0; run < 2; run++) {
+		await applySync(f.app, await prepareSync(f.app, f.settings, f.fetch, now));
+		const actual = fields(f.texts.get("Meetings/Original.md"));
+		assert.equal(actual.title, "Outlook sample");
+		assert.equal(actual.channel, "#team-chat");
+	}
+	const created = [...f.texts].find(([path]) => path !== "Meetings/Original.md" && path.startsWith("Meetings/"));
+	assert.equal(fields(created[1]).channel, "");
+});
+
 test("feed failure or ambiguous people allow preview but prevent all writes", async () => {
 	for (const kind of ["feed", "person"]) {
 		const f = fixture();
