@@ -447,7 +447,8 @@ test("every section and every Note schema sub-group is a collapsible details ele
 	}
 	assert.equal(group(tab, "schema").open, false);
 	assert.equal(group(tab, "schema.types").open, false);
-	for (const id of TOP) assert.equal(group(tab, id).open, false, id);
+	assert.equal(group(tab, "calendars").open, true);
+	for (const id of TOP.slice(1)) assert.equal(group(tab, id).open, false, id);
 });
 
 test("search matches row names and descriptions, ignoring case, and needs every word", () => {
@@ -542,6 +543,7 @@ test("searching and collapsing never change saved values", async () => {
 test("open and closed state survives re-renders from saving, moving and removing rows", async () => {
 	const { tab, control, row } = fixture();
 	const ids = ["calendars", "filters", "schema", "schema.extras", "schema.types", "window"];
+	toggle(tab, "calendars", false);
 	toggle(tab, "window", true);
 	toggle(tab, "schema", true);
 	toggle(tab, "schema.extras", true);
@@ -849,4 +851,16 @@ test("group headings summarise their contents and follow saved changes", async (
 	await control("Only events I have accepted", "toggle").change(true);
 	assert.equal(meta("filters"), "accepted only");
 	assert.equal(meta("schema"), undefined);
+});
+
+test("the Calendars group starts open with no calendars and stays open after the first is added", async () => {
+	const empty = fixture();
+	assert.equal(group(empty.tab, "calendars").open, true);
+	for (const id of TOP.slice(1)) assert.equal(group(empty.tab, id).open, false, id);
+	const [nameInput, urlInput] = empty.row("New calendar").controls.filter((item: any) => item.kind === "text");
+	nameInput.change("Work"); urlInput.change("https://example.com/work.ics");
+	await empty.control("New calendar", "button", "Add calendar").click();
+	assert.equal(group(empty.tab, "calendars").open, true);
+	const saved = fixture({ calendars: [{ id: "a1", name: "Work", type: "google", url: "https://example.com/work.ics", invitedAs: "" }] });
+	assert.equal(group(saved.tab, "calendars").open, false);
 });
