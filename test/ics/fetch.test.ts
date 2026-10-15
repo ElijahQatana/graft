@@ -1,26 +1,30 @@
-import { test } from "node:test";
+import { test, before } from "node:test";
 import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 
-const bundled = await build({ entryPoints: ["src/ics/fetch.ts"], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
-const module = { exports: {} };
-let request;
-runInNewContext(bundled.outputFiles[0].text, {
-	module, exports: module.exports, require: () => ({ requestUrl: (...args) => request(...args) }),
+let request: (...args: any[]) => Promise<unknown>;
+let fetchIcs: (url: string) => Promise<string>;
+let IcsFetchError: new (...args: any[]) => Error;
+before(async () => {
+	const bundled = await build({ entryPoints: ["src/ics/fetch.ts"], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
+	const module: { exports: any } = { exports: {} };
+	runInNewContext(bundled.outputFiles[0].text, {
+		module, exports: module.exports, require: () => ({ requestUrl: (...args: any[]) => request(...args) }),
+	});
+	({ fetchIcs, IcsFetchError } = module.exports);
 });
-const { fetchIcs, IcsFetchError } = module.exports;
 const url = "https://example.com/calendar.ics?key=synthetic";
 
 test("fetch errors contain no request URL, raw response, or underlying error", async () => {
 	for (const fail of [new Error(url), { response: "Synthetic private content" }]) {
 		request = async () => { throw fail; };
-		await assert.rejects(fetchIcs(url), (error) => {
+		await assert.rejects(fetchIcs(url), (error: any) => {
 			assert.ok(error instanceof IcsFetchError);
 			assert.equal(error.message, "Could not reach the calendar feed.");
 			assert.equal("url" in error, false);
 			assert.equal("cause" in error, false);
-			assert.equal(error.stack.includes(url), false);
+			assert.equal(error.stack!.includes(url), false);
 			return true;
 		});
 	}
@@ -32,7 +36,7 @@ test("fetch errors contain no request URL, raw response, or underlying error", a
 
 test("valid calendar text is returned using Obsidian requestUrl", async () => {
 	const text = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR";
-	request = async (options) => {
+	request = async (options: any) => {
 		assert.equal(options.url, url);
 		assert.equal(options.throw, false);
 		return { status: 200, text };

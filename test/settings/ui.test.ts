@@ -1,20 +1,21 @@
-import { test } from "node:test";
+import { test, before } from "node:test";
 import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 import { loadGraftSettings } from "../../src/config/settings.ts";
 
 class Element {
-	children = [];
-	attributes = {};
+	[key: string]: any;
+	children: any[] = [];
+	attributes: Record<string, any> = {};
 	text = "";
 	scrollTop = 0;
 	hidden = false;
 	open = false;
 	value = "";
-	listeners = {};
+	listeners: Record<string, any> = {};
 	focus() { this.focused = true; }
-	createEl(tag, options = {}) {
+	createEl(tag: any, options: any = {}) {
 		const child = new Element();
 		child.text = options.text ?? "";
 		child.cls = options.cls ?? "";
@@ -24,81 +25,89 @@ class Element {
 		return child;
 	}
 	empty() { this.children = []; }
-	setText(text) { this.text = text; }
-	addEventListener(type, listener) { this.listeners[type] = listener; }
-	setAttribute(key, value) { this.attributes[key] = value; }
+	setText(text: any) { this.text = text; }
+	addEventListener(type: any, listener: any) { this.listeners[type] = listener; }
+	setAttribute(key: any, value: any) { this.attributes[key] = value; }
 }
 
 class Control {
+	[key: string]: any;
 	inputEl = new Element();
-	setValue(value) { this.value = value; return this; }
-	setPlaceholder(value) { return this; }
-	setTooltip(value) { return this; }
-	setDisabled(value) { this.disabled = value; return this; }
-	setButtonText(value) { this.label = value; return this; }
-	addOptions(value) { this.options = value; return this; }
-	onChange(callback) { this.change = callback; return this; }
-	onClick(callback) { this.click = callback; return this; }
+	setValue(value: any) { this.value = value; return this; }
+	setPlaceholder(value: any) { return this; }
+	setTooltip(value: any) { return this; }
+	setDisabled(value: any) { this.disabled = value; return this; }
+	setButtonText(value: any) { this.label = value; return this; }
+	addOptions(value: any) { this.options = value; return this; }
+	onChange(callback: any) { this.change = callback; return this; }
+	onClick(callback: any) { this.click = callback; return this; }
 }
 
 class Setting {
-	controls = [];
+	[key: string]: any;
+	controls: any[] = [];
 	descEl = new Element();
 	settingEl = new Element();
-	constructor(container) { container.children.push(this); }
-	setName(name) { this.name = name; return this; }
-	setDesc(description) { this.description = description; return this; }
+	constructor(container: any) { container.children.push(this); }
+	setName(name: any) { this.name = name; return this; }
+	setDesc(description: any) { this.description = description; return this; }
 	setHeading() { this.isHeading = true; return this; }
-	add(kind, setup) { const control = new Control(); control.kind = kind; this.controls.push(control); setup(control); return this; }
-	addText(setup) { return this.add("text", setup); }
-	addTextArea(setup) { return this.add("textarea", setup); }
-	addDropdown(setup) { return this.add("dropdown", setup); }
-	addToggle(setup) { return this.add("toggle", setup); }
-	addButton(setup) { return this.add("button", setup); }
+	add(kind: any, setup: any) { const control = new Control(); control.kind = kind; this.controls.push(control); setup(control); return this; }
+	addText(setup: any) { return this.add("text", setup); }
+	addTextArea(setup: any) { return this.add("textarea", setup); }
+	addDropdown(setup: any) { return this.add("dropdown", setup); }
+	addToggle(setup: any) { return this.add("toggle", setup); }
+	addButton(setup: any) { return this.add("button", setup); }
 }
 
 class TFile {}
-const notices = [];
-class Notice { constructor(message) { notices.push(message); } }
+const notices: any[] = [];
+class Notice { constructor(message: any) { notices.push(message); } }
 class PluginSettingTab {
+	[key: string]: any;
 	containerEl = new Element();
-	constructor(app) { this.app = app; }
+	constructor(app: any) { this.app = app; }
 }
 class Plugin {
-	addSettingTab(tab) { this.tab = tab; }
-	addCommand(command) { (this.commands ??= []).push(command); }
+	[key: string]: any;
+	addSettingTab(tab: any) { this.tab = tab; }
+	addCommand(command: any) { (this.commands ??= []).push(command); }
 }
 class Modal {}
 const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal };
 
-async function loadModule(entry) {
+async function loadModule(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
-	const module = { exports: {} };
+	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl });
 	return module.exports;
 }
-const { GraftSettingTab } = await loadModule("src/settings.ts");
-const { default: GraftPlugin } = await loadModule("src/main.ts");
+let GraftSettingTab: any;
+let GraftPlugin: any;
+before(async () => {
+	({ GraftSettingTab } = await loadModule("src/settings.ts"));
+	({ default: GraftPlugin } = await loadModule("src/main.ts"));
+});
 
-function fixture({ linking = false, secretStorage, calendars } = {}) {
-	const saves = [];
+function fixture({ linking = false, secretStorage, calendars }: { linking?: boolean; secretStorage?: any; calendars?: any } = {}): any {
+	const saves: any[] = [];
 	const plugin = { settings: { ...loadGraftSettings({}), companyLinking: linking, ...(calendars ? { calendars } : {}) }, async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
-	const app = { secretStorage, vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
+	const app = { secretStorage, vault: { getAbstractFileByPath(path: any) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
 	const tab = new GraftSettingTab(app, plugin);
 	tab.display();
-	function find(parent, name) { for (const child of parent.children ?? []) { if (child.name === name) return child; const nested = find(child, name); if (nested) return nested; } }
-	function row(name) { return find(tab.containerEl, name); }
-	function control(name, kind, label) { return row(name).controls.find((item) => item.kind === kind && (label === undefined || item.label === label)); }
+	function find(parent: any, name: any): any { for (const child of parent.children ?? []) { if (child.name === name) return child; const nested: any = find(child, name); if (nested) return nested; } }
+	function row(name: any) { return find(tab.containerEl, name); }
+	function control(name: any, kind: any, label?: any) { return row(name).controls.find((item: any) => item.kind === kind && (label === undefined || item.label === label)); }
 	return { plugin, tab, saves, row, control };
 }
 
-const noIds = (calendars) => calendars.map(({ id, ...rest }) => { assert.match(id, /^[a-z0-9]{1,40}$/); return rest; });
-function walk(parent, visit) { for (const child of parent.children ?? []) { visit(child); walk(child, visit); } }
-function group(tab, id) { let found; walk(tab.containerEl, (child) => { if (child.attributes?.["data-graft-group"] === id) found = child; }); return found; }
-function byClass(tab, cls) { let found; walk(tab.containerEl, (child) => { if (child.cls?.split(" ").includes(cls)) found ??= child; }); return found; }
-function search(tab, text) { const input = byClass(tab, "graft-search-input"); input.value = text; input.listeners.input(); }
-function toggle(tab, id, open) { const details = group(tab, id); details.open = open; details.listeners.toggle(); }
-function isHidden(row) { return row.settingEl.hidden; }
+const noIds = (calendars: any) => calendars.map(({ id, ...rest }: any) => { assert.match(id, /^[a-z0-9]{1,40}$/); return rest; });
+function walk(parent: any, visit: any) { for (const child of parent.children ?? []) { visit(child); walk(child, visit); } }
+function group(tab: any, id: any) { let found: any; walk(tab.containerEl, (child: any) => { if (child.attributes?.["data-graft-group"] === id) found = child; }); return found; }
+function byClass(tab: any, cls: any) { let found: any; walk(tab.containerEl, (child: any) => { if (child.cls?.split(" ").includes(cls)) found ??= child; }); return found; }
+function search(tab: any, text: any) { const input = byClass(tab, "graft-search-input"); input.value = text; input.listeners.input(); }
+function toggle(tab: any, id: any, open: any) { const details = group(tab, id); details.open = open; details.listeners.toggle(); }
+function isHidden(row: any) { return row.settingEl.hidden; }
 const TOP = ["calendars", "folders", "filters", "window", "behavior", "schema"];
 const SUB = ["schema.types", "schema.meeting", "schema.person", "schema.series", "schema.headings", "schema.values", "schema.extras"];
 
@@ -153,7 +162,7 @@ test("title rules can be added, edited, reordered, and removed", async () => {
 	control("Title rule 1", "text").change("Updated");
 	await control("Title rule 1", "button", "Save").click();
 	await control("Title rule 2", "button", "Up").click();
-	assert.deepEqual(plugin.settings.titleMatchRules.map((rule) => rule.value), ["Skip", "Updated"]);
+	assert.deepEqual(plugin.settings.titleMatchRules.map((rule: any) => rule.value), ["Skip", "Updated"]);
 	assert.equal(plugin.settings.titleMatchRules[1].caseSensitive, true);
 	assert.equal(plugin.settings.titleMatchRules[1].mode, "prefix");
 	assert.equal(control("Title rule 1", "button", "Up").disabled, true);
@@ -164,8 +173,8 @@ test("title rules can be added, edited, reordered, and removed", async () => {
 test("calendars start empty and can be added, edited, reordered, and removed", async () => {
 	const { plugin, control, saves, row } = fixture();
 	assert.deepEqual(plugin.settings.calendars, []);
-	const fill = (rowName, name, type, url, invitedAs) => {
-		const [nameInput, urlInput, invitedInput] = row(rowName).controls.filter((item) => item.kind === "text");
+	const fill = (rowName: any, name: any, type: any, url: any, invitedAs: any) => {
+		const [nameInput, urlInput, invitedInput] = row(rowName).controls.filter((item: any) => item.kind === "text");
 		nameInput.change(name); urlInput.change(url); invitedInput.change(invitedAs);
 		if (type) control(rowName, "dropdown").change(type);
 	};
@@ -181,7 +190,7 @@ test("calendars start empty and can be added, edited, reordered, and removed", a
 	assert.notEqual(plugin.settings.calendars[0].id, plugin.settings.calendars[1].id);
 	const homeId = plugin.settings.calendars[1].id;
 	for (const calendar of [row("Calendar 1"), row("Calendar 2")]) {
-		assert.equal(calendar.controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
+		assert.equal(calendar.controls.filter((item: any) => item.kind === "text")[1].inputEl.type, "password");
 	}
 	fill("Calendar 2", "Home", "outlook", "https://example.com/home.ics", "two@example.com");
 	await control("Calendar 2", "button", "Save").click();
@@ -189,9 +198,9 @@ test("calendars start empty and can be added, edited, reordered, and removed", a
 	assert.equal(plugin.settings.calendars[1].id, homeId);
 	assert.equal(control("Calendar 1", "button", "Up").disabled, true);
 	await control("Calendar 2", "button", "Up").click();
-	assert.deepEqual(plugin.settings.calendars.map((calendar) => calendar.name), ["Home", "Work"]);
+	assert.deepEqual(plugin.settings.calendars.map((calendar: any) => calendar.name), ["Home", "Work"]);
 	await control("Calendar 1", "button", "Remove").click();
-	assert.deepEqual(plugin.settings.calendars.map((calendar) => calendar.name), ["Work"]);
+	assert.deepEqual(plugin.settings.calendars.map((calendar: any) => calendar.name), ["Work"]);
 	await control("Calendar 1", "button", "Remove").click();
 	assert.deepEqual(plugin.settings.calendars, []);
 	assert.deepEqual(loadGraftSettings(saves.at(-1)).calendars, []);
@@ -199,11 +208,11 @@ test("calendars start empty and can be added, edited, reordered, and removed", a
 
 test("calendar rows reject missing names, duplicate names, and bad URLs without echoing them", async () => {
 	const { plugin, control, saves, row } = fixture();
-	const fill = (rowName, name, url) => {
-		const [nameInput, urlInput] = row(rowName).controls.filter((item) => item.kind === "text");
+	const fill = (rowName: any, name: any, url: any) => {
+		const [nameInput, urlInput] = row(rowName).controls.filter((item: any) => item.kind === "text");
 		nameInput.change(name); urlInput.change(url);
 	};
-	const message = (rowName) => row(rowName).descEl.children[0].text;
+	const message = (rowName: any) => row(rowName).descEl.children[0].text;
 	fill("New calendar", " ", "https://example.com/a.ics");
 	await control("New calendar", "button", "Add calendar").click();
 	assert.match(message("New calendar"), /Enter a calendar name/);
@@ -247,7 +256,7 @@ test("filename conventions normalize domains and persist style, order, and remov
 	control("Filename rule 1", "dropdown").change("initialLast");
 	await control("Filename rule 1", "button", "Save").click();
 	await control("Filename rule 1", "button", "Down").click();
-	assert.deepEqual(plugin.settings.personFilenameRules.map((rule) => rule.domain), ["example.org", "example.com"]);
+	assert.deepEqual(plugin.settings.personFilenameRules.map((rule: any) => rule.domain), ["example.org", "example.com"]);
 	assert.equal(plugin.settings.personFilenameRules[1].style, "initialLast");
 	await control("Filename rule 1", "button", "Remove").click();
 	assert.equal(plugin.settings.personFilenameRules.length, 1);
@@ -258,9 +267,9 @@ test("plugin settings writes remain ordered, use snapshots, and recover after fa
 	plugin.loadData = async () => ({ daysBack: 0 });
 	await plugin.loadSettings();
 	assert.equal(plugin.settings.daysBack, 0);
-	const writes = [];
-	let release;
-	plugin.saveData = async (snapshot) => {
+	const writes: any[] = [];
+	let release: any;
+	plugin.saveData = async (snapshot: any) => {
 		writes.push(snapshot.daysBack);
 		if (writes.length === 1) await new Promise((resolve) => { release = resolve; });
 	};
@@ -277,7 +286,7 @@ test("plugin settings writes remain ordered, use snapshots, and recover after fa
 	plugin.saveData = async () => { throw new Error("synthetic private error"); };
 	await plugin.saveSettings();
 	assert.equal(notices.at(-1).includes("synthetic private error"), false);
-	plugin.saveData = async (snapshot) => { writes.push(snapshot.daysBack); };
+	plugin.saveData = async (snapshot: any) => { writes.push(snapshot.daysBack); };
 	await plugin.saveSettings();
 	assert.deepEqual(writes, [1, 2, 3]);
 });
@@ -332,9 +341,9 @@ test("matching and type properties warn that renaming does not update existing n
 
 test("extra Meeting properties can be added, edited, reordered, removed, and rejected on conflict", async () => {
 	const { plugin, control, saves, row } = fixture();
-	const add = async (key, value, update = false) => {
+	const add = async (key: any, value: any, update = false) => {
 		control("New extra property", "text").change(key);
-		const values = row("New extra property").controls.filter((item) => item.kind === "text");
+		const values = row("New extra property").controls.filter((item: any) => item.kind === "text");
 		values[1].change(value);
 		control("New extra property", "toggle").change(update);
 		await control("New extra property", "button", "Add").click();
@@ -351,13 +360,13 @@ test("extra Meeting properties can be added, edited, reordered, removed, and rej
 		{ key: "orgs", value: "{{companies}}", updateOnSync: true },
 	]);
 	assert.equal(saves.length, 2);
-	row("Extra property 1").controls.filter((item) => item.kind === "text")[1].change("plain");
+	row("Extra property 1").controls.filter((item: any) => item.kind === "text")[1].change("plain");
 	await control("Extra property 1", "button", "Save").click();
 	await control("Extra property 2", "button", "Up").click();
-	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field) => field.key)], ["orgs", "tags"]);
+	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field: any) => field.key)], ["orgs", "tags"]);
 	assert.equal(plugin.settings.schema.meetingExtras[1].value, "plain");
 	await control("Extra property 1", "button", "Remove").click();
-	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field) => field.key)], ["tags"]);
+	assert.deepEqual([...plugin.settings.schema.meetingExtras.map((field: any) => field.key)], ["tags"]);
 });
 
 test("schema presets replace the whole schema and save", async () => {
@@ -383,7 +392,7 @@ test("schema section stays open and keeps scroll across re-renders", async () =>
 	assert.equal(details().open, true);
 	assert.equal(tab.containerEl.scrollTop, 240);
 	control("New extra property", "text").change("tags");
-	row("New extra property").controls.filter((item) => item.kind === "text")[1].change('["Meeting"]');
+	row("New extra property").controls.filter((item: any) => item.kind === "text")[1].change('["Meeting"]');
 	await control("New extra property", "button", "Add").click();
 	assert.equal(details().open, true);
 	assert.equal(tab.containerEl.scrollTop, 240);
@@ -424,7 +433,7 @@ test("every section and every Note schema sub-group is a collapsible details ele
 	for (const id of [...TOP, ...SUB]) {
 		const details = group(tab, id);
 		assert.equal(details.tag, "details", id);
-		assert.ok(details.children.some((child) => child.tag === "summary" && child.text), id);
+		assert.ok(details.children.some((child: any) => child.tag === "summary" && child.text), id);
 	}
 	assert.equal(group(tab, "schema").open, false);
 	assert.equal(group(tab, "schema.types").open, false);
@@ -531,7 +540,7 @@ test("open and closed state survives re-renders from saving, moving and removing
 	const state = () => ids.map((id) => group(tab, id).open);
 	assert.deepEqual(state(), want);
 	for (const [name, url] of [["Work", "https://example.com/work.ics"], ["Home", "https://example.com/home.ics"]]) {
-		const [nameInput, urlInput] = row("New calendar").controls.filter((item) => item.kind === "text");
+		const [nameInput, urlInput] = row("New calendar").controls.filter((item: any) => item.kind === "text");
 		nameInput.change(name); urlInput.change(url);
 		await control("New calendar", "button", "Add calendar").click();
 		assert.deepEqual(state(), want);
@@ -637,13 +646,13 @@ test("errors in a nested schema group keep it and its parent visible", async () 
 
 test("the tab has no plugin-name title and its section headings are Setting headings in order", () => {
 	const { tab } = fixture();
-	const tags = [];
-	walk(tab.containerEl, (child) => { if (child.tag) tags.push(child.tag); });
+	const tags: any[] = [];
+	walk(tab.containerEl, (child: any) => { if (child.tag) tags.push(child.tag); });
 	assert.equal(tags.includes("h2"), false);
 	assert.equal(tags.includes("h3"), false);
 	assert.ok(byClass(tab, "graft-intro"));
-	const headings = [];
-	walk(tab.containerEl, (child) => { if (child.isHeading) headings.push(child.name); });
+	const headings: any[] = [];
+	walk(tab.containerEl, (child: any) => { if (child.isHeading) headings.push(child.name); });
 	assert.deepEqual(headings, ["Start here", "Title skip rules", "Person filename conventions"]);
 });
 
@@ -671,24 +680,24 @@ test("collapse state survives a re-render that rebuilds the headings", async () 
 	assert.equal(row("Title skip rules").isHeading, true);
 });
 
-function mockSecrets(initial = {}, failOn) {
+function mockSecrets(initial: any = {}, failOn?: any) {
 	const secrets = new Map(Object.entries(initial));
 	return {
 		secrets,
-		getSecret(id) { if (failOn === "get") throw new Error("synthetic storage failure"); return secrets.get(id) ?? null; },
-		setSecret(id, value) { if (failOn === "set") throw new Error("synthetic storage failure"); secrets.set(id, value); },
+		getSecret(id: any) { if (failOn === "get") throw new Error("synthetic storage failure"); return secrets.get(id) ?? null; },
+		setSecret(id: any, value: any) { if (failOn === "set") throw new Error("synthetic storage failure"); secrets.set(id, value); },
 	};
 }
-function plugin(secretStorage, data) {
+function plugin(secretStorage: any, data: any) {
 	const instance = new GraftPlugin();
 	instance.app = { secretStorage };
 	instance.loadData = async () => data;
 	instance.saved = [];
-	instance.saveData = async (value) => { instance.saved.push(JSON.parse(JSON.stringify(value))); };
+	instance.saveData = async (value: any) => { instance.saved.push(JSON.parse(JSON.stringify(value))); };
 	return instance;
 }
 const FEED = "https://example.com/private-feed.ics";
-const saved = (instance) => JSON.stringify(instance.saved);
+const saved = (instance: any) => JSON.stringify(instance.saved);
 
 test("with secret storage, saving keeps the URL out of data.json and loading restores it", async () => {
 	const secretStorage = mockSecrets();
@@ -753,7 +762,7 @@ test("a storage error keeps the settings and the notice never shows the URL", as
 });
 
 test("the Calendars section says where URLs are stored", () => {
-	const helps = (tab) => { const found = []; walk(tab.containerEl, (child) => { if (child.cls === "graft-help") found.push(child.text); }); return found; };
+	const helps = (tab: any) => { const found: any[] = []; walk(tab.containerEl, (child: any) => { if (child.cls === "graft-help") found.push(child.text); }); return found; };
 	assert.ok(helps(fixture().tab).includes("URLs are stored in the plugin's data file on this version of Obsidian."));
 	const withStorage = helps(fixture({ secretStorage: mockSecrets() }).tab);
 	assert.ok(withStorage.includes("URLs are kept in Obsidian's secret storage on this device, not in the plugin's data file."));
@@ -767,12 +776,12 @@ test("a calendar with no URL on this device says so on its row", () => {
 	] });
 	assert.equal(row("Calendar 1").description, "No feed address on this device. Enter it again.");
 	assert.ok(!row("Calendar 2").description);
-	assert.equal(row("Calendar 2").controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
+	assert.equal(row("Calendar 2").controls.filter((item: any) => item.kind === "text")[1].inputEl.type, "password");
 });
 
-function startBlock(tab) {
-	let heading;
-	walk(tab.containerEl, (child) => { if (child.isHeading && child.name === "Start here") heading = child; });
+function startBlock(tab: any) {
+	let heading: any;
+	walk(tab.containerEl, (child: any) => { if (child.isHeading && child.name === "Start here") heading = child; });
 	return { heading, steps: byClass(tab, "graft-start-steps") };
 }
 
@@ -788,14 +797,14 @@ test("the start-here block shows with no calendars, in order, without a URL or l
 	const kids = tab.containerEl.children;
 	assert.ok(kids.indexOf(heading) < kids.indexOf(steps));
 	assert.ok(kids.indexOf(steps) < kids.indexOf(group(tab, "calendars")));
-	const text = steps.children.map((item) => item.text).join(" ");
+	const text = steps.children.map((item: any) => item.text).join(" ");
 	assert.doesNotMatch(text, /https?:|www\./i);
-	assert.equal(steps.children.some((item) => item.children.length), false);
+	assert.equal(steps.children.some((item: any) => item.children.length), false);
 });
 
 test("the start-here block goes once a calendar exists and returns when the last is removed", async () => {
 	const { tab, control, row } = fixture();
-	row("New calendar").controls.filter((item) => item.kind === "text").forEach((item, i) => item.change(["Work", "https://example.com/work.ics", ""][i]));
+	row("New calendar").controls.filter((item: any) => item.kind === "text").forEach((item: any, i: any) => item.change(["Work", "https://example.com/work.ics", ""][i]));
 	await control("New calendar", "button", "Add calendar").click();
 	assert.equal(startBlock(tab).heading, undefined);
 	assert.equal(startBlock(tab).steps, undefined);

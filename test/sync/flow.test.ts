@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, before } from "node:test";
 import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
@@ -6,78 +6,86 @@ import { loadGraftSettings } from "../../src/config/settings.ts";
 
 const now = new Date("2026-10-04T12:00:00Z");
 class Clock extends Date {
-	constructor(...args) { super(...(args.length ? args : [now.getTime()])); }
+	constructor(...args: any[]) { super(...((args.length ? args : [now.getTime()]) as [])); }
 	static now() { return now.getTime(); }
 }
 class TFile {
-	constructor(path) { this.path = path; this.basename = path.split("/").at(-1).slice(0, -3); }
+	[key: string]: any;
+	constructor(path: any) { this.path = path; this.basename = path.split("/").at(-1).slice(0, -3); }
 }
 class Element {
-	children = []; listeners = {}; text = "";
-	createEl(tag, options = {}) { const child = new Element(); child.tag = tag; child.text = options.text ?? ""; this.children.push(child); return child; }
-	addEventListener(name, callback) { this.listeners[name] = callback; }
+	tag = ""; children: any[] = []; listeners: Record<string, any> = {}; text = "";
+	createEl(tag: any, options: any = {}) { const child = new Element(); child.tag = tag; child.text = options.text ?? ""; this.children.push(child); return child; }
+	addEventListener(name: any, callback: any) { this.listeners[name] = callback; }
 	empty() { this.children = []; }
 }
-const modals = [];
+const modals: any[] = [];
 class Modal {
+	[key: string]: any;
 	contentEl = new Element();
-	constructor(app) { this.app = app; }
-	setTitle(title) { this.title = title; return this; }
+	constructor(app: any) { this.app = app; }
+	setTitle(title: any) { this.title = title; return this; }
 	open() { modals.push(this); this.onOpen(); }
 	close() { this.closed = true; this.onClose(); }
 }
-const notices = [];
-class Notice { constructor(message) { notices.push(message); } }
+const notices: any[] = [];
+class Notice { constructor(message: any) { notices.push(message); } }
 class Plugin {
-	constructor(app) { this.app = app; this.commands = []; }
-	addCommand(command) { this.commands.push(command); }
+	[key: string]: any;
+	constructor(app: any) { this.app = app; this.commands = []; }
+	addCommand(command: any) { this.commands.push(command); }
 	addSettingTab() {}
 	async loadData() { return {}; }
 }
 class PluginSettingTab {}
-const feeds = new Map();
-const obsidian = { TFile, Modal, Notice, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value) => JSON.stringify(value) + "\n", requestUrl: async ({ url }) => ({ status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
-async function load(entry) {
+const feeds = new Map<string, string>();
+const obsidian = { TFile, Modal, Notice, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => ({ status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
+async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
-	const module = { exports: {} };
+	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, Date: Clock });
 	return module.exports;
 }
-const { prepareSync, applySync } = await load("src/sync/flow.ts");
-const { default: GraftPlugin } = await load("src/main.ts");
-const clean = (value) => JSON.parse(JSON.stringify(value));
-function note(fields, body = "") { return `---\n${JSON.stringify(fields)}\n---\n${body}`; }
-function fields(text) { return JSON.parse(text.match(/^---\n(.*?)\n---/s)[1]); }
-function calendar(uid, title = "Synthetic meeting", extra = "") {
+let prepareSync: any;
+let applySync: any;
+let GraftPlugin: any;
+before(async () => {
+	({ prepareSync, applySync } = await load("src/sync/flow.ts"));
+	({ default: GraftPlugin } = await load("src/main.ts"));
+});
+const clean = (value: any) => JSON.parse(JSON.stringify(value));
+function note(fields: any, body = "") { return `---\n${JSON.stringify(fields)}\n---\n${body}`; }
+function fields(text: any) { return JSON.parse(text.match(/^---\n([\s\S]*?)\n---/)![1]); }
+function calendar(uid: any, title = "Synthetic meeting", extra = "") {
 	return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Example//Graft//EN\r\nBEGIN:VEVENT\r\nUID:${uid}\r\nDTSTART:20261004T140000Z\r\nDTEND:20261004T143000Z\r\nSUMMARY:${title}\r\nORGANIZER;CN=Alex Example:mailto:alex@example.com\r\nATTENDEE;CN=Pat Example:mailto:pat@example.com\r\nDESCRIPTION:New agenda\r\n${extra}END:VEVENT\r\nEND:VCALENDAR\r\n`;
 }
 function fixture() {
-	const files = new Map(); const texts = new Map(); const writes = [];
-	function put(path, text) { files.set(path, new TFile(path)); texts.set(path, text); }
+	const files = new Map<string, any>(); const texts = new Map<string, any>(); const writes: string[] = [];
+	function put(path: any, text: any) { files.set(path, new TFile(path)); texts.set(path, text); }
 	const app = {
 		vault: {
 			getMarkdownFiles: () => [...files.values()].filter((file) => file instanceof TFile),
-			getAbstractFileByPath: (path) => files.get(path) ?? null,
-			async read(file) { if (!texts.has(file.path)) throw new Error("Missing synthetic file"); return texts.get(file.path); },
-			async create(path, text) { assert.equal(files.has(path), false); put(path, text); writes.push(path); return files.get(path); },
-			async createFolder(path) { assert.equal(files.has(path), false); files.set(path, { path }); },
-			async process(file, update) { texts.set(file.path, update(texts.get(file.path))); writes.push(file.path); },
+			getAbstractFileByPath: (path: any) => files.get(path) ?? null,
+			async read(file: any) { if (!texts.has(file.path)) throw new Error("Missing synthetic file"); return texts.get(file.path); },
+			async create(path: any, text: any) { assert.equal(files.has(path), false); put(path, text); writes.push(path); return files.get(path); },
+			async createFolder(path: any) { assert.equal(files.has(path), false); files.set(path, { path }); },
+			async process(file: any, update: any) { texts.set(file.path, update(texts.get(file.path))); writes.push(file.path); },
 		},
-		fileManager: { async processFrontMatter(file, update) { const text = texts.get(file.path); const data = fields(text); update(data); texts.set(file.path, note(data, text.split(/\n---\n/)[1])); writes.push(file.path); } },
-		workspace: { onLayoutReady(callback) { this.ready = callback; } },
+		fileManager: { async processFrontMatter(file: any, update: any) { const text = texts.get(file.path); const data = fields(text); update(data); texts.set(file.path, note(data, text.split(/\n---\n/)[1])); writes.push(file.path); } },
+		workspace: { ready: undefined as any, onLayoutReady(callback: any) { this.ready = callback; } },
 	};
 	const settings = loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } }, daysBack: 0, daysAhead: 2 });
-	const fetch = async (url) => url.includes("google") ? calendar("google@example.com", "Google sample", "RRULE:FREQ=DAILY;COUNT=2\r\n") : calendar("outlook@example.com", "Outlook sample");
+	const fetch = async (url: any) => url.includes("google") ? calendar("google@example.com", "Google sample", "RRULE:FREQ=DAILY;COUNT=2\r\n") : calendar("outlook@example.com", "Outlook sample");
 	return { app, settings, fetch, files, texts, writes, put };
 }
 
-const calendarEntry = (name, type, invitedAs) => ({ name, type, url: `https://example.com/${name.toLowerCase()}.ics`, invitedAs });
+const calendarEntry = (name: any, type: any, invitedAs: any): any => ({ name, type, url: `https://example.com/${name.toLowerCase()}.ics`, invitedAs });
 
 test("settings saved with the old fixed feeds sync as two calendars", async () => {
 	const f = fixture();
 	assert.deepEqual(clean(f.settings.calendars.map(({ name, invitedAs }) => [name, invitedAs])), [["Google", "one@example.com"], ["Outlook", "two@example.com"]]);
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
-	const invitedAs = prepared.preview.newMeetings.map(({ note }) => note.frontmatter.invited_as);
+	const invitedAs = prepared.preview.newMeetings.map(({ note }: any) => note.frontmatter.invited_as);
 	assert.deepEqual(clean(invitedAs).sort(), ["one@example.com", "one@example.com", "two@example.com"]);
 });
 
@@ -93,8 +101,8 @@ test("sync with no calendars asks for one and writes nothing", async () => {
 test("sync with one calendar reads only that calendar", async () => {
 	const f = fixture();
 	f.settings.calendars = [calendarEntry("Outlook", "outlook", "two@example.com")];
-	const requested = [];
-	const prepared = await prepareSync(f.app, f.settings, async (url) => { requested.push(url); return f.fetch(url); }, now);
+	const requested: string[] = [];
+	const prepared = await prepareSync(f.app, f.settings, async (url: any) => { requested.push(url); return f.fetch(url); }, now);
 	assert.deepEqual(requested, ["https://example.com/outlook.ics"]);
 	assert.equal(prepared.preview.newMeetings.length, 1);
 	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.invited_as, "two@example.com");
@@ -105,9 +113,9 @@ test("sync with one calendar reads only that calendar", async () => {
 test("several calendars each write their own invited_as, even with the same type", async () => {
 	const f = fixture();
 	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Team", "google", "team@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
-	const fetch = async (url) => calendar(`${url.split("/").at(-1)}`, `Meeting from ${url.split("/").at(-1)}`);
+	const fetch = async (url: any) => calendar(`${url.split("/").at(-1)}`, `Meeting from ${url.split("/").at(-1)}`);
 	const prepared = await prepareSync(f.app, f.settings, fetch, now);
-	const byTitle = Object.fromEntries(prepared.preview.newMeetings.map(({ note }) => [note.frontmatter.title, note.frontmatter.invited_as]));
+	const byTitle = Object.fromEntries(prepared.preview.newMeetings.map(({ note }: any) => [note.frontmatter.title, note.frontmatter.invited_as]));
 	assert.deepEqual(clean(byTitle), { "Meeting from work.ics": "work@example.com", "Meeting from team.ics": "team@example.com", "Meeting from home.ics": "home@example.com" });
 	assert.equal(prepared.canApply, true);
 	await applySync(f.app, prepared);
@@ -116,12 +124,12 @@ test("several calendars each write their own invited_as, even with the same type
 test("one event in several calendars becomes one Meeting note from the earliest calendar", async () => {
 	const f = fixture();
 	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Home", "outlook", "home@example.com")];
-	const fetch = async (url) => calendar("shared@example.com", url.includes("work") ? "Shared meeting" : "Shared meeting copy");
+	const fetch = async (url: any) => calendar("shared@example.com", url.includes("work") ? "Shared meeting" : "Shared meeting copy");
 	const prepared = await prepareSync(f.app, f.settings, fetch, now);
 	assert.equal(prepared.preview.newMeetings.length, 1);
 	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.title, "Shared meeting");
 	assert.equal(prepared.preview.newMeetings[0].note.frontmatter.invited_as, "work@example.com");
-	assert.deepEqual(clean(prepared.preview.skipped.map(({ event, reason }) => [event.source, reason])), [["Home", "Same event as one in Work"]]);
+	assert.deepEqual(clean(prepared.preview.skipped.map(({ event, reason }: any) => [event.source, reason])), [["Home", "Same event as one in Work"]]);
 	assert.equal(prepared.canApply, true);
 	await applySync(f.app, prepared);
 	assert.equal(f.writes.filter((path) => path.startsWith("Meetings/")).length, 1);
@@ -129,8 +137,8 @@ test("one event in several calendars becomes one Meeting note from the earliest 
 	f.settings.calendars.reverse();
 	const reordered = await prepareSync(f.app, f.settings, fetch, now);
 	assert.equal(reordered.preview.updates.length, 1);
-	assert.deepEqual(clean(reordered.preview.updates[0].changes.map(({ field, after }) => [field, after]).filter(([field]) => field === "invited_as" || field === "title")), [["title", "Shared meeting copy"], ["invited_as", "home@example.com"]]);
-	assert.equal(reordered.preview.warnings.some((item) => item.kind === "vanished-event"), false);
+	assert.deepEqual(clean(reordered.preview.updates[0].changes.map(({ field, after }: any) => [field, after]).filter(([field]: any) => field === "invited_as" || field === "title")), [["title", "Shared meeting copy"], ["invited_as", "home@example.com"]]);
+	assert.equal(reordered.preview.warnings.some((item: any) => item.kind === "vanished-event"), false);
 	await applySync(f.app, reordered);
 });
 
@@ -148,7 +156,7 @@ test("an existing Meeting note for a shared event is updated once, not reported 
 test("a failing calendar is named in the preview error and its URL is never shown", async () => {
 	const f = fixture();
 	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com"), calendarEntry("Broken", "outlook", "broken@example.com")];
-	const fetch = async (url) => { if (url.includes("broken")) throw new Error(url); return calendar("work@example.com", "Work meeting"); };
+	const fetch = async (url: any) => { if (url.includes("broken")) throw new Error(url); return calendar("work@example.com", "Work meeting"); };
 	const prepared = await prepareSync(f.app, f.settings, fetch, now);
 	assert.equal(prepared.canApply, false);
 	assert.deepEqual(clean(prepared.preview.errors), [{ feed: "Broken", message: "Calendar feed could not be fetched or parsed." }]);
@@ -167,7 +175,7 @@ test("vanished events are checked against every configured calendar's identity",
 	f.put("Meetings/Gone.md", note({ type: "Meeting", ics_uid: "gone@example.com", title: "Gone", date: "2026-10-04", invited_as: "home@example.com" }));
 	f.put("Meetings/Other.md", note({ type: "Meeting", ics_uid: "other@example.com", title: "Other", date: "2026-10-04", invited_as: "removed@example.com" }));
 	const prepared = await prepareSync(f.app, f.settings, async () => calendar("here@example.com"), now);
-	assert.deepEqual(clean(prepared.preview.warnings.filter((item) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
 });
 
 test("two feeds preview without writes, apply matches preview, and repeat sync reuses stubs", async () => {
@@ -187,7 +195,7 @@ test("two feeds preview without writes, apply matches preview, and repeat sync r
 	assert.equal(again.preview.newMeetings.length, 0);
 	assert.equal(again.preview.personStubs.length, 0);
 	assert.equal(again.preview.seriesStubs.length, 0);
-	assert.equal(again.preview.updates.every((item) => item.changes.length === 0), true);
+	assert.equal(again.preview.updates.every((item: any) => item.changes.length === 0), true);
 	const count = f.writes.length;
 	await applySync(f.app, again);
 	assert.equal(f.writes.length, count);
@@ -203,7 +211,7 @@ test("preview feature flags come from settings", async () => {
 	];
 	for (const [override, expected] of cases) {
 		const f = fixture();
-		if (override.ignoreListPath) f.put(override.ignoreListPath, "");
+		if ((override as any).ignoreListPath) f.put((override as any).ignoreListPath, "");
 		const settings = { ...f.settings, ...override };
 		const prepared = await prepareSync(f.app, settings, f.fetch, now);
 		assert.deepEqual(clean(prepared.preview.features), expected);
@@ -218,7 +226,7 @@ test("updates preserve handwritten fields and body, use existing Series agenda a
 	f.put("Series/Existing.md", note({ type: "Series", google_recurring_event_id: "google@example.com" }, "## Standing Agenda\n\nStanding example"));
 	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04", participants: ["[[Manual]]"], actual_start: "13:59" }, "## Invite Agenda\n\nOld agenda\n\n# Human Notes (yay)\nKeep this"));
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
-	assert.equal(prepared.preview.warnings.some((item) => item.kind === "unresolved-company"), true);
+	assert.equal(prepared.preview.warnings.some((item: any) => item.kind === "unresolved-company"), true);
 	assert.ok(prepared.preview.newMeetings[0].note.body.includes("Standing example"));
 	await applySync(f.app, prepared);
 	const actual = fields(f.texts.get("Meetings/Original.md"));
@@ -238,7 +246,7 @@ test("with Company linking off there is no Company matching, warning or company 
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.deepEqual(clean(prepared.input.companies), []);
 	assert.equal(prepared.input.strictCompanyLinks, false);
-	assert.equal(prepared.preview.warnings.some((item) => item.kind === "unresolved-company"), false);
+	assert.equal(prepared.preview.warnings.some((item: any) => item.kind === "unresolved-company"), false);
 	assert.ok(prepared.input.personStubs.length > 0);
 	for (const { stub } of prepared.input.personStubs) assert.equal("company" in stub.frontmatter, false);
 	for (const { note: created } of prepared.preview.newMeetings) assert.equal("companies" in created.frontmatter, false);
@@ -253,7 +261,7 @@ test("with Company linking on a new Person stub links the matching Company and s
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(prepared.input.strictCompanyLinks, true);
 	assert.equal(prepared.input.companies.length, 1);
-	const linked = prepared.input.personStubs.filter(({ stub }) => stub.companyLinks.length);
+	const linked = prepared.input.personStubs.filter(({ stub }: any) => stub.companyLinks.length);
 	assert.ok(linked.length > 0);
 	for (const { stub } of linked) assert.deepEqual(clean(stub.frontmatter.company), ["[[Example Co]]"]);
 	for (const { stub } of prepared.input.personStubs) assert.ok("company" in stub.frontmatter);
@@ -264,14 +272,14 @@ test("a matched Meeting note without the invite heading warns, is left unchanged
 	const body = "# Human Notes (yay)\nKeep this";
 	f.put("Meetings/Original.md", note({ type: "Meeting", ics_uid: "outlook@example.com", title: "Old title", date: "2026-10-04" }, body));
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
-	assert.deepEqual(clean(prepared.preview.warnings.filter((item) => item.kind === "missing-invite-heading")), [{ kind: "missing-invite-heading", subject: "Meetings/Original.md" }]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "missing-invite-heading")), [{ kind: "missing-invite-heading", subject: "Meetings/Original.md" }]);
 	assert.equal(prepared.canApply, true);
 	await applySync(f.app, prepared);
 	assert.equal(fields(f.texts.get("Meetings/Original.md")).title, "Outlook sample");
 	assert.ok(f.texts.get("Meetings/Original.md").endsWith(body));
 	assert.equal(f.texts.get("Meetings/Original.md").includes("New agenda"), false);
 	const fresh = await prepareSync(f.app, f.settings, f.fetch, now);
-	assert.equal(fresh.preview.warnings.some((item) => item.kind === "missing-invite-heading" && item.subject !== "Meetings/Original.md"), false);
+	assert.equal(fresh.preview.warnings.some((item: any) => item.kind === "missing-invite-heading" && item.subject !== "Meetings/Original.md"), false);
 });
 
 test("a hand-entered channel survives repeat syncs under the original schema", async () => {
@@ -283,7 +291,7 @@ test("a hand-entered channel survives repeat syncs under the original schema", a
 		assert.equal(actual.title, "Outlook sample");
 		assert.equal(actual.channel, "#team-chat");
 	}
-	const created = [...f.texts].find(([path]) => path !== "Meetings/Original.md" && path.startsWith("Meetings/"));
+	const created: any = [...f.texts].find(([path]) => path !== "Meetings/Original.md" && path.startsWith("Meetings/"));
 	assert.equal(fields(created[1]).channel, "");
 });
 
@@ -291,7 +299,7 @@ test("feed failure or ambiguous people allow preview but prevent all writes", as
 	for (const kind of ["feed", "person"]) {
 		const f = fixture();
 		if (kind === "person") for (const name of ["First", "Second"]) f.put(`People/${name}.md`, note({ type: "Person", email: "alex@example.com" }));
-		const fetch = kind === "feed" ? async (url) => { if (url.includes("outlook")) throw new Error("synthetic private response"); return f.fetch(url); } : f.fetch;
+		const fetch = kind === "feed" ? async (url: any) => { if (url.includes("outlook")) throw new Error("synthetic private response"); return f.fetch(url); } : f.fetch;
 		const prepared = await prepareSync(f.app, f.settings, fetch, now);
 		assert.equal(prepared.canApply, false);
 		await assert.rejects(() => applySync(f.app, prepared), /sync plan has errors/);
@@ -309,7 +317,7 @@ test("filters retain skip reasons and missing events are warnings without cancel
 	f.put("Meetings/Missing.md", note({ type: "Meeting", ics_uid: "missing@example.com", date: "2026-10-04", invited_as: "one@example.com", occurrence_status: "Scheduled" }));
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(prepared.preview.skipped.length, 3);
-	assert.ok(prepared.preview.skipped.every((item) => item.reason));
+	assert.ok(prepared.preview.skipped.every((item: any) => item.reason));
 	assert.deepEqual(clean(prepared.preview.warnings), [{ kind: "vanished-event", subject: "Meetings/Missing.md" }]);
 	await applySync(f.app, prepared);
 	assert.equal(f.writes.length, 0);
@@ -376,8 +384,8 @@ test("event titles with a colon preview and apply with cleaned filenames", async
 	f.fetch = async (url) => url.includes("google") ? calendar("colon@example.com", "Sync: Planning") : calendar("private@example.com", "Private: dentist? [2026] #1");
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(prepared.preview.newMeetings.length, 2);
-	assert.deepEqual(clean(prepared.preview.newMeetings.map((item) => item.path).sort()), ["Meetings/Private - dentist - 2026 - 1 2026-10-04.md", "Meetings/Sync - Planning 2026-10-04.md"]);
-	assert.equal(prepared.preview.newMeetings.find((item) => item.path.startsWith("Meetings/Sync")).note.frontmatter.title, "Sync: Planning");
+	assert.deepEqual(clean(prepared.preview.newMeetings.map((item: any) => item.path).sort()), ["Meetings/Private - dentist - 2026 - 1 2026-10-04.md", "Meetings/Sync - Planning 2026-10-04.md"]);
+	assert.equal(prepared.preview.newMeetings.find((item: any) => item.path.startsWith("Meetings/Sync")).note.frontmatter.title, "Sync: Planning");
 	await applySync(f.app, prepared);
 	assert.ok(f.texts.has("Meetings/Sync - Planning 2026-10-04.md"));
 	const again = await prepareSync(f.app, f.settings, f.fetch, now);
@@ -400,11 +408,11 @@ async function pluginFixture(previewBeforeApply = true) {
 	return { ...f, plugin };
 }
 async function settle() { await new Promise((resolve) => setImmediate(resolve)); }
-function elements(root) { return [root, ...root.children.flatMap(elements)]; }
+function elements(root: any) { return [root, ...root.children.flatMap(elements)]; }
 
 test("commands open a reachable preview, Apply writes once, and parallel sync is blocked", async () => {
 	const f = await pluginFixture(false);
-	assert.deepEqual(clean(f.plugin.commands.map((item) => item.name)), ["Preview sync", "Sync now"]);
+	assert.deepEqual(clean(f.plugin.commands.map((item: any) => item.name)), ["Preview sync", "Sync now"]);
 	const run = f.plugin.runSync(true);
 	await settle();
 	const modal = modals.at(-1);
@@ -449,7 +457,7 @@ test("startup uses the same flow only when enabled, and failures remain generic"
 	assert.equal(notices.at(-1).includes("synthetic private"), false);
 });
 
-function withFeeds(settings) {
+function withFeeds(settings: any) {
 	settings.calendars = [
 		{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "one@example.com" },
 		{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "two@example.com" },
@@ -485,8 +493,8 @@ test("a vault with different folders, types, properties, and headings syncs from
 	assert.equal(prepared.preview.seriesStubs.length, 0);
 	await applySync(f.app, prepared);
 
-	const created = prepared.preview.newMeetings.map(({ path }) => path);
-	assert.ok(created.every((path) => path.startsWith("Calls/")));
+	const created = prepared.preview.newMeetings.map(({ path }: any) => path);
+	assert.ok(created.every((path: any) => path.startsWith("Calls/")));
 	const first = fields(f.texts.get(created[0]));
 	for (const absent of ["type", "title", "date", "ics_uid", "scheduled_start", "occurrence_status", "invite_updated", "week", "Tags"]) assert.equal(absent in first, false, absent);
 	assert.equal(first.kind, "Call");
@@ -509,7 +517,7 @@ test("a vault with different folders, types, properties, and headings syncs from
 	const again = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(again.preview.newMeetings.length, 0);
 	assert.equal(again.preview.personStubs.length, 0);
-	assert.equal(again.preview.updates.every((item) => item.changes.length === 0), true);
+	assert.equal(again.preview.updates.every((item: any) => item.changes.length === 0), true);
 });
 
 test("a fresh install writes the minimal schema without vault-specific properties", async () => {
@@ -535,13 +543,13 @@ const generic = "Graft could not prepare the sync. Check the calendar settings, 
 
 test("deliberate prepare errors show their own message in the notice", async () => {
 	const cases = {
-		"Add a calendar in Graft settings.": (f) => { f.plugin.settings.calendars = []; },
-		"The ignore list is not valid JSON. Fix the file or clear the ignore list setting.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", "{ not json"); },
-		"The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.": (f) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); },
-		"A template file set in Graft settings was not found. Fix the template path or clear it.": (f) => { f.plugin.settings.templates.meeting = "Templates/Missing.md"; },
-		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f) => { f.plugin.settings.folders.meeting = "Bad:folder"; },
-		"Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.": (f) => { f.plugin.settings.meetingFilenamePattern = "Same"; },
-		"More than one Meeting note has the same event UID. Remove the duplicate from the Meeting folder.": (f) => { for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" })); },
+		"Add a calendar in Graft settings.": (f: any) => { f.plugin.settings.calendars = []; },
+		"The ignore list is not valid JSON. Fix the file or clear the ignore list setting.": (f: any) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", "{ not json"); },
+		"The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.": (f: any) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); },
+		"A template file set in Graft settings was not found. Fix the template path or clear it.": (f: any) => { f.plugin.settings.templates.meeting = "Templates/Missing.md"; },
+		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f: any) => { f.plugin.settings.folders.meeting = "Bad:folder"; },
+		"Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.": (f: any) => { f.plugin.settings.meetingFilenamePattern = "Same"; },
+		"More than one Meeting note has the same event UID. Remove the duplicate from the Meeting folder.": (f: any) => { for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" })); },
 	};
 	for (const [message, arrange] of Object.entries(cases)) {
 		const f = await pluginFixture(true);
@@ -574,7 +582,7 @@ test("a calendar with no URL on this device stops the sync with a plain message 
 	f.settings.calendars = [{ id: "a1", name: "Work", type: "google", url: "", invitedAs: "" }, { id: "b2", name: "Home", type: "google", url: "https://example.com/home.ics", invitedAs: "" }];
 	let fetched = 0;
 	await assert.rejects(() => prepareSync(f.app, f.settings, async () => { fetched++; return ""; }, now),
-		(error) => error.message === "No feed address on this device for Work. Open Graft settings and enter it again.");
+		(error: any) => error.message === "No feed address on this device for Work. Open Graft settings and enter it again.");
 	assert.equal(fetched, 0);
 	assert.equal(f.writes.length, 0);
 });
