@@ -716,7 +716,7 @@ test("with secret storage, saving keeps the URL out of data.json and loading res
 
 test("a plain-text URL in old data moves into storage and is saved out of data.json right away", async () => {
 	const secretStorage = mockSecrets();
-	const instance = plugin(secretStorage, { feeds: { google: { url: FEED, invitedAs: "" } } });
+	const instance = plugin(secretStorage, { calendars: [{ id: "google", name: "Google", type: "google", url: FEED, invitedAs: "" }] });
 	await instance.loadSettings();
 	assert.equal(instance.settings.calendars[0].url, FEED);
 	assert.equal(secretStorage.secrets.get(`graft-calendar-${instance.settings.calendars[0].id}`), FEED);

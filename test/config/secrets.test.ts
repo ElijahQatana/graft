@@ -116,9 +116,12 @@ test("a plain-text URL moves into storage once and is gone from the next saved d
 	assert.equal(prepareForSave(settings, store).data.calendars[0].url, "");
 });
 
-test("old fixed Google and Outlook feeds migrate with new ids", () => {
+test("plain-text URLs in saved calendars move into storage", () => {
 	const store = mockStore();
-	const settings = loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics" }, outlook: { url: "https://example.com/outlook.ics" } } });
+	const settings = loadGraftSettings({ calendars: [
+		{ id: "google", name: "Google", type: "google", url: "https://example.com/google.ics" },
+		{ id: "outlook", name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics" },
+	] });
 	assert.equal(hydrateSecrets(settings, store).moved, 2);
 	const saved = prepareForSave(settings, store).data;
 	assert.equal(JSON.stringify(saved).includes("example.com/"), false);

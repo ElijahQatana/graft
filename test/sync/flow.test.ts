@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 import { loadGraftSettings } from "../../src/config/settings.ts";
+import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 
 const now = new Date("2026-10-04T12:00:00Z");
 class Clock extends Date {
@@ -74,14 +75,20 @@ function fixture() {
 		fileManager: { async processFrontMatter(file: any, update: any) { const text = texts.get(file.path); const data = fields(text); update(data); texts.set(file.path, note(data, text.split(/\n---\n/)[1])); writes.push(file.path); } },
 		workspace: { ready: undefined as any, onLayoutReady(callback: any) { this.ready = callback; } },
 	};
-	const settings = loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } }, daysBack: 0, daysAhead: 2 });
+	const settings = loadGraftSettings({
+		calendars: [
+			{ id: "google", name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "one@example.com" },
+			{ id: "outlook", name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "two@example.com" },
+		],
+		schema: ORIGINAL_SCHEMA, companyLinking: true, daysBack: 0, daysAhead: 2,
+	});
 	const fetch = async (url: any) => url.includes("google") ? calendar("google@example.com", "Google sample", "RRULE:FREQ=DAILY;COUNT=2\r\n") : calendar("outlook@example.com", "Outlook sample");
 	return { app, settings, fetch, files, texts, writes, put };
 }
 
 const calendarEntry = (name: any, type: any, invitedAs: any): any => ({ name, type, url: `https://example.com/${name.toLowerCase()}.ics`, invitedAs });
 
-test("settings saved with the old fixed feeds sync as two calendars", async () => {
+test("two calendars sync with their own invited-as identities", async () => {
 	const f = fixture();
 	assert.deepEqual(clean(f.settings.calendars.map(({ name, invitedAs }) => [name, invitedAs])), [["Google", "one@example.com"], ["Outlook", "two@example.com"]]);
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
@@ -94,7 +101,7 @@ test("sync with no calendars asks for one and writes nothing", async () => {
 	f.settings.calendars = [];
 	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /Add a calendar in Graft settings/);
 	assert.equal(f.writes.length, 0);
-	const blank = loadGraftSettings({ feeds: { google: { url: "", invitedAs: "x" }, outlook: { url: " " } } });
+	const blank = loadGraftSettings({ calendars: [] });
 	await assert.rejects(() => prepareSync(f.app, blank, f.fetch, now), /Add a calendar in Graft settings/);
 });
 
@@ -470,6 +477,7 @@ function withFeeds(settings: any) {
 test("a vault with different folders, types, properties, and headings syncs from settings alone", async () => {
 	const f = fixture();
 	f.settings = withFeeds(loadGraftSettings({
+		companyLinking: true,
 		folders: { meeting: "Calls", person: "Contacts", series: "Recurring", company: "Orgs" },
 		schema: {
 			typeField: "kind",

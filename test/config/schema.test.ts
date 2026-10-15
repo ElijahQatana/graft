@@ -6,11 +6,11 @@ import {
 } from "../../src/config/schema.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings } from "../../src/config/settings.ts";
 
-test("new installs get the minimal schema and saved settings without a schema keep the original", () => {
+test("settings without a schema get the minimal schema", () => {
 	assert.deepEqual(loadGraftSettings({}).schema, MINIMAL_SCHEMA);
 	assert.deepEqual(loadGraftSettings(null).schema, MINIMAL_SCHEMA);
 	assert.deepEqual(DEFAULT_SETTINGS.schema, MINIMAL_SCHEMA);
-	assert.deepEqual(loadGraftSettings({ daysBack: 3 }).schema, ORIGINAL_SCHEMA);
+	assert.deepEqual(loadGraftSettings({ daysBack: 3 }).schema, MINIMAL_SCHEMA);
 	assert.deepEqual(loadGraftSettings({ daysBack: 3, schema: {} }).schema, MINIMAL_SCHEMA);
 });
 
@@ -121,7 +121,7 @@ test("status and recurrence values default to the original output and load from 
 	}
 	const { statusValues, recurrenceValues, ...older } = cloneSchema(MINIMAL_SCHEMA);
 	assert.deepEqual(loadSchema(older, MINIMAL_SCHEMA), MINIMAL_SCHEMA);
-	assert.deepEqual(loadGraftSettings({ daysBack: 3 }).schema.statusValues, ORIGINAL_SCHEMA.statusValues);
+	assert.deepEqual(loadGraftSettings({ daysBack: 3 }).schema.statusValues, MINIMAL_SCHEMA.statusValues);
 	const saved = cloneSchema(MINIMAL_SCHEMA);
 	saved.statusValues = { scheduled: "Planned", cancelled: "Called off" };
 	saved.recurrenceValues = { series: "Recurring", oneOff: "Single" };
