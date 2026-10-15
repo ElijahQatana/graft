@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, before } from "node:test";
 import { strict as assert } from "node:assert";
 import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
@@ -8,37 +8,45 @@ import { makeEvent } from "../helpers.ts";
 import { extractSection } from "../../src/util/markdownSections.ts";
 
 class Element {
-	children = [];
-	listeners = {};
-	createEl(tag, options = {}) {
+	tag = "";
+	text = "";
+	children: any[] = [];
+	listeners: Record<string, any> = {};
+	createEl(tag: string, options: any = {}) {
 		const child = new Element();
 		child.tag = tag;
 		child.text = options.text ?? "";
 		this.children.push(child);
 		return child;
 	}
-	addEventListener(name, callback) { this.listeners[name] = callback; }
+	addEventListener(name: string, callback: any) { this.listeners[name] = callback; }
 	empty() { this.children = []; }
 }
 class Modal {
+	[key: string]: any;
 	contentEl = new Element();
-	constructor(app) { this.app = app; }
-	setTitle(title) { this.title = title; return this; }
+	constructor(app: any) { this.app = app; }
+	setTitle(title: string) { this.title = title; return this; }
 	close() { this.closed = true; this.onClose(); }
 }
-async function load(entry) {
+async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
-	const module = { exports: {} };
-	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => ({ Modal, stringifyYaml: (value) => JSON.stringify(value) + "\n" }) });
+	const module: { exports: any } = { exports: {} };
+	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => ({ Modal, stringifyYaml: (value: unknown) => JSON.stringify(value) + "\n" }) });
 	return module.exports;
 }
-const { SyncPreviewModal } = await load("src/preview/modal.ts");
-const { writeMeetingNote } = await load("src/generate/writeMeetingNote.ts");
-const { updateMeetingNote } = await load("src/generate/updateMeetingNote.ts");
-function allElements(root) { return [root, ...root.children.flatMap(allElements)]; }
-function clean(value) { return JSON.parse(JSON.stringify(value)); }
+let SyncPreviewModal: any;
+let writeMeetingNote: any;
+let updateMeetingNote: any;
+before(async () => {
+	({ SyncPreviewModal } = await load("src/preview/modal.ts"));
+	({ writeMeetingNote } = await load("src/generate/writeMeetingNote.ts"));
+	({ updateMeetingNote } = await load("src/generate/updateMeetingNote.ts"));
+});
+function allElements(root: any): any[] { return [root, ...root.children.flatMap(allElements)]; }
+function clean(value: any) { return JSON.parse(JSON.stringify(value)); }
 
-function fixture() {
+function fixture(): any {
 	const event = makeEvent({ summary: "<img src=x onerror=alert(1)>", description: "New agenda" });
 	return {
 		plan: { toProcess: [event], skipped: [{ event: makeEvent({ summary: "Skipped example" }), reason: "Ignored" }], errors: [{ feed: "Outlook", message: "synthetic private response" }] },
@@ -78,16 +86,16 @@ test("empty previews and unchanged meetings are explicit", () => {
 	assert.ok(allElements(modal.contentEl).some((element) => element.text === "No field changes."));
 });
 
-const emptyPreview = (features, counts = {}) => ({
-	newMeetings: Array.from({ length: counts.newMeetings ?? 0 }, (_, i) => ({ path: `Meetings/New ${i}.md`, note: { frontmatter: {}, body: "" } })),
-	updates: Array.from({ length: counts.updates ?? 0 }, (_, i) => ({ path: `Meetings/Old ${i}.md`, changes: [] })),
-	personStubs: Array.from({ length: counts.personStubs ?? 0 }, (_, i) => ({ path: `People/P${i}.md`, stub: { frontmatter: {} } })),
-	seriesStubs: Array.from({ length: counts.seriesStubs ?? 0 }, (_, i) => ({ path: `Series/S${i}.md`, stub: { frontmatter: {} } })),
-	skipped: Array.from({ length: counts.skipped ?? 0 }, (_, i) => ({ event: makeEvent({ summary: `Skip ${i}` }), reason: "Ignored" })),
+const emptyPreview = (features: any, counts: any = {}): any => ({
+	newMeetings: Array.from({ length: counts.newMeetings ?? 0 }, (_: unknown, i: number) => ({ path: `Meetings/New ${i}.md`, note: { frontmatter: {}, body: "" } })),
+	updates: Array.from({ length: counts.updates ?? 0 }, (_: unknown, i: number) => ({ path: `Meetings/Old ${i}.md`, changes: [] })),
+	personStubs: Array.from({ length: counts.personStubs ?? 0 }, (_: unknown, i: number) => ({ path: `People/P${i}.md`, stub: { frontmatter: {} } })),
+	seriesStubs: Array.from({ length: counts.seriesStubs ?? 0 }, (_: unknown, i: number) => ({ path: `Series/S${i}.md`, stub: { frontmatter: {} } })),
+	skipped: Array.from({ length: counts.skipped ?? 0 }, (_: unknown, i: number) => ({ event: makeEvent({ summary: `Skip ${i}` }), reason: "Ignored" })),
 	errors: [], warnings: [], features,
 });
 const features = { personStubs: true, seriesStubs: true, skipped: true };
-const openWithApply = (preview, apply = async () => {}) => {
+const openWithApply = (preview: any, apply = async () => {}) => {
 	const modal = new SyncPreviewModal({}, preview, apply);
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
@@ -130,7 +138,7 @@ test("a blocked plan still shows the incomplete or ambiguous message", () => {
 	}
 });
 
-const summaryOf = (preview) => {
+const summaryOf = (preview: any) => {
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
 	return allElements(modal.contentEl).find((element) => element.text && /Meetings?[,.]/.test(element.text) && !element.text.includes("/")).text;
@@ -149,7 +157,7 @@ test("skipped shows only when filters are on or something was skipped", () => {
 	const on = { ...off, skipped: true };
 	// Duplicate-event skips with no filters configured.
 	const duplicates = emptyPreview(off, { newMeetings: 8, skipped: 8 });
-	duplicates.skipped = duplicates.skipped.map((item) => ({ ...item, reason: "Same event as one in Work" }));
+	duplicates.skipped = duplicates.skipped.map((item: any) => ({ ...item, reason: "Same event as one in Work" }));
 	assert.equal(summaryOf(duplicates), "8 new Meetings, 0 existing Meetings, 8 skipped.");
 	assert.equal(summaryOf(emptyPreview(off, { skipped: 1 })), "0 new Meetings, 0 existing Meetings, 1 skipped.");
 	// Nothing skipped: hidden without filters, a zero with them.
@@ -169,7 +177,7 @@ test("summary and note rows use singular for one and plural for zero or many", (
 	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 1, updates: 1, personStubs: 1, seriesStubs: 1, skipped: 1 })), "1 new Meeting, 1 existing Meeting, 1 Person stub, 1 Series stub, 1 skipped.");
 	assert.equal(summaryOf(emptyPreview(on, { newMeetings: 0, updates: 12, personStubs: 2 })), "0 new Meetings, 12 existing Meetings, 2 Person stubs, 0 Series stubs, 0 skipped.");
 	const preview = emptyPreview(on);
-	preview.updates = [0, 1, 2].map((n) => ({ path: `Meetings/R${n}.md`, changes: Array.from({ length: n }, (_, i) => ({ field: `f${i}`, before: "a", after: "b" })) }));
+	preview.updates = [0, 1, 2].map((n) => ({ path: `Meetings/R${n}.md`, changes: Array.from({ length: n }, (_: unknown, i: number) => ({ field: `f${i}`, before: "a", after: "b" })) }));
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
 	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary").map((element) => element.text);
@@ -180,8 +188,8 @@ test("preview new-note payload matches writeMeetingNote directly", async () => {
 	const source = fixture();
 	source.filenamePattern = "{{date}} {{title}}";
 	const preview = buildSyncPreview(source);
-	const writes = [];
-	const app = { vault: { getAbstractFileByPath: () => null, create(path, content) { writes.push({ path, content }); return { path }; } } };
+	const writes: any[] = [];
+	const app = { vault: { getAbstractFileByPath: () => null, create(path: string, content: string) { writes.push({ path, content }); return { path }; } } };
 	await writeMeetingNote(app, source.meetingFolder, source.meetings[0].input, source.companies, source.filenamePattern);
 	const written = writes[0];
 	assert.equal(written.path, preview.newMeetings[0].path);
@@ -199,8 +207,8 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 		const actualFields = clean(existing.frontmatter);
 		let actualBody = body;
 		const app = {
-			fileManager: { async processFrontMatter(file, update) { update(actualFields); } },
-			vault: { async process(file, update) { actualBody = update(actualBody); } },
+			fileManager: { async processFrontMatter(file: any, update: any) { update(actualFields); } },
+			vault: { async process(file: any, update: any) { actualBody = update(actualBody); } },
 		};
 		await updateMeetingNote(app, { path: existing.path }, source.meetings[0].input, source.companies);
 		for (const change of preview.updates[0].changes.filter((item) => item.field !== "Invite Agenda")) {
@@ -232,29 +240,29 @@ async function loadPlugin(canApply = true) {
 		entryPoints: ["src/main.ts"], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"],
 		plugins: [{ name: "stubs", setup(b) {
 			b.onResolve({ filter: /^\.\/(sync\/flow|ics\/fetch)\.ts$/ }, (args) => ({ path: args.path, namespace: "stub" }));
-			b.onLoad({ filter: /.*/, namespace: "stub" }, (args) => ({ contents: stubs[args.path], loader: "ts" }));
+			b.onLoad({ filter: /.*/, namespace: "stub" }, (args: any) => ({ contents: (stubs as any)[args.path], loader: "ts" }));
 		} }],
 	});
-	const state = { open: new Set(), maxOpen: 0, notices: [], applySync: async () => {} };
+	const state: any = { open: new Set(), maxOpen: 0, notices: [], applySync: async () => {} };
 	class TrackedModal extends Modal {
 		open() { state.open.add(this); state.maxOpen = Math.max(state.maxOpen, state.open.size); this.onOpen(); }
 		close() { state.open.delete(this); super.close(); }
 	}
-	class Plugin { constructor() { this.app = { workspace: { onLayoutReady() {} } }; } addCommand() {} addSettingTab() {} async loadData() { return { previewBeforeApply: true }; } }
-	class Notice { constructor(message) { state.notices.push(message); } }
-	const module = { exports: {} };
+	class Plugin { app: any; constructor() { this.app = { workspace: { onLayoutReady() {} } }; } addCommand() {} addSettingTab() {} async loadData() { return { previewBeforeApply: true }; } }
+	class Notice { constructor(message: string) { state.notices.push(message); } }
+	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, {
 		module, exports: module.exports, Promise, JSON, structuredClone, globalThis: { __applySync: () => state.applySync() },
-		require: () => ({ Modal: TrackedModal, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v) => JSON.stringify(v) }),
+		require: () => ({ Modal: TrackedModal, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
 	});
 	const plugin = new module.exports.default();
 	await plugin.loadSettings();
 	return { plugin, state };
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
-const buttons = (modal) => allElements(modal.contentEl).filter((element) => element.tag === "button");
-const button = (modal, label) => buttons(modal).find((element) => element.text === label);
-const only = (state) => { assert.equal(state.open.size, 1); return [...state.open][0]; };
+const buttons = (modal: any) => allElements(modal.contentEl).filter((element) => element.tag === "button");
+const button = (modal: any, label: string) => buttons(modal).find((element) => element.text === label);
+const only = (state: any) => { assert.equal(state.open.size, 1); return [...state.open][0]; };
 
 test("a second preview cannot open while one is open, however the first is dismissed", async () => {
 	for (const dismiss of ["Close button", "Escape or X", "Apply"]) {
@@ -281,7 +289,7 @@ test("a second preview cannot open while one is open, however the first is dismi
 
 test("dismissing a preview mid-apply does not let another open until apply finishes", async () => {
 	const { plugin, state } = await loadPlugin();
-	let finish;
+	let finish: any;
 	state.applySync = () => new Promise((resolve) => { finish = resolve; });
 	void plugin.runSync(true);
 	await tick();
