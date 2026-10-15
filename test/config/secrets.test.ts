@@ -43,6 +43,29 @@ test("loading gives every calendar a unique id and keeps valid saved ids", () =>
 	assert.ok(ids.every(isCalendarId));
 });
 
+test("an uppercase id, an id with underscores and a duplicate id are replaced on load", () => {
+	const loaded = loadGraftSettings({
+		calendars: [
+			{ id: "Upper", name: "A", type: "google", url: "https://example.com/a.ics" },
+			{ id: "my_cal", name: "B", type: "google", url: "https://example.com/b.ics" },
+			{ id: "same", name: "C", type: "google", url: "https://example.com/c.ics" },
+			{ id: "same", name: "D", type: "google", url: "https://example.com/d.ics" },
+		],
+	});
+	const ids = loaded.calendars.map((item) => item.id);
+	assert.equal(ids[2], "same");
+	assert.equal(new Set(ids).size, 4);
+	assert.ok(ids.every(isCalendarId));
+	assert.ok(ids.every((id) => /^[a-z0-9-]+$/.test(id)));
+});
+
+test("a calendar whose id was replaced has its URL moved into storage so it can be saved", () => {
+	const store = mockStore();
+	const settings = loadGraftSettings({ calendars: [{ id: "My_Cal", name: "A", type: "google", url: "https://example.com/a.ics" }] });
+	assert.deepEqual(hydrateSecrets(settings, store), { moved: 1, failed: 0 });
+	assert.equal(store.secrets.get(secretIdFor(settings.calendars[0].id)), "https://example.com/a.ics");
+});
+
 test("a saved calendar with an id and no URL loads with an empty URL; one without an id is dropped", () => {
 	const loaded = loadGraftSettings({ calendars: [{ id: "abc", name: "A", type: "google" }, { name: "B", type: "google" }] });
 	assert.deepEqual(loaded.calendars.map(({ id, name, url }) => [id, name, url]), [["abc", "A", ""]]);
