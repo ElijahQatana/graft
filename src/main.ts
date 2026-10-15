@@ -6,6 +6,9 @@ import { prepareSync, applySync, type PreparedSync } from "./sync/flow.ts";
 import { UserFacingError } from "./sync/userFacingError.ts";
 import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.ts";
 import { fetchIcs } from "./ics/fetch.ts";
+import { isLoggable, isInsideNoteFolders, logEntryFromPreview } from "./sync/log.ts";
+import { writeSyncLog } from "./sync/logFile.ts";
+import { DateTime } from "luxon";
 
 /** Loads settings and connects the sync commands. */
 export default class GraftPlugin extends Plugin {
@@ -45,7 +48,8 @@ export default class GraftPlugin extends Plugin {
 			const settings: GraftSettings = structuredClone(this.settings);
 			const prepared = await this.whileBusy(previewOnly ? "Graft: checking calendars" : "Graft: syncing", () => prepareSync(this.app, settings, fetchIcs));
 			if (this.unloaded) return;
-			const apply = () => this.applyPrepared(prepared);
+			const direct = !previewOnly && !settings.previewBeforeApply && prepared.canApply;
+			const apply = () => this.applyPrepared(prepared, direct ? "Sync now" : "Apply from preview");
 			if (previewOnly || settings.previewBeforeApply || !prepared.canApply) {
 				await this.showPreview(prepared, apply);
 			} else {
@@ -58,13 +62,33 @@ export default class GraftPlugin extends Plugin {
 		}
 	}
 
-	private async applyPrepared(prepared: PreparedSync) {
+	private async applyPrepared(prepared: PreparedSync, source: string) {
 		if (this.unloaded) return;
 		try {
 			await this.whileBusy("Graft: writing notes", () => applySync(this.app, prepared));
 			new Notice("Graft sync finished.");
+			await this.recordRun(prepared, source);
 		} catch (error) {
-			new Notice(errorMessage(error, "Graft sync stopped. Check the vault and run Preview sync again."));
+			const message = errorMessage(error, "Graft sync stopped. Check the vault and run Preview sync again.");
+			new Notice(message);
+			await this.recordRun(prepared, source, message);
+		}
+	}
+
+	/** Adds the run to the sync log note, if one is set. A problem with the log never stops a sync. */
+	private async recordRun(prepared: PreparedSync, source: string, error?: string) {
+		const { syncLogPath, timezone, folders } = this.settings;
+		if (!syncLogPath) return;
+		try {
+			if (isInsideNoteFolders(syncLogPath, Object.values(folders))) {
+				new Notice("Graft did not write the sync log, because it is inside a note folder. Change the sync log note in Graft settings.");
+				return;
+			}
+			const when = DateTime.now().setZone(timezone).toFormat("yyyy-LL-dd HH:mm");
+			const entry = logEntryFromPreview(prepared.preview, when, source, error);
+			if (isLoggable(entry)) await writeSyncLog(this.app, syncLogPath, entry);
+		} catch {
+			new Notice("Graft could not write the sync log.");
 		}
 	}
 

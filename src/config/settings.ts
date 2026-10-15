@@ -35,6 +35,8 @@ export interface GraftSettings {
 	/** Vault-relative Markdown template paths. Blank selects the built-in body. */
 	templates: { meeting: string; person: string; series: string };
 	ignoreListPath: string;
+	/** Vault path of the note that records each sync that wrote notes or failed. Blank turns the log off. */
+	syncLogPath: string;
 	titleMatchRules: TitleMatchRule[];
 	/** Leading text removed from event titles, ignoring case, such as "FW:". */
 	titlePrefixesToStrip: string[];
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	folders: { meeting: "Meetings", person: "People", series: "Series", company: "Companies" },
 	templates: { meeting: "", person: "", series: "" },
 	ignoreListPath: "",
+	syncLogPath: "",
 	titleMatchRules: [],
 	titlePrefixesToStrip: ["FW:", "Fwd:", "RE:"],
 	personFilenameRules: [],
@@ -157,6 +160,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 		if (typeof value === "string" && isVaultPath(value) && (!value || value.endsWith(".md"))) result.templates[key] = value;
 	}
 	if (typeof input.ignoreListPath === "string" && isVaultPath(input.ignoreListPath)) result.ignoreListPath = input.ignoreListPath;
+	if (typeof input.syncLogPath === "string" && isVaultPath(input.syncLogPath) && (!input.syncLogPath || input.syncLogPath.endsWith(".md"))) result.syncLogPath = input.syncLogPath;
 	if (Array.isArray(input.titleMatchRules) && input.titleMatchRules.every(isTitleRule)) {
 		result.titleMatchRules = input.titleMatchRules.map((rule) => ({ mode: rule.mode, value: rule.value, caseSensitive: rule.caseSensitive ?? false }));
 	}

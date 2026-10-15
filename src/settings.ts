@@ -5,6 +5,7 @@ import {
 	type CalendarSettings,
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
+import { isInsideNoteFolders } from "./sync/log.ts";
 import { attachPathSuggest, type PathKind } from "./ui/pathSuggest.ts";
 import {
 	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isAgendaPlaceholder, isExtraField, isFieldName, isHeading, isTypeValue,
@@ -134,6 +135,12 @@ export class GraftSettingTab extends PluginSettingTab {
 					if (key === "companyLinking") this.display();
 				}));
 		}
+		this.text("Sync log note", "Vault-relative path of a Markdown note where Graft records each sync that wrote notes or stopped with an error, newest last, keeping the latest 200. Blank turns the log off. It lists note links and counts, never feed addresses, and must be outside the Meeting, Person, Series and Company folders.", settings.syncLogPath,
+			(value) => { settings.syncLogPath = value; },
+			(value) => !isVaultPath(value) ? "Use a vault-relative path without parent traversal, or leave blank."
+				: value && !value.endsWith(".md") ? "Use a Markdown (.md) path."
+				: value && isInsideNoteFolders(value, Object.values(settings.folders)) ? "Choose a note outside the Meeting, Person, Series and Company folders."
+				: undefined, false, "markdown");
 		this.schemaSection();
 		this.emptyEl = containerEl.createEl("p", { cls: "graft-help graft-no-results", attr: { role: "status", "aria-live": "polite" } });
 		this.applyFilter();
