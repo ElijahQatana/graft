@@ -249,6 +249,106 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	assert.equal(broken.canApply, false);
 });
 
+test("a one-off range replaces the window for one plan and leaves the settings alone", async () => {
+	const f = fixture();
+	const before = JSON.stringify(f.settings);
+	const wide = await prepareSync(f.app, f.settings, f.fetch, now, { daysBack: 10, daysAhead: 19 });
+	assert.equal(buildWindowLabel(wide.preview.window), "Covers 24 Sep to 23 Oct 2026 (10 days back, 19 ahead).");
+	assert.equal(JSON.stringify(f.settings), before);
+	assert.equal(f.settings.daysBack, 0);
+	const same = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(buildWindowLabel(same.preview.window), "Covers 4 Oct to 6 Oct 2026 (0 days back, 2 ahead).");
+});
+
+test("a one-off range reads the feeds again and plans only events inside it", async () => {
+	const f = fixture();
+	let reads = 0;
+	const fetch = async (url: any) => { reads++; return f.fetch(url); };
+	await prepareSync(f.app, f.settings, fetch, now);
+	await prepareSync(f.app, f.settings, fetch, now, { daysBack: 0, daysAhead: 6 });
+	assert.equal(reads, 4);
+	const day = (date: string) => calendar("one@example.com").replaceAll("20261004", date);
+	const early = await prepareSync(f.app, f.settings, async () => day("20261001"), now, { daysBack: 3, daysAhead: 0 });
+	assert.equal(early.preview.newMeetings.length > 0, true);
+	const outside = await prepareSync(f.app, f.settings, async () => day("20261001"), now);
+	assert.equal(outside.preview.newMeetings.length, 0);
+});
+
+test("a one-off range over 30 days or with bad numbers is refused before any feed is read", async () => {
+	const f = fixture();
+	let reads = 0;
+	const fetch = async (url: any) => { reads++; return f.fetch(url); };
+	await assert.rejects(() => prepareSync(f.app, f.settings, fetch, now, { daysBack: 0, daysAhead: 30 }), /at most 30 days/);
+	await assert.rejects(() => prepareSync(f.app, f.settings, fetch, now, { daysBack: -1, daysAhead: 3 }), /whole numbers/);
+	assert.equal(reads, 0);
+	await prepareSync(f.app, f.settings, fetch, now, { daysBack: 0, daysAhead: 29 });
+	assert.ok(reads > 0);
+});
+
+test("vanished-event warnings follow the range of the preview, on both edges", async () => {
+	const f = fixture();
+	const meeting = (uid: string, date: string) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled" }, "## Invite Agenda\n\nOld");
+	for (const [name, date] of [["Before", "2026-09-30"], ["First", "2026-10-01"], ["Last", "2026-10-07"], ["After", "2026-10-08"]]) f.put(`Meetings/${name}.md`, meeting(`${name.toLowerCase()}@example.com`, date));
+	const feed = async () => calendar("here@example.com");
+	const vanished = async (range?: any) => clean((await prepareSync(f.app, f.settings, feed, now, range)).preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort());
+	assert.deepEqual(await vanished({ daysBack: 3, daysAhead: 3 }), ["Meetings/First.md", "Meetings/Last.md"]);
+	assert.deepEqual(await vanished({ daysBack: 2, daysAhead: 2 }), []);
+	assert.deepEqual(await vanished({ daysBack: 4, daysAhead: 4 }), ["Meetings/After.md", "Meetings/Before.md", "Meetings/First.md", "Meetings/Last.md"].sort());
+	assert.deepEqual(await vanished(), []);
+});
+
+test("a narrower or wider range never cancels a series with an occurrence in range and one out", async () => {
+	const meeting = (uid: string, date: string, extra: any = {}) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled", ...extra }, "## Invite Agenda\n\nOld");
+	const setup = () => {
+		const f = fixture();
+		f.settings.cancelVanishedSeries = true;
+		f.put("Meetings/Series Later.md", meeting("series@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
+		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-06"));
+		return f;
+	};
+	// The feed has this series on 4 and 5 Oct only; the note for 6 Oct is a later date the feed no longer lists.
+	const feed = async () => calendar("series@example.com", "Series", "RRULE:FREQ=DAILY;COUNT=2\r\n");
+	const status = async (range: any, path: string) => {
+		const f = setup();
+		const prepared = await prepareSync(f.app, f.settings, feed, now, range);
+		return { cancelled: prepared.preview.updates.some((item: any) => item.path === path && item.changes.some((change: any) => change.after === "Cancelled")), warned: prepared.preview.warnings.some((item: any) => item.subject === path) };
+	};
+	// 6 Oct is the last day of this range: the series still has occurrences seen, so only a warning.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Series Later.md"), { cancelled: false, warned: true });
+	// 6 Oct is one day past the range: nothing is said about it.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Series Later.md"), { cancelled: false, warned: false });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 29 }, "Meetings/Series Later.md"), { cancelled: false, warned: true });
+	// A series with nothing left in the range is cancelled only when its date is inside the range.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone.md"), { cancelled: true, warned: false });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Gone.md"), { cancelled: false, warned: false });
+});
+
+test("a failed feed or an ambiguous person still blocks Apply on a one-off range", async () => {
+	const range = { daysBack: 1, daysAhead: 10 };
+	const failing = fixture();
+	const broken = await prepareSync(failing.app, failing.settings, async (url: any) => { if (url.includes("outlook")) throw new Error("synthetic"); return failing.fetch(url); }, now, range);
+	assert.equal(broken.canApply, false);
+	await assert.rejects(() => applySync(failing.app, broken), /sync plan has errors/);
+	const people = fixture();
+	for (const name of ["First", "Second"]) people.put(`People/${name}.md`, note({ type: "Person", email: "alex@example.com" }));
+	const ambiguous = await prepareSync(people.app, people.settings, people.fetch, now, range);
+	assert.equal(ambiguous.canApply, false);
+	assert.equal(failing.writes.length + people.writes.length, 0);
+});
+
+test("Apply on a one-off range writes that range's plan, and a repeat sync changes nothing", async () => {
+	const f = fixture();
+	const range = { daysBack: 0, daysAhead: 9 };
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now, range);
+	assert.equal(prepared.canApply, true);
+	await applySync(f.app, prepared);
+	const written = f.writes.length;
+	assert.ok(written > 0);
+	const repeat = await prepareSync(f.app, f.settings, f.fetch, now, range);
+	assert.equal(repeat.preview.newMeetings.length, 0);
+	assert.equal(repeat.preview.updates.every((item: any) => item.changes.length === 0), true);
+});
+
 test("an invite moved to another day updates the note's date without a vanished-event warning", async () => {
 	const f = fixture();
 	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];

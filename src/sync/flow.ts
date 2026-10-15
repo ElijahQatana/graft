@@ -18,6 +18,7 @@ import { isInFolder, uniqueName } from "../util/vaultPath.ts";
 import { renderTemplate } from "../templates/engine.ts";
 import { UserFacingError, VaultChangedError } from "./userFacingError.ts";
 import type { NoteSchema } from "../config/schema.ts";
+import { rangeProblem, type SyncRange } from "./range.ts";
 
 interface NoteSnapshot {
 	file: TFile;
@@ -36,13 +37,19 @@ export interface PreparedSync {
 	templates: Array<{ file: TFile; text: string }>;
 }
 
-export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: FeedFetcher, now = new Date()): Promise<PreparedSync> {
+/** `range` replaces the configured days back and ahead for this plan only. The settings are not changed. */
+export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: FeedFetcher, now = new Date(), range?: SyncRange): Promise<PreparedSync> {
+	if (range) {
+		const problem = rangeProblem(range);
+		if (problem) throw new UserFacingError(problem);
+	}
+	const { daysBack, daysAhead } = range ?? settings;
 	const feeds = settings.calendars.map(({ name, url, invitedAs }) => ({ name, url, invitedAs }));
 	if (!feeds.length) throw new UserFacingError("Add a calendar in Graft settings.");
 	const missing = feeds.filter((feed) => !feed.url.trim()).map((feed) => feed.name);
 	if (missing.length) throw new UserFacingError(`No feed address on this device for ${missing.join(", ")}. Open Graft settings and enter it again.`);
 	const day = DateTime.fromJSDate(now).setZone(settings.timezone).startOf("day");
-	const window = { start: day.minus({ days: settings.daysBack }).toJSDate(), end: day.plus({ days: settings.daysAhead + 1 }).toJSDate() };
+	const window = { start: day.minus({ days: daysBack }).toJSDate(), end: day.plus({ days: daysAhead + 1 }).toJSDate() };
 	const templates: PreparedSync["templates"] = [];
 	const ignored = await readIgnoreList(app, settings.ignoreListPath, templates);
 	const plan = await buildSyncPlan(feeds, window, settings.titleMatchRules, ignored, fetchFeed, settings.acceptedOnly, settings.titlePrefixesToStrip);
@@ -79,7 +86,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const invitedAsBySource = new Map(settings.calendars.map((calendar) => [calendar.name, calendar.invitedAs]));
 	const input: PreviewInput = {
 		plan,
-		window: { ...window, daysBack: settings.daysBack, daysAhead: settings.daysAhead, timezone: settings.timezone },
+		window: { ...window, daysBack, daysAhead, timezone: settings.timezone },
 		meetings: [],
 		personStubs: [],
 		seriesStubs: [],
@@ -167,9 +174,9 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	}
 	if (!plan.errors.length) {
 		const seen = [...plan.toProcess, ...plan.skipped.map(({ event }) => event)];
-		const firstDate = day.minus({ days: settings.daysBack }).toISODate()!;
+		const firstDate = day.minus({ days: daysBack }).toISODate()!;
 		const today = day.toISODate()!;
-		const lastDate = day.plus({ days: settings.daysAhead }).toISODate()!;
+		const lastDate = day.plus({ days: daysAhead }).toISODate()!;
 		for (const meeting of meetings) {
 			const date = stringValue(meeting.note.frontmatter[schema.meeting.date]);
 			const configuredIdentity = settings.calendars.some((calendar) => calendar.invitedAs === meeting.note.frontmatter[schema.meeting.invitedAs]);
