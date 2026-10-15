@@ -1,7 +1,7 @@
 {
   "name": "graft",
   "version": "0.1.0",
-  "description": "Read-only sync of a Google Calendar and an Outlook/Microsoft 365 calendar into an existing Obsidian note schema",
+  "description": "Read-only sync of any number of Google or Outlook/Microsoft 365 calendar feeds into an existing Obsidian note schema",
   "main": "main.js",
   "private": true,
   "type": "module",
