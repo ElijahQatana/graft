@@ -14,7 +14,7 @@ import { matchSeries } from "../match/seriesMatch.ts";
 import type { ResolvedAttendee } from "../generate/meetingNote.ts";
 import type { Attendee } from "../types.ts";
 import { extractSection } from "../util/markdownSections.ts";
-import { isInFolder } from "../util/vaultPath.ts";
+import { isInFolder, uniqueName } from "../util/vaultPath.ts";
 import { renderTemplate } from "../templates/engine.ts";
 import { UserFacingError } from "./userFacingError.ts";
 import type { NoteSchema } from "../config/schema.ts";
@@ -95,10 +95,12 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
 	const targets = new Set<string>();
-	function reserve(path: string) {
-		if (!isVaultPath(path, false)) throw new UserFacingError("A planned note filename is not valid. Change the filename pattern or folder in Graft settings.");
-		if (targets.has(path) || app.vault.getAbstractFileByPath(path)) throw new UserFacingError("Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.");
-		targets.add(path);
+	function reserve(folder: string, filename: string): string {
+		if (!isVaultPath(`${folder}/${filename}.md`, false)) throw new UserFacingError("A planned note filename is not valid. Change the filename pattern or folder in Graft settings.");
+		// A name already planned or already in the vault gets " 2", " 3" and so on, so one clash does not block the sync.
+		const name = uniqueName(filename, (candidate) => targets.has(`${folder}/${candidate}.md`) || app.vault.getAbstractFileByPath(`${folder}/${candidate}.md`) !== null);
+		targets.add(`${folder}/${name}.md`);
+		return name;
 	}
 	function resolvePerson(attendee: Attendee): ResolvedAttendee | undefined {
 		const matches = people.filter((person) => matchPerson(attendee, [person]));
@@ -108,9 +110,9 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const key = attendee.email.toLowerCase();
 		if (newPeople.has(key)) return newPeople.get(key);
 		if (!settings.createPersonStubs) return undefined;
-		const stub = buildPersonStub(attendee, settings.personFilenameRules, companies, schema, linking);
+		const built = buildPersonStub(attendee, settings.personFilenameRules, companies, schema, linking);
+		const stub = { ...built, filename: reserve(settings.folders.person, built.filename) };
 		const path = `${settings.folders.person}/${stub.filename}.md`;
-		reserve(path);
 		input.personStubs.push({ path, stub, body: stubBody(bodies.person, stub.frontmatter) });
 		const resolved = { filename: stub.filename, companyLinks: stub.companyLinks };
 		newPeople.set(key, resolved);
@@ -126,9 +128,9 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			if (matches[0]) resolvedSeries = { filename: matches[0].note.file.basename, standingAgenda: extractSection(matches[0].note.body, schema.headings.standingAgenda) };
 			else if (newSeries.has(event.uid)) resolvedSeries = newSeries.get(event.uid);
 			else if (settings.createSeriesStubs) {
-				const stub = buildSeriesStub(event, schema);
+				const built = buildSeriesStub(event, schema);
+				const stub = { ...built, filename: reserve(settings.folders.series, built.filename) };
 				const path = `${settings.folders.series}/${stub.filename}.md`;
-				reserve(path);
 				const body = stubBody(bodies.series, stub.frontmatter);
 				input.seriesStubs.push({ path, stub, body });
 				resolvedSeries = { filename: stub.filename, standingAgenda: extractSection(body, schema.headings.standingAgenda) };
@@ -172,7 +174,13 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		}
 	}
 	const preview = buildSyncPreview(input);
-	for (const note of preview.newMeetings) reserve(note.path);
+	const freshMeetings = input.meetings.filter((meeting) => !meeting.existing);
+	preview.newMeetings.forEach((item, index) => {
+		const filename = reserve(settings.folders.meeting, item.note.filename);
+		item.path = `${settings.folders.meeting}/${filename}.md`;
+		item.note = { ...item.note, filename };
+		freshMeetings[index].filename = filename;
+	});
 	for (const path of targets) assertNoNoteInFolderPath(app, path);
 	const hasAmbiguousPerson = input.warnings.some((warning) => warning.kind === "ambiguous-person");
 	return { input, preview, canApply: !plan.errors.length && !hasAmbiguousPerson, snapshots, folders, templates };
@@ -205,7 +213,7 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 			if (!(file instanceof TFile)) throw new UserFacingError("A Meeting note is missing. Run Preview sync again.");
 			if (await app.vault.read(file) !== prepared.snapshots.find((note) => note.file.path === file.path)?.text) throw new UserFacingError("The vault changed. Run Preview sync again.");
 			await updateMeetingNote(app, file, meeting.input, prepared.input.companies, prepared.input.strictCompanyLinks);
-		} else await writeMeetingNote(app, prepared.input.meetingFolder, meeting.input, prepared.input.companies, prepared.input.filenamePattern, prepared.input.strictCompanyLinks);
+		} else await writeMeetingNote(app, prepared.input.meetingFolder, meeting.input, prepared.input.companies, prepared.input.filenamePattern, prepared.input.strictCompanyLinks, meeting.filename);
 	}
 }
 

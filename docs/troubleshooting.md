@@ -12,7 +12,6 @@ Graft shows a short notice when a sync cannot start or stops. The preview window
 | The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note. | Check each entry has `uid` and `recurrenceId` (use `null` for a whole event or series). |
 | A template file set in Graft settings was not found. | Fix the Meeting, Person or Series template path, or clear it. Paths start at the vault root. |
 | A planned note filename is not valid. | Change the Meeting filename pattern or a folder setting. |
-| Two notes would get the same name, or a note with that name already exists. | Two events would produce the same filename, or a note with that name is already there. Add `{{date}}` to the filename pattern, or change the folders. |
 | A note has the same path as a folder Graft needs to create. | Rename that note or change the folder settings. |
 | More than one Meeting note has the same event UID. | Remove the duplicate from the Meeting folder. |
 | More than one Series note matches the same event. | Remove the duplicate from the Series folder. |
@@ -29,6 +28,8 @@ Graft shows a short notice when a sync cannot start or stops. The preview window
 ### Filename conflicts
 
 Filenames are made from the Meeting filename pattern, `{{title}} {{date}}` by default. Characters Obsidian does not allow are replaced with a hyphen, so two titles that differ only in those characters can collide. The note's title property keeps the original text. Person and Series files are named in the same way.
+
+When a new note would take a name that another planned note or an existing note already has, Graft adds a number to the new one, such as `Standup 2026-10-04 2`. The preview shows the final names. Existing notes are never overwritten, and a repeat sync finds each note again by its event UID or email, so the numbers do not change.
 
 ### Calendar errors in the preview
 
