@@ -189,19 +189,27 @@ test("calendars start empty and can be added, edited, reordered, and removed", a
 	]);
 	assert.notEqual(plugin.settings.calendars[0].id, plugin.settings.calendars[1].id);
 	const homeId = plugin.settings.calendars[1].id;
+	assert.equal(row("Work").description, "Outlook / Microsoft 365 · one@example.com · address saved on this device");
+	assert.equal(row("Personal").description, "Google · no Invited as value · address saved on this device");
+	await control("Work", "button", "Edit").click();
+	await control("Personal", "button", "Edit").click();
 	for (const calendar of [row("Calendar 1"), row("Calendar 2")]) {
 		assert.equal(calendar.controls.filter((item: any) => item.kind === "text")[1].inputEl.type, "password");
 	}
+	await control("Calendar 1", "button", "Cancel").click();
+	assert.ok(row("Work"));
+	assert.equal(plugin.settings.calendars[0].name, "Work");
 	fill("Calendar 2", "Home", "outlook", "https://example.com/home.ics", "two@example.com");
 	await control("Calendar 2", "button", "Save").click();
 	assert.deepEqual(noIds([plugin.settings.calendars[1]]), [{ name: "Home", type: "outlook", url: "https://example.com/home.ics", invitedAs: "two@example.com" }]);
 	assert.equal(plugin.settings.calendars[1].id, homeId);
-	assert.equal(control("Calendar 1", "button", "Up").disabled, true);
-	await control("Calendar 2", "button", "Up").click();
+	assert.equal(row("Home").controls.length > 0 && row("Home").controls.some((item: any) => item.kind === "text"), false);
+	assert.equal(control("Work", "button", "Up").disabled, true);
+	await control("Home", "button", "Up").click();
 	assert.deepEqual(plugin.settings.calendars.map((calendar: any) => calendar.name), ["Home", "Work"]);
-	await control("Calendar 1", "button", "Remove").click();
+	await control("Home", "button", "Remove").click();
 	assert.deepEqual(plugin.settings.calendars.map((calendar: any) => calendar.name), ["Work"]);
-	await control("Calendar 1", "button", "Remove").click();
+	await control("Work", "button", "Remove").click();
 	assert.deepEqual(plugin.settings.calendars, []);
 	assert.deepEqual(loadGraftSettings(saves.at(-1)).calendars, []);
 });
@@ -230,6 +238,7 @@ test("calendar rows reject missing names, duplicate names, and bad URLs without 
 	assert.match(message("New calendar"), /Another calendar already uses that name/);
 	fill("New calendar", "Home", "https://example.com/home.ics");
 	await control("New calendar", "button", "Add calendar").click();
+	await control("Home", "button", "Edit").click();
 	fill("Calendar 2", "work", "https://example.com/home.ics");
 	await control("Calendar 2", "button", "Save").click();
 	assert.match(message("Calendar 2"), /Another calendar already uses that name/);
@@ -237,6 +246,7 @@ test("calendar rows reject missing names, duplicate names, and bad URLs without 
 	await control("Calendar 2", "button", "Save").click();
 	assert.match(message("Calendar 2"), /Change not saved/);
 	// Saving a row under its own name is not a duplicate.
+	await control("Work", "button", "Edit").click();
 	fill("Calendar 1", "Work", "https://example.com/work2.ics");
 	await control("Calendar 1", "button", "Save").click();
 	assert.equal(plugin.settings.calendars[0].url, "https://example.com/work2.ics");
@@ -545,9 +555,9 @@ test("open and closed state survives re-renders from saving, moving and removing
 		await control("New calendar", "button", "Add calendar").click();
 		assert.deepEqual(state(), want);
 	}
-	await control("Calendar 2", "button", "Up").click();
+	await control("Home", "button", "Up").click();
 	assert.deepEqual(state(), want);
-	await control("Calendar 1", "button", "Remove").click();
+	await control("Home", "button", "Remove").click();
 	assert.deepEqual(state(), want);
 	control("New extra property", "text").change("tags");
 	await control("New extra property", "button", "Add").click();
@@ -769,11 +779,15 @@ test("the Calendars section says where URLs are stored", () => {
 	assert.equal(withStorage.some((text) => text.includes("on this version of Obsidian")), false);
 });
 
-test("a calendar with no URL on this device says so on its row", () => {
-	const { row } = fixture({ secretStorage: mockSecrets(), calendars: [
+test("a calendar with no URL on this device says so on its row", async () => {
+	const { row, control } = fixture({ secretStorage: mockSecrets(), calendars: [
 		{ id: "a1", name: "Work", type: "google", url: "", invitedAs: "" },
 		{ id: "b2", name: "Home", type: "google", url: FEED, invitedAs: "" },
 	] });
+	assert.match(row("Work").description, /no feed address on this device/);
+	assert.match(row("Home").description, /address saved on this device/);
+	await control("Work", "button", "Edit").click();
+	await control("Home", "button", "Edit").click();
 	assert.equal(row("Calendar 1").description, "No feed address on this device. Enter it again.");
 	assert.ok(!row("Calendar 2").description);
 	assert.equal(row("Calendar 2").controls.filter((item: any) => item.kind === "text")[1].inputEl.type, "password");
@@ -808,7 +822,7 @@ test("the start-here block goes once a calendar exists and returns when the last
 	await control("New calendar", "button", "Add calendar").click();
 	assert.equal(startBlock(tab).heading, undefined);
 	assert.equal(startBlock(tab).steps, undefined);
-	await control("Calendar 1", "button", "Remove").click();
+	await control("Work", "button", "Remove").click();
 	assert.ok(startBlock(tab).heading);
 	assert.ok(startBlock(tab).steps);
 });
@@ -822,4 +836,17 @@ test("the start-here block is hidden while searching and returns when the search
 	search(tab, "");
 	assert.equal(heading.settingEl.hidden, false);
 	assert.equal(steps.hidden, false);
+});
+
+test("group headings summarise their contents and follow saved changes", async () => {
+	const { tab, control, plugin } = fixture();
+	const meta = (id: any) => { let found: any; walk(group(tab, id), (child: any) => { if (child.cls === "graft-group-meta") found ??= child; }); return found?.text; };
+	assert.equal(meta("calendars"), "None yet");
+	assert.equal(meta("filters"), "No filters");
+	assert.equal(meta("window"), `${plugin.settings.timezone}, ${plugin.settings.daysBack} days back, ${plugin.settings.daysAhead} ahead`);
+	await control("Days back", "text").change("3");
+	assert.match(meta("window"), /3 days back/);
+	await control("Only events I have accepted", "toggle").change(true);
+	assert.equal(meta("filters"), "accepted only");
+	assert.equal(meta("schema"), undefined);
 });

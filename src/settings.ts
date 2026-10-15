@@ -47,6 +47,10 @@ export class GraftSettingTab extends PluginSettingTab {
 	private emptyEl?: HTMLElement;
 	/** Elements above the first section that a search hides, such as the start-here block. */
 	private topLoose: HTMLElement[] = [];
+	/** Calendars shown as editable fields instead of a summary row. Survives display() rebuilds. */
+	private editing = new Set<string>();
+	/** Short text beside each group heading, recomputed after a setting is saved. */
+	private metas: Array<{ el: HTMLElement; read: () => string }> = [];
 
 	constructor(app: App, private plugin: GraftPlugin) {
 		super(app, plugin);
@@ -62,6 +66,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.current = undefined;
 		this.sections = [];
 		this.topLoose = [];
+		this.metas = [];
 		this.rowOf = new WeakMap();
 		containerEl.createEl("p", { cls: "graft-intro", text: "Changes save automatically. Run Graft: Preview sync from the command palette to try them." });
 		this.searchBox();
@@ -96,6 +101,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			.addToggle((toggle) => toggle.setValue(settings.acceptedOnly).onChange(async (value) => {
 				settings.acceptedOnly = value;
 				await this.plugin.saveSettings();
+				this.refreshMetas();
 			}));
 		this.filenameRules();
 
@@ -193,7 +199,9 @@ export class GraftSettingTab extends PluginSettingTab {
 		const host = parent ? parent.body : this.containerEl;
 		const details = host.createEl("details", { cls: parent ? "graft-group graft-subgroup" : "graft-group", attr: { "data-graft-group": id } });
 		details.open = this.openState.get(id) ?? defaultOpen;
-		details.createEl("summary", { cls: "graft-group-title", text: title });
+		const summary = details.createEl("summary", { cls: "graft-group-title", text: title });
+		const read = this.metaReader(id);
+		if (read) this.metas.push({ el: summary.createEl("span", { cls: "graft-group-meta", text: read() }), read });
 		const body = details.createEl("div", { cls: "graft-group-body" });
 		const section: Section = { id, details, body, rows: [], loose: [], children: [], parent, defaultOpen };
 		(parent ? parent.children : this.sections).push(section);
@@ -206,6 +214,30 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.target = body;
 		this.current = section;
 		return section;
+	}
+
+	/** What a group heading says about its contents, or undefined when it has nothing short to say. */
+	private metaReader(id: string): (() => string) | undefined {
+		const settings = this.plugin.settings;
+		const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+		switch (id) {
+			case "calendars": return () => settings.calendars.length ? count(settings.calendars.length, "calendar") : "None yet";
+			case "folders": return () => [settings.folders.meeting, settings.folders.person, settings.folders.series].join(", ");
+			case "filters": return () => {
+				const parts = [
+					settings.titleMatchRules.length ? count(settings.titleMatchRules.length, "title rule") : "",
+					settings.ignoreListPath ? "ignore list" : "",
+					settings.acceptedOnly ? "accepted only" : "",
+				].filter(Boolean);
+				return parts.length ? parts.join(", ") : "No filters";
+			};
+			case "window": return () => `${settings.timezone}, ${settings.daysBack} days back, ${settings.daysAhead} ahead`;
+			default: return undefined;
+		}
+	}
+
+	private refreshMetas(): void {
+		for (const { el, read } of this.metas) el.setText(read());
 	}
 
 	/** Adds a settings row that the search can find by name and description. */
@@ -278,6 +310,7 @@ export class GraftSettingTab extends PluginSettingTab {
 				if (message) return;
 				update(next);
 				await this.plugin.saveSettings();
+				this.refreshMetas();
 			});
 		});
 	}
@@ -304,8 +337,24 @@ export class GraftSettingTab extends PluginSettingTab {
 			: "URLs are stored in the plugin's data file on this version of Obsidian.");
 		const calendars = this.plugin.settings.calendars;
 		if (!calendars.length) this.help("No calendars yet. Add one below to use Preview sync or Sync now.");
-		calendars.forEach((calendar, index) => this.calendarRow({ ...calendar }, index));
+		calendars.forEach((calendar, index) => {
+			if (this.editing.has(calendar.id)) this.calendarRow({ ...calendar }, index);
+			else this.calendarSummary(calendar, index);
+		});
 		this.calendarRow({ id: "", name: "", type: "google", url: "", invitedAs: "" });
+	}
+
+	/** One line per saved calendar: its type, identity and whether its address is on this device. */
+	private calendarSummary(calendar: CalendarSettings, index: number): void {
+		const type = calendar.type === "outlook" ? "Outlook / Microsoft 365" : "Google";
+		const details = [type, calendar.invitedAs.trim() || "no Invited as value", calendar.url ? "address saved on this device" : "no feed address on this device"];
+		const row = this.row(calendar.name, details.join(" · "), "calendar name type google outlook microsoft ICS URL invited as");
+		row.settingEl?.classList?.add("graft-calendar-row");
+		row.addButton((button) => button.setButtonText("Edit").onClick(() => {
+			this.editing.add(calendar.id);
+			this.display();
+		}));
+		this.rowActions(row, this.plugin.settings.calendars, index);
 	}
 
 	private calendarRow(draft: CalendarSettings, index?: number): void {
@@ -340,10 +389,17 @@ export class GraftSettingTab extends PluginSettingTab {
 			if (message) { error.setText(`${message} Change not saved.`); return; }
 			const saved = { id: draft.id || newCalendarId(calendars.map((calendar) => calendar.id)), name, type: draft.type, url: draft.url.trim(), invitedAs: draft.invitedAs };
 			if (index === undefined) calendars.push(saved); else calendars[index] = saved;
+			this.editing.delete(saved.id);
 			this.display();
 			await this.plugin.saveSettings();
 		}));
-		if (index !== undefined) this.rowActions(row, this.plugin.settings.calendars, index);
+		if (index !== undefined) {
+			row.addButton((button) => button.setButtonText("Cancel").onClick(() => {
+				this.editing.delete(draft.id);
+				this.display();
+			}));
+			this.rowActions(row, this.plugin.settings.calendars, index);
+		}
 	}
 
 	private titleRules(): void {
