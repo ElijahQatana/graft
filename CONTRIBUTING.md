@@ -11,4 +11,4 @@ Scripts/check-public-content.sh
 git diff --cached --check
 ```
 
-Run `npm test` and `npm run build` before opening a pull request. Say what changed and how you checked it. Mention anything that still needs testing in Obsidian.
+Run `npm run lint`, `npm test` and `npm run build` before opening a pull request. `npm run lint` checks the code against Obsidian's plugin guidelines. Say what changed and how you checked it. Mention anything that still needs testing in Obsidian.
