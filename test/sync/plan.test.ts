@@ -159,3 +159,21 @@ test("accepted-only drops events the user has not accepted, using the synthetic 
 		["rsvp-tentative@example.com", "not accepted (tentative)"],
 	]);
 });
+
+test("strips configured prefixes from titles before title rules run", async () => {
+	const feeds: FeedConfig[] = [{ name: "Google", url: "https://google.example/feed.ics" }];
+	const fakeFetch = async () => icsWith(vevent("a@example.com", "FW: Budget review"), vevent("b@example.com", "Fwd: Skip me"));
+
+	const plan = await buildSyncPlan(
+		feeds, WINDOW, [{ mode: "exact", value: "Skip me" }], [], fakeFetch, false, ["FW:", "Fwd:"],
+	);
+
+	assert.deepEqual(plan.toProcess.map((e) => [e.uid, e.summary]), [["a@example.com", "Budget review"]]);
+	assert.equal(plan.skipped.length, 1);
+});
+
+test("leaves titles alone when no prefixes are configured", async () => {
+	const feeds: FeedConfig[] = [{ name: "Google", url: "https://google.example/feed.ics" }];
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], async () => icsWith(vevent("a@example.com", "FW: Budget review")));
+	assert.equal(plan.toProcess[0].summary, "FW: Budget review");
+});
