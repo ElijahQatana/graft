@@ -48,6 +48,7 @@ class Setting {
 	constructor(container) { container.children.push(this); }
 	setName(name) { this.name = name; return this; }
 	setDesc(description) { this.description = description; return this; }
+	setHeading() { this.isHeading = true; return this; }
 	add(kind, setup) { const control = new Control(); control.kind = kind; this.controls.push(control); setup(control); return this; }
 	addText(setup) { return this.add("text", setup); }
 	addTextArea(setup) { return this.add("textarea", setup); }
@@ -628,4 +629,40 @@ test("errors in a nested schema group keep it and its parent visible", async () 
 	assert.equal(group(tab, "schema").open, true);
 	toggle(tab, "schema.types", false);
 	assert.equal(group(tab, "schema.types").open, true);
+});
+
+test("the tab has no plugin-name title and its section headings are Setting headings in order", () => {
+	const { tab } = fixture();
+	const tags = [];
+	walk(tab.containerEl, (child) => { if (child.tag) tags.push(child.tag); });
+	assert.equal(tags.includes("h2"), false);
+	assert.equal(tags.includes("h3"), false);
+	assert.ok(byClass(tab, "graft-intro"));
+	const headings = [];
+	walk(tab.containerEl, (child) => { if (child.isHeading) headings.push(child.name); });
+	assert.deepEqual(headings, ["Title skip rules", "Person filename conventions"]);
+});
+
+test("search matches a heading by name and hides it otherwise", () => {
+	const { tab, row } = fixture();
+	assert.equal(isHidden(row("Title skip rules")), false);
+	search(tab, "conventions");
+	assert.equal(isHidden(row("Person filename conventions")), false);
+	assert.equal(isHidden(row("Title skip rules")), true);
+	assert.equal(group(tab, "filters").hidden, false);
+	assert.equal(group(tab, "filters").open, true);
+	search(tab, "");
+	assert.equal(isHidden(row("Title skip rules")), false);
+});
+
+test("collapse state survives a re-render that rebuilds the headings", async () => {
+	const { tab, control, row } = fixture();
+	toggle(tab, "filters", false);
+	tab.display();
+	assert.equal(group(tab, "filters").open, false);
+	toggle(tab, "filters", true);
+	control("New title rule", "text").change("Skip");
+	await control("New title rule", "button", "Add").click();
+	assert.equal(group(tab, "filters").open, true);
+	assert.equal(row("Title skip rules").isHeading, true);
 });

@@ -84,6 +84,50 @@ const emptyPreview = (features, counts = {}) => ({
 	skipped: Array.from({ length: counts.skipped ?? 0 }, (_, i) => ({ event: makeEvent({ summary: `Skip ${i}` }), reason: "Ignored" })),
 	errors: [], warnings: [], features,
 });
+const features = { personStubs: true, seriesStubs: true, skipped: true };
+const openWithApply = (preview, apply = async () => {}) => {
+	const modal = new SyncPreviewModal({}, preview, apply);
+	modal.onOpen();
+	const elements = allElements(modal.contentEl);
+	return {
+		buttons: elements.filter((element) => element.tag === "button").map((element) => element.text),
+		texts: elements.map((element) => element.text),
+	};
+};
+const NOTHING = "Nothing to apply. No notes would be created or changed.";
+const BLOCKED = "Apply is unavailable for this incomplete or ambiguous plan.";
+
+test("Apply is unavailable when the plan has nothing to write", () => {
+	for (const preview of [emptyPreview(features), emptyPreview(features, { skipped: 2 }), emptyPreview(features, { updates: 2 })]) {
+		const { buttons, texts } = openWithApply(preview);
+		assert.deepEqual(buttons, ["Close"]);
+		assert.ok(texts.includes(NOTHING));
+		assert.equal(texts.includes(BLOCKED), false);
+	}
+});
+
+test("Apply stays available when anything would be created or changed", () => {
+	const changed = emptyPreview(features, { updates: 1 });
+	changed.updates[0].changes = [{ field: "title", before: "Old", after: "New" }];
+	const mixed = emptyPreview(features, { newMeetings: 1, updates: 2, personStubs: 1, seriesStubs: 1 });
+	for (const preview of [emptyPreview(features, { newMeetings: 1 }), emptyPreview(features, { personStubs: 1 }), emptyPreview(features, { seriesStubs: 1 }), changed, mixed]) {
+		const { buttons, texts } = openWithApply(preview);
+		assert.deepEqual(buttons, ["Apply", "Close"]);
+		assert.equal(texts.includes(NOTHING), false);
+	}
+});
+
+test("a blocked plan still shows the incomplete or ambiguous message", () => {
+	for (const preview of [emptyPreview(features), emptyPreview(features, { newMeetings: 1 })]) {
+		const modal = new SyncPreviewModal({}, preview);
+		modal.onOpen();
+		const texts = allElements(modal.contentEl).map((element) => element.text);
+		assert.ok(texts.includes(BLOCKED));
+		assert.equal(texts.includes(NOTHING), false);
+		assert.equal(allElements(modal.contentEl).filter((element) => element.tag === "button").length, 1);
+	}
+});
+
 const summaryOf = (preview) => {
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
@@ -178,7 +222,7 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 // Drives GraftPlugin.runSync with a Modal that tracks how many are open.
 async function loadPlugin(canApply = true) {
 	const stubs = {
-		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } } });
+		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [{ path: 'Meetings/New.md', note: { frontmatter: {}, body: '' } }], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } } });
 			export const applySync = async () => globalThis.__applySync();`,
 		"./ics/fetch.ts": "export const fetchIcs = async () => '';",
 	};

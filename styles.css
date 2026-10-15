@@ -233,8 +233,11 @@
 
 .graft-settings .graft-heading {
 	margin: var(--size-4-8) 0 var(--size-4-2);
-	padding-bottom: var(--size-4-1);
+	padding: 0 0 var(--size-4-1);
 	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.graft-settings .graft-heading .setting-item-name {
 	font-size: var(--font-ui-medium);
 }
 

@@ -28,6 +28,7 @@ export class SyncPreviewModal extends Modal {
 		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
 		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
+		const hasWrites = newMeetings.length > 0 || personStubs.length > 0 || seriesStubs.length > 0 || updates.some((update) => update.changes.length > 0);
 		if (!newMeetings.length && !updates.length && !personStubs.length && !seriesStubs.length) {
 			body.createEl("p", { text: "No note changes planned.", cls: "graft-empty" });
 		}
@@ -92,7 +93,7 @@ export class SyncPreviewModal extends Modal {
 			for (const error of errors) section.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		}
 		const actions = root.createEl("div", { cls: "graft-actions" });
-		if (this.apply) {
+		if (this.apply && hasWrites) {
 			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
 			button.addEventListener("click", async () => {
 				if (this.applying || this.consumed) return;
@@ -102,7 +103,8 @@ export class SyncPreviewModal extends Modal {
 				try { await this.apply!(); }
 				finally { this.applying = false; this.close(); }
 			});
-		} else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
+		} else if (this.apply) actions.createEl("p", { text: "Nothing to apply. No notes would be created or changed.", cls: "graft-muted graft-blocked" });
+		else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
 		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 	}
 

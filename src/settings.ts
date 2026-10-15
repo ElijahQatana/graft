@@ -59,7 +59,6 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.current = undefined;
 		this.sections = [];
 		this.rowOf = new WeakMap();
-		containerEl.createEl("h2", { text: "Graft" });
 		containerEl.createEl("p", { cls: "graft-intro", text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
 		this.searchBox();
 
@@ -122,8 +121,10 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.query = "";
 	}
 
+	/** A section heading inside a group. It is a row, so a search can match it by name. */
 	private heading(text: string): void {
-		this.loose(this.target.createEl("h3", { text, cls: "graft-heading" }));
+		const setting = this.row(text).setHeading();
+		setting.settingEl?.classList?.add("graft-heading");
 	}
 
 	private help(text: string): void {
