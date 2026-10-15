@@ -185,6 +185,17 @@ test("vanished events are checked against every configured calendar's identity",
 	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
 });
 
+test("an invite moved to another day updates the note's date without a vanished-event warning", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];
+	f.put("Meetings/Moved.md", note({ type: "Meeting", ics_uid: "moved@example.com", title: "Moved", date: "2026-10-02", invited_as: "work@example.com" }, "## Invite Agenda\n\nOld"));
+	const prepared = await prepareSync(f.app, f.settings, async () => calendar("moved@example.com", "Moved"), now);
+	assert.deepEqual(clean(prepared.preview.updates[0].changes.find((item: any) => item.field === "date")), { field: "date", before: "2026-10-02", after: "2026-10-04" });
+	assert.equal(prepared.preview.warnings.some((item: any) => item.kind === "vanished-event"), false);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Moved.md")).date, "2026-10-04");
+});
+
 test("two feeds preview without writes, apply matches preview, and repeat sync reuses stubs", async () => {
 	const f = fixture();
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
