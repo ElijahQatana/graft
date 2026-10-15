@@ -166,6 +166,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	if (!plan.errors.length) {
 		const seen = [...plan.toProcess, ...plan.skipped.map(({ event }) => event)];
 		const firstDate = day.minus({ days: settings.daysBack }).toISODate()!;
+		const today = day.toISODate()!;
 		const lastDate = day.plus({ days: settings.daysAhead }).toISODate()!;
 		for (const meeting of meetings) {
 			const date = stringValue(meeting.note.frontmatter[schema.meeting.date]);
@@ -173,7 +174,12 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			const inWindow = date !== undefined && date >= firstDate && date <= lastDate;
 			if (!date || !configuredIdentity || !meeting.icsUid || !inWindow) continue;
 			if (!seen.some((event) => matchMeeting(event.uid, event.recurrenceId, [meeting]))) {
-				input.warnings.push({ kind: "vanished-event", subject: meeting.path });
+				// Cancel only when no occurrence of the series is left in the window, never for one missing date.
+				const field = schema.meeting.occurrenceStatus;
+				const before = meeting.note.frontmatter[field];
+				if (settings.cancelVanishedSeries && field && date > today && !seen.some((event) => event.uid === meeting.icsUid) && before !== schema.statusValues.cancelled) {
+					(input.vanishedCancellations ??= []).push({ path: meeting.path, field, before, after: schema.statusValues.cancelled });
+				} else input.warnings.push({ kind: "vanished-event", subject: meeting.path });
 			}
 		}
 	}
@@ -208,6 +214,11 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 	for (const path of newPaths) await ensureFolder(app, path.split("/").slice(0, -1).join("/"));
 	for (const { path, stub, body } of [...prepared.input.personStubs, ...prepared.input.seriesStubs]) {
 		await app.vault.create(path, `---\n${stringifyYaml(stub.frontmatter)}---\n\n${body ?? ""}`);
+	}
+	for (const { path, field, after } of prepared.input.vanishedCancellations ?? []) {
+		const file = app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) throw new UserFacingError("A Meeting note is missing. Run Preview sync again.");
+		await app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => { frontmatter[field] = after; });
 	}
 	for (const meeting of prepared.input.meetings) {
 		if (meeting.existing) {

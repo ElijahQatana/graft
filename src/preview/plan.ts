@@ -41,6 +41,8 @@ export interface PreviewInput {
 	meetingFolder: string;
 	filenamePattern?: string;
 	strictCompanyLinks?: boolean;
+	/** Meeting notes to mark cancelled because their series vanished from the feeds. */
+	vanishedCancellations?: Array<{ path: string; field: string; before: unknown; after: string }>;
 	/** Matching and feed-coverage warnings supplied by the resolver. */
 	warnings: PreviewWarning[];
 	features: PreviewFeatures;
@@ -95,6 +97,9 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 			changes.push({ field: "Invite Agenda", before, after });
 		}
 		preview.updates.push({ path: existing.path, changes });
+	}
+	for (const { path, field, before, after } of source.vanishedCancellations ?? []) {
+		preview.updates.push({ path, changes: [{ field, before, after }] });
 	}
 	return preview;
 }

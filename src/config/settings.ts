@@ -50,6 +50,8 @@ export interface GraftSettings {
 	strictCompanyLinks: boolean;
 	/** Skip events whose own RSVP is declined, tentative or not yet answered. Needs "invited as". */
 	acceptedOnly: boolean;
+	/** Mark future Meeting notes cancelled when their whole series has gone from the feeds. */
+	cancelVanishedSeries: boolean;
 	previewBeforeApply: boolean;
 	autoRunOnStartup: boolean;
 	/** Note types, property names and headings Graft reads and writes. */
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	companyLinking: false,
 	strictCompanyLinks: true,
 	acceptedOnly: false,
+	cancelVanishedSeries: false,
 	previewBeforeApply: true,
 	autoRunOnStartup: false,
 	schema: cloneSchema(MINIMAL_SCHEMA),
@@ -165,7 +168,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}
-	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "previewBeforeApply", "autoRunOnStartup"] as const) {
+	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "cancelVanishedSeries", "previewBeforeApply", "autoRunOnStartup"] as const) {
 		if (typeof input[key] === "boolean") result[key] = input[key];
 	}
 	return result;
