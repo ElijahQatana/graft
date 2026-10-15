@@ -634,3 +634,16 @@ test("a calendar with no URL on this device stops the sync with a plain message 
 	assert.equal(fetched, 0);
 	assert.equal(f.writes.length, 0);
 });
+
+test("a new Person stub with the name of an existing Person note warns without blocking Apply", async () => {
+	const f = fixture();
+	f.put("People/Pat Example.md", note({ type: "Person", full_name: " PAT example ", email: "pat@example.org", email_aliases: [] }));
+	f.put("People/Alex Example.md", note({ type: "Person", full_name: "Alex Example", email: "alex@example.com", email_aliases: [] }));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	const duplicates = prepared.preview.warnings.filter((warning: any) => warning.kind === "possible-duplicate-person");
+	assert.deepEqual(clean(duplicates), [{ kind: "possible-duplicate-person", subject: "People/Pat Example 2.md and People/Pat Example.md" }]);
+	assert.equal(prepared.canApply, true);
+	const before = f.texts.get("People/Pat Example.md");
+	await applySync(f.app, prepared);
+	assert.equal(f.texts.get("People/Pat Example.md"), before);
+});
