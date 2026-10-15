@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { cleanInviteText, inviteAgendaText, NO_AGENDA } from "../../src/util/inviteText.ts";
+import { cleanInviteText } from "../../src/util/inviteText.ts";
 
 const SEP = "_".repeat(80);
 
@@ -114,8 +114,11 @@ test("is stable when run on its own output", () => {
 	}
 });
 
-test("inviteAgendaText falls back to the placeholder", () => {
-	assert.equal(inviteAgendaText(undefined), NO_AGENDA);
-	assert.equal(inviteAgendaText("Join Zoom Meeting\nhttps://example.zoom.us/j/1"), NO_AGENDA);
-	assert.equal(inviteAgendaText("Real text"), "Real text");
+test("keeps password, PIN and phone lines when the text holds no join text", () => {
+	const text = "Password: rotate the shared keys\nVendor: +1 555 010 0199\nPIN: reset the door code";
+	assert.equal(cleanInviteText(text), text);
+});
+
+test("removes detail lines next to join text", () => {
+	assert.equal(cleanInviteText("Agenda\n\nJoin Zoom Meeting\nPasscode: 123456\nDial by your location\n+1 555 010 0100 US"), "Agenda");
 });

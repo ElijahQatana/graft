@@ -185,6 +185,17 @@ test("vanished events are checked against every configured calendar's identity",
 	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
 });
 
+test("an invite moved to another day updates the note's date without a vanished-event warning", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];
+	f.put("Meetings/Moved.md", note({ type: "Meeting", ics_uid: "moved@example.com", title: "Moved", date: "2026-10-02", invited_as: "work@example.com" }, "## Invite Agenda\n\nOld"));
+	const prepared = await prepareSync(f.app, f.settings, async () => calendar("moved@example.com", "Moved"), now);
+	assert.deepEqual(clean(prepared.preview.updates[0].changes.find((item: any) => item.field === "date")), { field: "date", before: "2026-10-02", after: "2026-10-04" });
+	assert.equal(prepared.preview.warnings.some((item: any) => item.kind === "vanished-event"), false);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Moved.md")).date, "2026-10-04");
+});
+
 test("two feeds preview without writes, apply matches preview, and repeat sync reuses stubs", async () => {
 	const f = fixture();
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
@@ -622,4 +633,17 @@ test("a calendar with no URL on this device stops the sync with a plain message 
 		(error: any) => error.message === "No feed address on this device for Work. Open Graft settings and enter it again.");
 	assert.equal(fetched, 0);
 	assert.equal(f.writes.length, 0);
+});
+
+test("a new Person stub with the name of an existing Person note warns without blocking Apply", async () => {
+	const f = fixture();
+	f.put("People/Pat Example.md", note({ type: "Person", full_name: " PAT example ", email: "pat@example.org", email_aliases: [] }));
+	f.put("People/Alex Example.md", note({ type: "Person", full_name: "Alex Example", email: "alex@example.com", email_aliases: [] }));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	const duplicates = prepared.preview.warnings.filter((warning: any) => warning.kind === "possible-duplicate-person");
+	assert.deepEqual(clean(duplicates), [{ kind: "possible-duplicate-person", subject: "People/Pat Example 2.md and People/Pat Example.md" }]);
+	assert.equal(prepared.canApply, true);
+	const before = f.texts.get("People/Pat Example.md");
+	await applySync(f.app, prepared);
+	assert.equal(f.texts.get("People/Pat Example.md"), before);
 });

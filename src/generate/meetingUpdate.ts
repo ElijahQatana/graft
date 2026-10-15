@@ -3,13 +3,17 @@ import type { ResolvedAttendee } from "./meetingNote.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 import { extractSection, replaceSection } from "../util/markdownSections.ts";
-import { inviteAgendaText } from "../util/inviteText.ts";
-import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
+import { cleanInviteText } from "../util/inviteText.ts";
+import { DEFAULT_AGENDA_PLACEHOLDER, evaluateExtras, type NoteSchema } from "../config/schema.ts";
 
-/** Avoid rewriting body spacing when the invite text has not changed. */
-export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string): string {
-	const agenda = inviteAgendaText(description);
-	return extractSection(body, heading) === agenda ? body : replaceSection(body, heading, agenda);
+/** Avoid rewriting body spacing when the invite text has not changed. An empty invite keeps a section
+ * that already holds a placeholder, the configured one or the old built-in one. */
+export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string, placeholder = DEFAULT_AGENDA_PLACEHOLDER): string {
+	const current = extractSection(body, heading);
+	const text = cleanInviteText(description);
+	if (text) return current === text ? body : replaceSection(body, heading, text);
+	const known = [placeholder, DEFAULT_AGENDA_PLACEHOLDER].map((item) => item.trim());
+	return current !== undefined && known.includes(current) ? body : replaceSection(body, heading, placeholder);
 }
 
 export interface MeetingUpdateInput {
@@ -22,7 +26,8 @@ export interface MeetingUpdateInput {
 	timezone: string;
 }
 
-/** Fields owned by calendar sync. Date fields and filenames stay unchanged on reschedule.
+/** Fields owned by calendar sync. The Date property follows a reschedule to another day; week, month,
+ * year and weekday are written only through extras, and filenames stay unchanged.
  * occurrence_status changes only for an explicit cancellation. */
 export function buildMeetingFrontmatterUpdate(
 	input: MeetingUpdateInput,
@@ -51,6 +56,7 @@ export function buildMeetingFrontmatterUpdate(
 	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
 	put(names.invitedAs, input.invitedAs);
 	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
+	put(names.date, start.date);
 	put(names.scheduledStart, start.time);
 	put(names.scheduledEnd, end.time);
 	put(names.inviteUpdated, input.event.lastModified ?? "");

@@ -1,7 +1,7 @@
 import type { CalendarEvent } from "../types.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { sanitizeFilename } from "../util/filename.ts";
-import { inviteAgendaText } from "../util/inviteText.ts";
+import { cleanInviteText } from "../util/inviteText.ts";
 import { renderTemplate } from "../templates/engine.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
@@ -68,6 +68,8 @@ export function buildMeetingNote(
 	put(names.title, input.event.summary);
 	put(names.organizer, input.organizer ? `[[${input.organizer.filename}]]` : "");
 	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
+	// A copy for new notes only; meetingUpdate never writes it, so later edits to the list stay.
+	put(names.participants, input.invited.map((person) => `[[${person.filename}]]`));
 	put(names.invitedAs, input.invitedAs);
 	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
 	put(names.scheduledStart, start.time);
@@ -80,7 +82,7 @@ export function buildMeetingNote(
 		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies,
 	}));
 
-	const inviteAgenda = inviteAgendaText(input.event.description);
+	const inviteAgenda = cleanInviteText(input.event.description) || schema.agendaPlaceholder;
 	const seriesAgenda = input.seriesStandingAgenda?.trim() || "";
 	const body = input.bodyTemplate === undefined ? buildBody(schema, inviteAgenda, seriesAgenda)
 		: renderTemplate(input.bodyTemplate, {

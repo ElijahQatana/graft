@@ -13,8 +13,8 @@ export interface FieldChange {
 }
 
 export interface PreviewWarning {
-	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading";
-	/** A note path or event title for local display. */
+	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading" | "possible-duplicate-person";
+	/** A note path or event title for local display. A possible duplicate names the new stub and the existing note. */
 	subject: string;
 }
 
@@ -88,7 +88,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 		if (extractSection(existing.body, heading) === undefined) {
 			preview.warnings.push({ kind: "missing-invite-heading", subject: existing.path });
 		}
-		const body = buildMeetingBodyUpdate(existing.body, input.event.description, heading);
+		const body = buildMeetingBodyUpdate(existing.body, input.event.description, heading, input.schema.agendaPlaceholder);
 		if (body !== existing.body) {
 			const before = extractSection(existing.body, heading);
 			const after = extractSection(body, heading);

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingNote, type MeetingNoteInput } from "../../src/generate/meetingNote.ts";
-import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
+import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 function baseInput(overrides: Partial<MeetingNoteInput> = {}): MeetingNoteInput {
@@ -120,6 +120,18 @@ test("Invite Agenda falls back to a placeholder when the invite has no descripti
 	assert.match(note.body, /## Invite Agenda\n\nNo agenda provided/);
 });
 
+test("the empty-agenda placeholder comes from the schema", () => {
+	const schema = { ...ORIGINAL_SCHEMA, agendaPlaceholder: "- " };
+	const note = buildMeetingNote(baseInput({ schema, event: makeEvent({ description: undefined }) }));
+	assert.match(note.body, /## Invite Agenda\n\n- /);
+	assert.doesNotMatch(note.body, /No agenda provided/);
+});
+
+test("a Series Standing Agenda and a real invite agenda land in separate sections", () => {
+	const note = buildMeetingNote(baseInput({ seriesStandingAgenda: "- Review actions", event: makeEvent({ description: "Budget review" }) }));
+	assert.match(note.body, /## Series Agenda\n\n- Review actions\n\n\n## Invite Agenda\n\nBudget review/);
+});
+
 test("Invite Agenda uses the invite's own description when present", () => {
 	const note = buildMeetingNote(baseInput({ event: makeEvent({ description: "Discuss Q3 numbers" }) }));
 	assert.match(note.body, /## Invite Agenda\n\nDiscuss Q3 numbers/);
@@ -142,4 +154,16 @@ test("Invite Agenda drops join text and falls back to the placeholder when nothi
 	const mixed = buildMeetingNote(baseInput({ event: makeEvent({ description: `Discuss Q3 numbers\n\n${joinOnly}` }) }));
 	assert.match(mixed.body, /## Invite Agenda\n\nDiscuss Q3 numbers\n/);
 	assert.doesNotMatch(mixed.body, /zoom\.us|Meeting ID/);
+});
+
+test("writes a participants copy of the invited list only when the property is named", () => {
+	const invited = [{ filename: "Sam Example", companyLinks: [] }, { filename: "Kim Example", companyLinks: [] }];
+	const off = buildMeetingNote(baseInput({ invited, schema: MINIMAL_SCHEMA }));
+	assert.equal("participants" in off.frontmatter, false);
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.meetingExtras = schema.meetingExtras.filter((field) => field.key !== "participants");
+	schema.meeting.participants = "attendees";
+	const on = buildMeetingNote(baseInput({ invited, schema }));
+	assert.deepEqual(on.frontmatter.attendees, ["[[Sam Example]]", "[[Kim Example]]"]);
+	assert.deepEqual(on.frontmatter.attendees, on.frontmatter.invited);
 });
