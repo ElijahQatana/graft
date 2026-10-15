@@ -195,7 +195,7 @@ export class GraftSettingTab extends PluginSettingTab {
 	}
 
 	/** Collapsible group. Its open state is remembered by id, so it survives display(). */
-	private group(id: string, title: string, parent?: Section, defaultOpen = !parent && id !== "schema"): Section {
+	private group(id: string, title: string, parent?: Section, defaultOpen = false): Section {
 		const host = parent ? parent.body : this.containerEl;
 		const details = host.createEl("details", { cls: parent ? "graft-group graft-subgroup" : "graft-group", attr: { "data-graft-group": id } });
 		details.open = this.openState.get(id) ?? defaultOpen;
@@ -222,7 +222,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 		switch (id) {
 			case "calendars": return () => settings.calendars.length ? count(settings.calendars.length, "calendar") : "None yet";
-			case "folders": return () => [settings.folders.meeting, settings.folders.person, settings.folders.series].join(", ");
+			case "folders": return () => [settings.folders.meeting, settings.folders.person, settings.folders.series].map((path) => path.split("/").at(-1)).join(", ");
 			case "filters": return () => {
 				const parts = [
 					settings.titleMatchRules.length ? count(settings.titleMatchRules.length, "title rule") : "",

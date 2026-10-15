@@ -228,6 +228,7 @@
 }
 
 .graft-settings .graft-heading {
+	border-radius: 0;
 	margin: var(--size-4-8) 0 var(--size-4-2);
 	padding: 0 0 var(--size-4-1);
 	border-bottom: 1px solid var(--background-modifier-border);
@@ -355,7 +356,12 @@
 	font-size: var(--font-ui-small);
 }
 
+.graft-settings .graft-rule-row {
+	align-items: flex-start;
+}
+
 .graft-settings .graft-rule-row .setting-item-info {
+	padding-top: var(--size-4-2);
 	flex: 0 0 auto;
 	min-width: 8rem;
 	white-space: nowrap;

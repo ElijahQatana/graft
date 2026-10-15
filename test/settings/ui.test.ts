@@ -447,7 +447,7 @@ test("every section and every Note schema sub-group is a collapsible details ele
 	}
 	assert.equal(group(tab, "schema").open, false);
 	assert.equal(group(tab, "schema.types").open, false);
-	for (const id of TOP.slice(0, 5)) assert.equal(group(tab, id).open, true, id);
+	for (const id of TOP) assert.equal(group(tab, id).open, false, id);
 });
 
 test("search matches row names and descriptions, ignoring case, and needs every word", () => {
@@ -483,7 +483,7 @@ test("search hides sections without a match and opens the ones with a match", ()
 
 test("an empty box or the clear button restores the normal view and remembered state", () => {
 	const { tab, row } = fixture();
-	toggle(tab, "window", false);
+	toggle(tab, "folders", true);
 	search(tab, "meeting property: scheduled start");
 	assert.equal(group(tab, "schema").open, true);
 	assert.equal(group(tab, "window").hidden, true);
@@ -542,8 +542,7 @@ test("searching and collapsing never change saved values", async () => {
 test("open and closed state survives re-renders from saving, moving and removing rows", async () => {
 	const { tab, control, row } = fixture();
 	const ids = ["calendars", "filters", "schema", "schema.extras", "schema.types", "window"];
-	toggle(tab, "calendars", false);
-	toggle(tab, "filters", false);
+	toggle(tab, "window", true);
 	toggle(tab, "schema", true);
 	toggle(tab, "schema.extras", true);
 	const want = [false, false, true, true, false, true];
@@ -570,7 +569,7 @@ test("open and closed state survives re-renders from saving, moving and removing
 
 test("open and closed state is remembered when the tab is displayed again", () => {
 	const { tab } = fixture();
-	toggle(tab, "folders", false);
+	toggle(tab, "calendars", true);
 	toggle(tab, "schema.values", true);
 	tab.hide();
 	tab.display();
@@ -608,6 +607,7 @@ test("a search stays applied across re-renders and is cleared when the tab close
 
 test("opening or closing sections during a search does not change what is remembered", () => {
 	const { tab } = fixture();
+	toggle(tab, "window", true);
 	search(tab, "days ahead");
 	toggle(tab, "window", false);
 	search(tab, "");
