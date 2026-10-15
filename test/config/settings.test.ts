@@ -43,7 +43,7 @@ test("all settings survive JSON persistence without sharing input objects", () =
 		personFilenameRules: [{ domain: "example.com", style: "initialLast" as const }],
 		meetingFilenamePattern: "{{date}} {{title}}", timezone: "Europe/London",
 		daysBack: 0, daysAhead: 60, createPersonStubs: false, createSeriesStubs: false,
-		companyLinking: true, strictCompanyLinks: false, previewBeforeApply: false, autoRunOnStartup: true,
+		companyLinking: true, strictCompanyLinks: false, acceptedOnly: true, previewBeforeApply: false, autoRunOnStartup: true,
 	};
 	assert.deepEqual(loadGraftSettings(JSON.parse(JSON.stringify(saved))), saved);
 	const loaded = loadGraftSettings(saved);
@@ -67,7 +67,7 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 		folders: { meeting: "../outside", person: "Custom/People" },
 		templates: { meeting: "Templates/Meeting.txt" },
 		ignoreListPath: "/absolute", daysBack: -1, daysAhead: 1.5,
-		timezone: "Invalid/Zone", autoRunOnStartup: "true", meetingFilenamePattern: " ",
+		timezone: "Invalid/Zone", autoRunOnStartup: "true", acceptedOnly: "yes", meetingFilenamePattern: " ",
 		titleMatchRules: [{ mode: "exact", value: "" }],
 		personFilenameRules: [{ domain: "example.com", style: "unknown" }],
 	});
@@ -80,6 +80,7 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 	assert.equal(loaded.daysAhead, DEFAULT_SETTINGS.daysAhead);
 	assert.equal(loaded.timezone, "UTC");
 	assert.equal(loaded.autoRunOnStartup, false);
+	assert.equal(loaded.acceptedOnly, false);
 	assert.deepEqual(loaded.titleMatchRules, []);
 	assert.deepEqual(loaded.personFilenameRules, []);
 });

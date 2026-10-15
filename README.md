@@ -14,7 +14,7 @@ Graft is still in development. The settings tab, Preview sync, Sync now and Appl
 - Links recurring events to a Series note, and creates a minimal Series note when there is none.
 - Updates only the calendar fields of notes it already wrote. Anything you typed in a note stays as it is.
 - Shows a read-only preview of every change before it writes anything.
-- Skips events by title rule or by an ignore list you edit by hand, and writes one note when the same event arrives from two calendars.
+- Skips events by title rule or by an ignore list you edit by hand, and can optionally skip events you have not accepted, and writes one note when the same event arrives from two calendars.
 - Lets you point the plugin at your own property names, headings and note templates.
 
 ## What it does not do
@@ -23,7 +23,7 @@ Graft is still in development. The settings tab, Preview sync, Sync now and Appl
 - It has no sign-in or OAuth. The private ICS address is the only credential. On Obsidian 1.11.4 and later, Graft keeps each address in Obsidian's secret storage on your device, not in the plugin's data file. See [Troubleshooting](docs/troubleshooting.md#privacy-and-feed-urls).
 - It makes no AI or LLM calls. All filtering and matching is mechanical.
 - It does not delete notes. If an event disappears from a feed, the preview shows a warning and the note stays.
-- It does not filter by RSVP status.
+- It does not filter by RSVP status unless you turn on **Only events I have accepted**, which is off by default. See [Configuration](docs/configuration.md).
 
 ## Quick start
 

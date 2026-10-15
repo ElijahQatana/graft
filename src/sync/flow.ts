@@ -37,7 +37,7 @@ export interface PreparedSync {
 }
 
 export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: FeedFetcher, now = new Date()): Promise<PreparedSync> {
-	const feeds = settings.calendars.map(({ name, url }) => ({ name, url }));
+	const feeds = settings.calendars.map(({ name, url, invitedAs }) => ({ name, url, invitedAs }));
 	if (!feeds.length) throw new UserFacingError("Add a calendar in Graft settings.");
 	const missing = feeds.filter((feed) => !feed.url.trim()).map((feed) => feed.name);
 	if (missing.length) throw new UserFacingError(`No feed address on this device for ${missing.join(", ")}. Open Graft settings and enter it again.`);
@@ -45,7 +45,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const window = { start: day.minus({ days: settings.daysBack }).toJSDate(), end: day.plus({ days: settings.daysAhead + 1 }).toJSDate() };
 	const templates: PreparedSync["templates"] = [];
 	const ignored = await readIgnoreList(app, settings.ignoreListPath, templates);
-	const plan = await buildSyncPlan(feeds, window, settings.titleMatchRules, ignored, fetchFeed);
+	const plan = await buildSyncPlan(feeds, window, settings.titleMatchRules, ignored, fetchFeed, settings.acceptedOnly);
 	const folders = [...new Set(Object.values(settings.folders))];
 	const snapshots = await readSnapshots(app, folders);
 	const bodies = await readTemplateBodies(app, settings, templates);
@@ -89,7 +89,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		features: {
 			personStubs: settings.createPersonStubs,
 			seriesStubs: settings.createSeriesStubs,
-			skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "",
+			skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "" || settings.acceptedOnly,
 		},
 	};
 	const newPeople = new Map<string, ResolvedAttendee>();

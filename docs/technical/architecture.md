@@ -3,7 +3,7 @@
 Graft is an Obsidian plugin written in TypeScript. Its sync pipeline is split into small modules:
 
 - `src/ics/` fetches and normalizes calendar events.
-- `src/filters/` applies title rules and the ignore list.
+- `src/filters/` applies title rules, the ignore list, and the optional accepted-only RSVP filter.
 - `src/sync/` builds a plan without writing to the vault. It fetches each configured calendar in list order and keeps one copy of an event that appears in several.
 - `src/match/` resolves existing Meeting, Person, Series, and Company notes.
 - `src/generate/` and `src/templates/` prepare note content and updates.
