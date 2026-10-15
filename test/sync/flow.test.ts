@@ -30,17 +30,26 @@ class Modal {
 	close() { this.closed = true; this.onClose(); }
 }
 const notices: any[] = [];
-class Notice { constructor(message: any) { notices.push(message); } }
+const hidden: any[] = [];
+class Notice { constructor(message: any) { notices.push(message); this.message = message; } message: any; hide() { hidden.push(this.message); } }
+const platform = { isMobile: false };
+const statusBar: any[] = [];
 class Plugin {
 	[key: string]: any;
 	constructor(app: any) { this.app = app; this.commands = []; }
 	addCommand(command: any) { this.commands.push(command); }
+	addStatusBarItem() {
+		const item: any = { spans: [], addClass() {}, setAttribute() {}, createSpan(options: any) { item.spans.push(options); return {}; }, remove() { statusBar.splice(statusBar.indexOf(item), 1); } };
+		statusBar.push(item);
+		return item;
+	}
 	addSettingTab() {}
 	async loadData() { return {}; }
 }
 class PluginSettingTab {}
 const feeds = new Map<string, string>();
-const obsidian = { TFile, Modal, Notice, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => ({ status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
+let onRequest: (() => void) | undefined;
+const obsidian = { TFile, Modal, Notice, Platform: platform, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => (onRequest?.(), { status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
 async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
@@ -677,4 +686,55 @@ test("a new Person stub with the name of an existing Person note warns without b
 	const before = f.texts.get("People/Pat Example.md");
 	await applySync(f.app, prepared);
 	assert.equal(f.texts.get("People/Pat Example.md"), before);
+});
+
+test("a status shows while feeds are read, and is gone before the preview opens", async () => {
+	const f = await pluginFixture(true);
+	const seen: string[] = [];
+	onRequest = () => seen.push(statusBar.map((item) => item.spans.map((span: any) => span.text ?? span.cls).join("|")).join(","));
+	const run = f.plugin.runSync(true);
+	await settle();
+	onRequest = undefined;
+	assert.ok(seen.length > 0);
+	assert.ok(seen.every((entry) => entry === "graft-spinner|Graft: checking calendars"));
+	assert.equal(statusBar.length, 0);
+	modals.at(-1).close();
+	await run;
+	assert.equal(statusBar.length, 0);
+});
+
+test("the status shows a different label for Sync now and clears when the sync stops with an error", async () => {
+	const f = await pluginFixture(true);
+	f.plugin.settings.calendars = [];
+	await f.plugin.runSync(false);
+	assert.equal(statusBar.length, 0);
+	assert.match(notices.at(-1), /Add a calendar/);
+	const g = await pluginFixture(true);
+	let label = "";
+	onRequest = () => { label = statusBar[0]?.spans.at(-1)?.text ?? ""; };
+	const run = g.plugin.runSync(false);
+	await settle();
+	onRequest = undefined;
+	assert.equal(label, "Graft: syncing");
+	modals.at(-1).close();
+	await run;
+	assert.equal(statusBar.length, 0);
+});
+
+test("on mobile the status is a notice that is hidden when the work ends", async () => {
+	platform.isMobile = true;
+	try {
+		const f = await pluginFixture(true);
+		hidden.length = 0;
+		const before = notices.length;
+		const run = f.plugin.runSync(true);
+		await settle();
+		assert.equal(notices[before], "Graft: checking calendars");
+		assert.deepEqual(hidden, ["Graft: checking calendars"]);
+		assert.equal(statusBar.length, 0);
+		modals.at(-1).close();
+		await run;
+	} finally {
+		platform.isMobile = false;
+	}
 });
