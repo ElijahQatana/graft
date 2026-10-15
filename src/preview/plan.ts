@@ -90,7 +90,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 		if (extractSection(existing.body, heading) === undefined) {
 			preview.warnings.push({ kind: "missing-invite-heading", subject: existing.path });
 		}
-		const body = buildMeetingBodyUpdate(existing.body, input.event.description, heading);
+		const body = buildMeetingBodyUpdate(existing.body, input.event.description, heading, input.schema.agendaPlaceholder);
 		if (body !== existing.body) {
 			const before = extractSection(existing.body, heading);
 			const after = extractSection(body, heading);

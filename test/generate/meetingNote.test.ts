@@ -120,6 +120,18 @@ test("Invite Agenda falls back to a placeholder when the invite has no descripti
 	assert.match(note.body, /## Invite Agenda\n\nNo agenda provided/);
 });
 
+test("the empty-agenda placeholder comes from the schema", () => {
+	const schema = { ...ORIGINAL_SCHEMA, agendaPlaceholder: "- " };
+	const note = buildMeetingNote(baseInput({ schema, event: makeEvent({ description: undefined }) }));
+	assert.match(note.body, /## Invite Agenda\n\n- /);
+	assert.doesNotMatch(note.body, /No agenda provided/);
+});
+
+test("a Series Standing Agenda and a real invite agenda land in separate sections", () => {
+	const note = buildMeetingNote(baseInput({ seriesStandingAgenda: "- Review actions", event: makeEvent({ description: "Budget review" }) }));
+	assert.match(note.body, /## Series Agenda\n\n- Review actions\n\n\n## Invite Agenda\n\nBudget review/);
+});
+
 test("Invite Agenda uses the invite's own description when present", () => {
 	const note = buildMeetingNote(baseInput({ event: makeEvent({ description: "Discuss Q3 numbers" }) }));
 	assert.match(note.body, /## Invite Agenda\n\nDiscuss Q3 numbers/);

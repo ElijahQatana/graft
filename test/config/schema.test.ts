@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import {
-	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, evaluateExtras, isExtraField, isFieldName, isHeading,
+	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, evaluateExtras, isAgendaPlaceholder, isExtraField, isFieldName, isHeading,
 	loadSchema, schemaConflict,
 } from "../../src/config/schema.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings } from "../../src/config/settings.ts";
@@ -169,4 +169,13 @@ test("the original schema's new-note extras are unchanged", () => {
 	assert.equal(created.channel, "");
 	assert.deepEqual(Object.keys(created), ORIGINAL_SCHEMA.meetingExtras.map((field) => field.key));
 	assert.deepEqual(Object.keys(evaluateExtras(ORIGINAL_SCHEMA.meetingExtras, context, true)), ["companies"]);
+});
+
+test("the agenda placeholder accepts one line, keeps a trailing space, and falls back when invalid", () => {
+	assert.equal(MINIMAL_SCHEMA.agendaPlaceholder, "No agenda provided");
+	assert.equal(loadSchema({ agendaPlaceholder: "- " }, MINIMAL_SCHEMA).agendaPlaceholder, "- ");
+	for (const bad of ["", "  ", "a\nb", 5]) {
+		assert.equal(loadSchema({ agendaPlaceholder: bad }, MINIMAL_SCHEMA).agendaPlaceholder, "No agenda provided");
+		assert.equal(isAgendaPlaceholder(bad), false);
+	}
 });

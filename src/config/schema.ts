@@ -24,6 +24,8 @@ export interface NoteSchema {
 	series: Record<SeriesFieldKey, string>;
 	company: { domain: string };
 	headings: { inviteAgenda: string; seriesAgenda: string; standingAgenda: string };
+	/** Written under the invite agenda heading when the event has no description. */
+	agendaPlaceholder: string;
 	/** Values written to the occurrence status property. Updates write `cancelled` only for an explicit cancellation. */
 	statusValues: { scheduled: string; cancelled: string };
 	/** Values for {{recurrence}}: `series` when the Meeting belongs to a Series note, `oneOff` otherwise. */
@@ -35,6 +37,9 @@ export interface NoteSchema {
 
 /** Meeting fields that may be left blank to skip writing them. Participants is blank, so off, by default. */
 export const OPTIONAL_MEETING_FIELDS: MeetingFieldKey[] = ["inviteUpdated", "occurrenceStatus", "participants"];
+
+/** The placeholder Graft wrote before it became a setting. Notes holding it are never rewritten for it. */
+export const DEFAULT_AGENDA_PLACEHOLDER = "No agenda provided";
 
 export const MINIMAL_SCHEMA: NoteSchema = {
 	typeField: "type",
@@ -52,6 +57,7 @@ export const MINIMAL_SCHEMA: NoteSchema = {
 	series: { uid: "ics_uid", title: "series_title" },
 	company: { domain: "domain" },
 	headings: { inviteAgenda: "## Invite Agenda", seriesAgenda: "## Series Agenda", standingAgenda: "## Standing Agenda" },
+	agendaPlaceholder: DEFAULT_AGENDA_PLACEHOLDER,
 	statusValues: { scheduled: "Scheduled", cancelled: "Cancelled" },
 	recurrenceValues: { series: "RegularSync", oneOff: "OneOff" },
 	meetingBody: "# Agenda\n{{series_section}}{{invite_section}}\n\n\n# Notes\n",
@@ -102,6 +108,12 @@ export function isTypeValue(value: unknown): value is string {
 
 export function isHeading(value: unknown): value is string {
 	return typeof value === "string" && /^#{1,6} \S[^\r\n]*$/.test(value) && value === value.trim();
+}
+
+/** One line of text. Trailing spaces are allowed so that "- " can start a bullet. */
+export function isAgendaPlaceholder(value: unknown): value is string {
+	// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+	return typeof value === "string" && value.trim() !== "" && value.length <= 200 && !/[\x00-\x1f]/.test(value);
 }
 
 export function isExtraField(value: unknown): value is ExtraField {
@@ -166,6 +178,7 @@ export function loadSchema(saved: unknown, base: NoteSchema): NoteSchema {
 	for (const key of Object.keys(result.headings) as Array<keyof NoteSchema["headings"]>) {
 		if (isHeading(headings[key])) result.headings[key] = headings[key];
 	}
+	if (isAgendaPlaceholder(input.agendaPlaceholder)) result.agendaPlaceholder = input.agendaPlaceholder;
 	for (const [name, target] of [["statusValues", result.statusValues], ["recurrenceValues", result.recurrenceValues]] as const) {
 		const source = record(input[name]);
 		for (const key of Object.keys(target)) {

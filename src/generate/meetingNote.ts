@@ -81,7 +81,7 @@ export function buildMeetingNote(
 		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies,
 	}));
 
-	const inviteAgenda = input.event.description?.trim() || "No agenda provided";
+	const inviteAgenda = input.event.description?.trim() || schema.agendaPlaceholder;
 	const seriesAgenda = input.seriesStandingAgenda?.trim() || "";
 	const body = input.bodyTemplate === undefined ? buildBody(schema, inviteAgenda, seriesAgenda)
 		: renderTemplate(input.bodyTemplate, {
