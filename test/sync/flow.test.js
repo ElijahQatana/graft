@@ -567,3 +567,13 @@ test("a plain Error with a deliberate-looking message stays generic", async () =
 	await f.plugin.runSync(true);
 	assert.equal(notices.at(-1), generic);
 });
+
+test("a calendar with no URL on this device stops the sync with a plain message and no fetch", async () => {
+	const f = fixture();
+	f.settings.calendars = [{ id: "a1", name: "Work", type: "google", url: "", invitedAs: "" }, { id: "b2", name: "Home", type: "google", url: "https://example.com/home.ics", invitedAs: "" }];
+	let fetched = 0;
+	await assert.rejects(() => prepareSync(f.app, f.settings, async () => { fetched++; return ""; }, now),
+		(error) => error.message === "No feed address on this device for Work. Open Graft settings and enter it again.");
+	assert.equal(fetched, 0);
+	assert.equal(f.writes.length, 0);
+});

@@ -80,10 +80,10 @@ async function loadModule(entry) {
 const { GraftSettingTab } = await loadModule("src/settings.ts");
 const { default: GraftPlugin } = await loadModule("src/main.ts");
 
-function fixture({ linking = false } = {}) {
+function fixture({ linking = false, secretStorage, calendars } = {}) {
 	const saves = [];
-	const plugin = { settings: { ...loadGraftSettings({}), companyLinking: linking }, async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
-	const app = { vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
+	const plugin = { settings: { ...loadGraftSettings({}), companyLinking: linking, ...(calendars ? { calendars } : {}) }, async saveSettings() { saves.push(JSON.parse(JSON.stringify(this.settings))); } };
+	const app = { secretStorage, vault: { getAbstractFileByPath(path) { return path === "Templates/Meeting.md" ? new TFile() : null; } } };
 	const tab = new GraftSettingTab(app, plugin);
 	tab.display();
 	function find(parent, name) { for (const child of parent.children ?? []) { if (child.name === name) return child; const nested = find(child, name); if (nested) return nested; } }
@@ -92,6 +92,7 @@ function fixture({ linking = false } = {}) {
 	return { plugin, tab, saves, row, control };
 }
 
+const noIds = (calendars) => calendars.map(({ id, ...rest }) => { assert.match(id, /^[a-z0-9]{1,40}$/); return rest; });
 function walk(parent, visit) { for (const child of parent.children ?? []) { visit(child); walk(child, visit); } }
 function group(tab, id) { let found; walk(tab.containerEl, (child) => { if (child.attributes?.["data-graft-group"] === id) found = child; }); return found; }
 function byClass(tab, cls) { let found; walk(tab.containerEl, (child) => { if (child.cls?.split(" ").includes(cls)) found ??= child; }); return found; }
@@ -173,16 +174,19 @@ test("calendars start empty and can be added, edited, reordered, and removed", a
 	fill("New calendar", "Personal", undefined, "https://example.com/personal.ics", "");
 	await control("New calendar", "button", "Add calendar").click();
 	assert.equal(saves.length, 2);
-	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.calendars)), [
+	assert.deepEqual(noIds(plugin.settings.calendars), [
 		{ name: "Work", type: "outlook", url: "https://example.com/work.ics", invitedAs: "one@example.com" },
 		{ name: "Personal", type: "google", url: "https://example.com/personal.ics", invitedAs: "" },
 	]);
+	assert.notEqual(plugin.settings.calendars[0].id, plugin.settings.calendars[1].id);
+	const homeId = plugin.settings.calendars[1].id;
 	for (const calendar of [row("Calendar 1"), row("Calendar 2")]) {
 		assert.equal(calendar.controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
 	}
 	fill("Calendar 2", "Home", "outlook", "https://example.com/home.ics", "two@example.com");
 	await control("Calendar 2", "button", "Save").click();
-	assert.deepEqual(JSON.parse(JSON.stringify(plugin.settings.calendars[1])), { name: "Home", type: "outlook", url: "https://example.com/home.ics", invitedAs: "two@example.com" });
+	assert.deepEqual(noIds([plugin.settings.calendars[1]]), [{ name: "Home", type: "outlook", url: "https://example.com/home.ics", invitedAs: "two@example.com" }]);
+	assert.equal(plugin.settings.calendars[1].id, homeId);
 	assert.equal(control("Calendar 1", "button", "Up").disabled, true);
 	await control("Calendar 2", "button", "Up").click();
 	assert.deepEqual(plugin.settings.calendars.map((calendar) => calendar.name), ["Home", "Work"]);
@@ -665,4 +669,103 @@ test("collapse state survives a re-render that rebuilds the headings", async () 
 	await control("New title rule", "button", "Add").click();
 	assert.equal(group(tab, "filters").open, true);
 	assert.equal(row("Title skip rules").isHeading, true);
+});
+
+function mockSecrets(initial = {}, failOn) {
+	const secrets = new Map(Object.entries(initial));
+	return {
+		secrets,
+		getSecret(id) { if (failOn === "get") throw new Error("synthetic storage failure"); return secrets.get(id) ?? null; },
+		setSecret(id, value) { if (failOn === "set") throw new Error("synthetic storage failure"); secrets.set(id, value); },
+	};
+}
+function plugin(secretStorage, data) {
+	const instance = new GraftPlugin();
+	instance.app = { secretStorage };
+	instance.loadData = async () => data;
+	instance.saved = [];
+	instance.saveData = async (value) => { instance.saved.push(JSON.parse(JSON.stringify(value))); };
+	return instance;
+}
+const FEED = "https://example.com/private-feed.ics";
+const saved = (instance) => JSON.stringify(instance.saved);
+
+test("with secret storage, saving keeps the URL out of data.json and loading restores it", async () => {
+	const secretStorage = mockSecrets();
+	const first = plugin(secretStorage, {});
+	await first.loadSettings();
+	first.settings.calendars.push({ id: "abc123", name: "Work", type: "google", url: FEED, invitedAs: "" });
+	await first.saveSettings();
+	assert.equal(secretStorage.secrets.get("graft-calendar-abc123"), FEED);
+	assert.equal(saved(first).includes("private-feed"), false);
+	assert.equal(first.settings.calendars[0].url, FEED);
+	const second = plugin(secretStorage, first.saved.at(-1));
+	await second.loadSettings();
+	assert.equal(second.settings.calendars[0].url, FEED);
+	assert.equal(second.saved.length, 0);
+});
+
+test("a plain-text URL in old data moves into storage and is saved out of data.json right away", async () => {
+	const secretStorage = mockSecrets();
+	const instance = plugin(secretStorage, { feeds: { google: { url: FEED, invitedAs: "" } } });
+	await instance.loadSettings();
+	assert.equal(instance.settings.calendars[0].url, FEED);
+	assert.equal(secretStorage.secrets.get(`graft-calendar-${instance.settings.calendars[0].id}`), FEED);
+	assert.equal(instance.saved.length, 1);
+	assert.equal(saved(instance).includes("private-feed"), false);
+	assert.equal(instance.saved[0].calendars.length, 1);
+});
+
+test("removing a calendar clears its secret", async () => {
+	const secretStorage = mockSecrets();
+	const instance = plugin(secretStorage, {});
+	await instance.loadSettings();
+	instance.settings.calendars.push({ id: "abc123", name: "Work", type: "google", url: FEED, invitedAs: "" });
+	await instance.saveSettings();
+	instance.settings.calendars = [];
+	await instance.saveSettings();
+	assert.equal(secretStorage.secrets.get("graft-calendar-abc123"), "");
+	assert.deepEqual(instance.saved.at(-1).calendars, []);
+});
+
+test("without secret storage the URL is saved in data.json as before", async () => {
+	const instance = plugin(undefined, {});
+	await instance.loadSettings();
+	instance.settings.calendars.push({ id: "abc123", name: "Work", type: "google", url: FEED, invitedAs: "" });
+	await instance.saveSettings();
+	assert.equal(instance.saved.at(-1).calendars[0].url, FEED);
+});
+
+test("a storage error keeps the settings and the notice never shows the URL", async () => {
+	const instance = plugin(mockSecrets({}, "set"), {});
+	await instance.loadSettings();
+	instance.settings.calendars.push({ id: "abc123", name: "Work", type: "google", url: FEED, invitedAs: "" });
+	notices.length = 0;
+	await instance.saveSettings();
+	assert.equal(instance.saved.at(-1).calendars[0].url, FEED);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0].includes("private-feed"), false);
+	const reading = plugin(mockSecrets({}, "get"), { calendars: [{ id: "abc123", name: "Work", type: "google" }] });
+	notices.length = 0;
+	await reading.loadSettings();
+	assert.equal(reading.settings.calendars[0].url, "");
+	assert.equal(notices.length, 1);
+});
+
+test("the Calendars section says where URLs are stored", () => {
+	const helps = (tab) => { const found = []; walk(tab.containerEl, (child) => { if (child.cls === "graft-help") found.push(child.text); }); return found; };
+	assert.ok(helps(fixture().tab).includes("URLs are stored in the plugin's data file on this version of Obsidian."));
+	const withStorage = helps(fixture({ secretStorage: mockSecrets() }).tab);
+	assert.ok(withStorage.includes("URLs are kept in Obsidian's secret storage on this device, not in the plugin's data file."));
+	assert.equal(withStorage.some((text) => text.includes("on this version of Obsidian")), false);
+});
+
+test("a calendar with no URL on this device says so on its row", () => {
+	const { row } = fixture({ secretStorage: mockSecrets(), calendars: [
+		{ id: "a1", name: "Work", type: "google", url: "", invitedAs: "" },
+		{ id: "b2", name: "Home", type: "google", url: FEED, invitedAs: "" },
+	] });
+	assert.equal(row("Calendar 1").description, "No feed address on this device. Enter it again.");
+	assert.ok(!row("Calendar 2").description);
+	assert.equal(row("Calendar 2").controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
 });
