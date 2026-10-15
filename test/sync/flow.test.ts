@@ -738,3 +738,37 @@ test("on mobile the status is a notice that is hidden when the work ends", async
 		platform.isMobile = false;
 	}
 });
+
+test("a sync that wrote notes is recorded in the sync log note, and a repeat that changes nothing is not", async () => {
+	const f = await pluginFixture(false);
+	f.plugin.settings.syncLogPath = "Graft/Sync log.md";
+	await f.plugin.runSync(false);
+	const log = f.texts.get("Graft/Sync log.md");
+	assert.match(log, /^# Graft sync log\n\n## \d{4}-\d{2}-\d{2} \d{2}:\d{2} · Sync now\n- Created \d+ Meeting notes?: \[\[Meetings\//);
+	assert.equal(log.includes("http"), false);
+	await f.plugin.runSync(false);
+	assert.equal(f.texts.get("Graft/Sync log.md"), log);
+});
+
+test("a preview Apply is labelled, and with no log path nothing is created", async () => {
+	const f = await pluginFixture(true);
+	f.plugin.settings.syncLogPath = "Sync log.md";
+	const run = f.plugin.runSync(true);
+	await settle();
+	const modal = modals.at(-1);
+	await elements(modal.contentEl).find((item) => item.text === "Apply").listeners.click();
+	await run;
+	assert.match(f.texts.get("Sync log.md"), /· Apply from preview\n/);
+	const blank = await pluginFixture(false);
+	await blank.plugin.runSync(false);
+	assert.equal([...blank.files.keys()].some((path: string) => path.endsWith("log.md")), false);
+});
+
+test("a log path inside a note folder is refused with a notice and the sync still succeeds", async () => {
+	const f = await pluginFixture(false);
+	f.plugin.settings.syncLogPath = "Meetings/log.md";
+	await f.plugin.runSync(false);
+	assert.ok(notices.some((message: string) => /inside a note folder/.test(message)));
+	assert.equal(f.files.has("Meetings/log.md"), false);
+	assert.ok(f.writes.some((path: string) => path.startsWith("Meetings/")));
+});

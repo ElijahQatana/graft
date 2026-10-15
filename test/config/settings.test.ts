@@ -66,7 +66,7 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 		],
 		folders: { meeting: "../outside", person: "Custom/People" },
 		templates: { meeting: "Templates/Meeting.txt" },
-		ignoreListPath: "/absolute", daysBack: -1, daysAhead: 1.5,
+		ignoreListPath: "/absolute", syncLogPath: "Graft/log.txt", daysBack: -1, daysAhead: 1.5,
 		timezone: "Invalid/Zone", autoRunOnStartup: "true", acceptedOnly: "yes", meetingFilenamePattern: " ",
 		titleMatchRules: [{ mode: "exact", value: "" }],
 		personFilenameRules: [{ domain: "example.com", style: "unknown" }],
@@ -76,6 +76,8 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 	assert.equal(loaded.folders.meeting, DEFAULT_SETTINGS.folders.meeting);
 	assert.equal(loaded.templates.meeting, "");
 	assert.equal(loaded.ignoreListPath, "");
+	assert.equal(loaded.syncLogPath, "");
+	assert.equal(loadGraftSettings({ syncLogPath: "Graft/Sync log.md" }).syncLogPath, "Graft/Sync log.md");
 	assert.equal(loaded.daysBack, DEFAULT_SETTINGS.daysBack);
 	assert.equal(loaded.daysAhead, DEFAULT_SETTINGS.daysAhead);
 	assert.equal(loaded.timezone, "UTC");
