@@ -87,3 +87,12 @@ test("ics_recurrence_id updates to the event's own value", () => {
 	assert.equal(update.ics_uid, "series-1");
 	assert.equal(update.ics_recurrence_id, "2026-09-08T14:00:00.000Z");
 });
+
+test("an update never writes the participants property, so an edited list is left alone", () => {
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.meetingExtras = schema.meetingExtras.filter((field) => field.key !== "participants");
+	schema.meeting.participants = "attendees";
+	const update = buildMeetingFrontmatterUpdate(baseInput({ schema, invited: [{ filename: "Sam Example", companyLinks: [] }] }), companies);
+	assert.equal("attendees" in update, false);
+	assert.deepEqual(update.invited, ["[[Sam Example]]"]);
+});
