@@ -644,7 +644,7 @@ test("the tab has no plugin-name title and its section headings are Setting head
 	assert.ok(byClass(tab, "graft-intro"));
 	const headings = [];
 	walk(tab.containerEl, (child) => { if (child.isHeading) headings.push(child.name); });
-	assert.deepEqual(headings, ["Title skip rules", "Person filename conventions"]);
+	assert.deepEqual(headings, ["Start here", "Title skip rules", "Person filename conventions"]);
 });
 
 test("search matches a heading by name and hides it otherwise", () => {
@@ -768,4 +768,49 @@ test("a calendar with no URL on this device says so on its row", () => {
 	assert.equal(row("Calendar 1").description, "No feed address on this device. Enter it again.");
 	assert.ok(!row("Calendar 2").description);
 	assert.equal(row("Calendar 2").controls.filter((item) => item.kind === "text")[1].inputEl.type, "password");
+});
+
+function startBlock(tab) {
+	let heading;
+	walk(tab.containerEl, (child) => { if (child.isHeading && child.name === "Start here") heading = child; });
+	return { heading, steps: byClass(tab, "graft-start-steps") };
+}
+
+test("the start-here block shows with no calendars, in order, without a URL or link", () => {
+	const { tab } = fixture();
+	const { heading, steps } = startBlock(tab);
+	assert.ok(heading);
+	assert.equal(steps.tag, "ol");
+	assert.equal(steps.children.length, 3);
+	assert.match(steps.children[0].text, /Secret address in iCal format/);
+	assert.match(steps.children[1].text, /Meeting, Person and Series/);
+	assert.match(steps.children[2].text, /Preview sync.*writes nothing.*Sync now/);
+	const kids = tab.containerEl.children;
+	assert.ok(kids.indexOf(heading) < kids.indexOf(steps));
+	assert.ok(kids.indexOf(steps) < kids.indexOf(group(tab, "calendars")));
+	const text = steps.children.map((item) => item.text).join(" ");
+	assert.doesNotMatch(text, /https?:|www\./i);
+	assert.equal(steps.children.some((item) => item.children.length), false);
+});
+
+test("the start-here block goes once a calendar exists and returns when the last is removed", async () => {
+	const { tab, control, row } = fixture();
+	row("New calendar").controls.filter((item) => item.kind === "text").forEach((item, i) => item.change(["Work", "https://example.com/work.ics", ""][i]));
+	await control("New calendar", "button", "Add calendar").click();
+	assert.equal(startBlock(tab).heading, undefined);
+	assert.equal(startBlock(tab).steps, undefined);
+	await control("Calendar 1", "button", "Remove").click();
+	assert.ok(startBlock(tab).heading);
+	assert.ok(startBlock(tab).steps);
+});
+
+test("the start-here block is hidden while searching and returns when the search is cleared", () => {
+	const { tab } = fixture();
+	const { heading, steps } = startBlock(tab);
+	search(tab, "folder");
+	assert.equal(heading.settingEl.hidden, true);
+	assert.equal(steps.hidden, true);
+	search(tab, "");
+	assert.equal(heading.settingEl.hidden, false);
+	assert.equal(steps.hidden, false);
 });

@@ -45,6 +45,8 @@ export class GraftSettingTab extends PluginSettingTab {
 	/** Survives display() rebuilds, so a search stays applied while a row is saved. */
 	private query = "";
 	private emptyEl?: HTMLElement;
+	/** Elements above the first section that a search hides, such as the start-here block. */
+	private topLoose: HTMLElement[] = [];
 
 	constructor(app: App, private plugin: GraftPlugin) {
 		super(app, plugin);
@@ -59,9 +61,11 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.target = containerEl;
 		this.current = undefined;
 		this.sections = [];
+		this.topLoose = [];
 		this.rowOf = new WeakMap();
 		containerEl.createEl("p", { cls: "graft-intro", text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
 		this.searchBox();
+		this.startHere();
 
 		this.calendars();
 
@@ -134,7 +138,22 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	/** Headings and help text have nothing to match, so a search hides them. */
 	private loose(el: HTMLElement): void {
-		this.current?.loose.push(el);
+		(this.current?.loose ?? this.topLoose).push(el);
+	}
+
+	/** First-run steps, shown only until a calendar exists. A search hides them like any other help text. */
+	private startHere(): void {
+		if (this.plugin.settings.calendars.length) return;
+		const heading = new Setting(this.target).setName("Start here").setHeading();
+		heading.settingEl?.classList?.add("graft-heading");
+		this.loose(heading.settingEl);
+		const steps = this.target.createEl("ol", { cls: "graft-help graft-start-steps" });
+		for (const text of [
+			"Add a calendar below with its private ICS address. In Google Calendar, use the \"Secret address in iCal format\" in the calendar's settings. For Outlook or Microsoft 365, publish the calendar and copy its ICS link.",
+			"Set where Meeting, Person and Series notes should go. The defaults work for a new vault.",
+			"Run Graft: Preview sync from the command palette first. It shows what would change and writes nothing. Run Sync now once it looks right.",
+		]) steps.createEl("li", { text });
+		this.loose(steps);
 	}
 
 	private searchBox(): void {
@@ -226,6 +245,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			section.details.open = terms.length ? any : this.openState.get(section.id) ?? section.defaultOpen;
 			return any;
 		};
+		for (const el of this.topLoose) el.hidden = terms.length > 0;
 		for (const section of this.sections) found = visit(section) || found;
 		if (this.emptyEl) this.emptyEl.setText(terms.length && !found ? "No settings match your search." : "");
 	}

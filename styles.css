@@ -247,6 +247,11 @@
 	font-size: var(--font-ui-small);
 }
 
+.graft-settings .graft-start-steps {
+	margin-top: 0;
+	padding-left: var(--size-4-6);
+}
+
 .graft-settings .graft-error {
 	margin-top: var(--size-4-1);
 	color: var(--text-error);
