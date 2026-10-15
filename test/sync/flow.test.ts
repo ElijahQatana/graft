@@ -50,6 +50,8 @@ class Plugin {
 	[key: string]: any;
 	constructor(app: any) { this.app = app; this.commands = []; }
 	addCommand(command: any) { this.commands.push(command); }
+	registerView() {}
+	addRibbonIcon() {}
 	registerInterval(id: number) { return id; }
 	addStatusBarItem() {
 		const item: any = { spans: [], listeners: {}, classes: [], addClass(...names: string[]) { item.classes.push(...names); }, setAttribute() {}, addEventListener(name: string, callback: any) { item.listeners[name] = callback; }, createSpan(options: any) { item.spans.push(options); return {}; }, remove() { statusBar.splice(statusBar.indexOf(item), 1); } };
@@ -64,7 +66,8 @@ class Plugin {
 class PluginSettingTab {}
 const feeds = new Map<string, string>();
 let onRequest: (() => void) | undefined;
-const obsidian = { TFile, Modal, Notice, Platform: platform, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => (onRequest?.(), { status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
+class ItemView {}
+const obsidian = { TFile, Modal, Notice, ItemView, Platform: platform, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => (onRequest?.(), { status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
 async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
@@ -624,7 +627,7 @@ function elements(root: any) { return [root, ...root.children.flatMap(elements)]
 
 test("commands open a reachable preview, Apply writes once, and parallel sync is blocked", async () => {
 	const f = await pluginFixture(false);
-	assert.deepEqual(clean(f.plugin.commands.map((item: any) => item.name)), ["Preview sync", "Sync now"]);
+	assert.deepEqual(clean(f.plugin.commands.map((item: any) => item.name)), ["Preview sync", "Sync now", "Open calendar"]);
 	const run = f.plugin.runSync(true);
 	await settle();
 	const modal = modals.at(-1);
