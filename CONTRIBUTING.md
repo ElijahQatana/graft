@@ -19,7 +19,7 @@ The CI workflow (`.github/workflows/ci.yml`) runs lint, tests and the build on N
 
 ## Cutting a release
 
-Releases are made from `main` once it is green. Tags are bare versions with no `v` prefix, such as `0.1.0`.
+Releases are made from `main` once it is green. Tags are bare versions with no `v` prefix, such as `0.1.0`. A tag with a suffix, such as `1.0.0-rc.1`, is published as a pre-release.
 
 1. Run `npm version <new version>` (for example `npm version 0.2.0`). It updates `package.json` and `package-lock.json`, copies the version into `manifest.json` and `versions.json` (using the `minAppVersion` already in `manifest.json`), commits the change and creates the tag.
 2. Push the commit, then review it.
