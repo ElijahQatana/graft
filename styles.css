@@ -14,10 +14,6 @@
 	max-height: 75vh;
 }
 
-.graft-preview-head h2 {
-	margin: 0 0 var(--size-4-1);
-}
-
 .graft-preview-head p {
 	margin: 0;
 }

@@ -23,6 +23,7 @@ class Element {
 class Modal {
 	contentEl = new Element();
 	constructor(app) { this.app = app; }
+	setTitle(title) { this.title = title; return this; }
 	close() { this.closed = true; this.onClose(); }
 }
 async function load(entry) {
@@ -61,7 +62,8 @@ test("modal displays each section as literal text and never shows raw feed error
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.equal(elements.filter((element) => element.tag === "button").length, 1);
 	modal.onOpen();
-	assert.equal(allElements(modal.contentEl).filter((element) => element.text === "Graft sync preview").length, 1);
+	assert.equal(modal.title, "Graft sync preview");
+	assert.equal(allElements(modal.contentEl).filter((element) => element.text === "Graft sync preview").length, 0);
 	allElements(modal.contentEl).find((element) => element.tag === "button").listeners.click();
 	assert.equal(modal.closed, true);
 	assert.deepEqual(modal.contentEl.children, []);
