@@ -63,7 +63,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.sections = [];
 		this.topLoose = [];
 		this.rowOf = new WeakMap();
-		containerEl.createEl("p", { cls: "graft-intro", text: "Settings save automatically. Calendar feeds stay read-only. Run Graft: Preview sync or Graft: Sync now from the command palette to use these settings." });
+		containerEl.createEl("p", { cls: "graft-intro", text: "Changes save automatically. Run Graft: Preview sync from the command palette to try them." });
 		this.searchBox();
 		this.startHere();
 
