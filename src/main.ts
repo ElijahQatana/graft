@@ -8,6 +8,7 @@ import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.
 import { fetchIcs } from "./ics/fetch.ts";
 import { isLoggable, isInsideNoteFolders, logEntryFromPreview } from "./sync/log.ts";
 import { writeSyncLog } from "./sync/logFile.ts";
+import { countPlannedChanges, FAILURES_BEFORE_WARNING, planFingerprint } from "./sync/scheduled.ts";
 import { DateTime } from "luxon";
 
 /** Loads settings and connects the sync commands. */
@@ -21,6 +22,14 @@ export default class GraftPlugin extends Plugin {
 	private clearBusy?: () => void;
 	/** Calendar ids as last saved, so a removed calendar's secret can be cleared. */
 	private savedCalendarIds = new Set<string>();
+	/** The timer for scheduled checks and the settings it was made from, so an unrelated save leaves it running. */
+	private checkTimer?: number;
+	private checkTimerKey = "";
+	private checkFailures = 0;
+	/** Fingerprint of the plan last announced, so the same pending changes are announced once. */
+	private lastAnnounced = "";
+	/** The status bar item that says changes are ready or the last check failed. */
+	private readyItem?: HTMLElement;
 
 	async onload() {
 		await this.loadSettings();
@@ -30,11 +39,13 @@ export default class GraftPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			if (this.settings.autoRunOnStartup) void this.runSync(false);
 		});
+		this.scheduleChecks();
 	}
 
 	onunload() {
 		this.unloaded = true;
 		this.clearBusy?.();
+		this.clearReady();
 		this.previewModal?.close();
 	}
 
@@ -44,6 +55,7 @@ export default class GraftPlugin extends Plugin {
 			return;
 		}
 		this.syncing = true;
+		this.clearReady();
 		try {
 			const settings: GraftSettings = structuredClone(this.settings);
 			const prepared = await this.whileBusy(previewOnly ? "Graft: checking calendars" : "Graft: syncing", () => prepareSync(this.app, settings, fetchIcs));
@@ -73,6 +85,74 @@ export default class GraftPlugin extends Plugin {
 			new Notice(message);
 			await this.recordRun(prepared, source, message);
 		}
+	}
+
+	/** (Re)starts the timer for scheduled checks when the mode or interval changed. Obsidian only runs it while
+	 * it is open, and mobile may pause it in the background. */
+	private scheduleChecks() {
+		const { scheduledSync, syncIntervalMinutes } = this.settings;
+		const key = `${scheduledSync}:${syncIntervalMinutes}`;
+		if (key === this.checkTimerKey) return;
+		this.checkTimerKey = key;
+		if (this.checkTimer !== undefined) window.clearInterval(this.checkTimer);
+		this.checkTimer = undefined;
+		this.checkFailures = 0;
+		this.lastAnnounced = "";
+		this.clearReady();
+		if (scheduledSync === "off") return;
+		this.checkTimer = this.registerInterval(window.setInterval(() => { void this.scheduledCheck(); }, syncIntervalMinutes * 60_000));
+	}
+
+	/** One background check. It plans like Preview sync but writes nothing, and says so only when new changes are ready. */
+	async scheduledCheck() {
+		if (this.syncing || this.unloaded || this.settings.scheduledSync === "off") return;
+		this.syncing = true;
+		try {
+			const prepared = await prepareSync(this.app, structuredClone(this.settings), fetchIcs);
+			if (this.unloaded) return;
+			if (prepared.preview.errors.length) throw new Error("A calendar could not be read.");
+			this.checkFailures = 0;
+			const changes = countPlannedChanges(prepared.preview);
+			if (!changes) {
+				this.lastAnnounced = "";
+				this.clearReady();
+				return;
+			}
+			const fingerprint = planFingerprint(prepared.preview);
+			if (fingerprint === this.lastAnnounced) return;
+			this.lastAnnounced = fingerprint;
+			this.announceReady(`Graft: ${changes} ${changes === 1 ? "change" : "changes"} ready to review`);
+		} catch {
+			this.checkFailures++;
+			if (this.checkFailures === FAILURES_BEFORE_WARNING) this.announceReady("Graft: the last check failed", "Graft: scheduled checks keep failing. Run Preview sync to see why.");
+		} finally {
+			this.syncing = false;
+		}
+	}
+
+	/** Shows `label` in the status bar on desktop, and as a notice that opens Preview sync when clicked. */
+	private announceReady(label: string, noticeText = label) {
+		this.clearReady();
+		if (!Platform.isMobile) {
+			const item = this.addStatusBarItem();
+			item.addClass("graft-status", "graft-status-ready");
+			item.setAttribute("role", "button");
+			item.setAttribute("tabindex", "0");
+			item.setAttribute("aria-label", "Open Graft preview");
+			item.createSpan({ text: label });
+			item.addEventListener("click", () => { void this.runSync(true); });
+			this.readyItem = item;
+		}
+		const notice = new Notice(createFragment((fragment) => {
+			fragment.createSpan({ text: `${noticeText} ` });
+			const open = fragment.createEl("a", { text: "Open preview", attr: { role: "button", tabindex: "0" } });
+			open.addEventListener("click", () => { notice.hide(); void this.runSync(true); });
+		}), 10000);
+	}
+
+	private clearReady() {
+		this.readyItem?.remove();
+		this.readyItem = undefined;
 	}
 
 	/** Adds the run to the sync log note, if one is set. A problem with the log never stops a sync. */
@@ -146,6 +226,7 @@ export default class GraftPlugin extends Plugin {
 		});
 		try {
 			await this.settingsSave;
+			this.scheduleChecks();
 		} catch {
 			new Notice("Graft could not save settings. Try editing the setting again.");
 		}

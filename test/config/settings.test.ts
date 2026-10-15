@@ -138,3 +138,13 @@ test("title prefixes default to forward and reply markers and reject bad saved v
 	assert.deepEqual(loadGraftSettings({ titlePrefixesToStrip: [] }).titlePrefixesToStrip, []);
 	assert.deepEqual(loadGraftSettings({ titlePrefixesToStrip: [1] }).titlePrefixesToStrip, ["FW:", "Fwd:", "RE:"]);
 });
+
+test("scheduled sync settings default to off and every hour, and invalid values fall back", () => {
+	assert.equal(DEFAULT_SETTINGS.scheduledSync, "off");
+	assert.equal(DEFAULT_SETTINGS.syncIntervalMinutes, 60);
+	const ok = loadGraftSettings({ scheduledSync: "notify", syncIntervalMinutes: 15 });
+	assert.equal(ok.scheduledSync, "notify");
+	assert.equal(ok.syncIntervalMinutes, 15);
+	for (const bad of [14, 1441, 30.5, "30", null]) assert.equal(loadGraftSettings({ syncIntervalMinutes: bad }).syncIntervalMinutes, 60);
+	assert.equal(loadGraftSettings({ scheduledSync: "automatic" }).scheduledSync, "off");
+});

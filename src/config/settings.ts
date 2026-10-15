@@ -28,6 +28,20 @@ export function newCalendarId(taken: Iterable<string>): string {
 	}
 }
 
+/** What a scheduled run does: nothing, or check in the background and tell the user when something is ready. */
+export type ScheduledMode = "off" | "notify";
+export const SCHEDULED_MODES: ScheduledMode[] = ["off", "notify"];
+export const MIN_INTERVAL_MINUTES = 15;
+export const MAX_INTERVAL_MINUTES = 1440;
+
+export function isScheduledMode(value: unknown): value is ScheduledMode {
+	return SCHEDULED_MODES.includes(value as ScheduledMode);
+}
+
+export function isIntervalMinutes(value: unknown): value is number {
+	return typeof value === "number" && Number.isInteger(value) && value >= MIN_INTERVAL_MINUTES && value <= MAX_INTERVAL_MINUTES;
+}
+
 export interface GraftSettings {
 	/** Synced in this order; when two calendars hold one event, the earlier one is used. */
 	calendars: CalendarSettings[];
@@ -58,6 +72,10 @@ export interface GraftSettings {
 	cancelVanishedSeries: boolean;
 	previewBeforeApply: boolean;
 	autoRunOnStartup: boolean;
+	/** Background checks while Obsidian is open. */
+	scheduledSync: ScheduledMode;
+	/** Minutes between scheduled checks. */
+	syncIntervalMinutes: number;
 	/** Note types, property names and headings Graft reads and writes. */
 	schema: NoteSchema;
 }
@@ -84,6 +102,8 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	cancelVanishedSeries: false,
 	previewBeforeApply: true,
 	autoRunOnStartup: false,
+	scheduledSync: "off",
+	syncIntervalMinutes: 60,
 	schema: cloneSchema(MINIMAL_SCHEMA),
 };
 
@@ -172,6 +192,8 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	}
 	if (typeof input.meetingFilenamePattern === "string" && input.meetingFilenamePattern.trim()) result.meetingFilenamePattern = input.meetingFilenamePattern;
 	if (typeof input.timezone === "string" && isTimezone(input.timezone)) result.timezone = input.timezone;
+	if (isScheduledMode(input.scheduledSync)) result.scheduledSync = input.scheduledSync;
+	if (isIntervalMinutes(input.syncIntervalMinutes)) result.syncIntervalMinutes = input.syncIntervalMinutes;
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}
