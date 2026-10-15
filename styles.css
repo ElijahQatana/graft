@@ -228,6 +228,7 @@
 }
 
 .graft-settings .graft-heading {
+	border-radius: 0;
 	margin: var(--size-4-8) 0 var(--size-4-2);
 	padding: 0 0 var(--size-4-1);
 	border-bottom: 1px solid var(--background-modifier-border);
@@ -244,8 +245,25 @@
 }
 
 .graft-settings .graft-start-steps {
-	margin-top: 0;
-	padding-left: var(--size-4-6);
+	margin-top: var(--size-4-3);
+	padding-left: 0;
+	list-style: none;
+	counter-reset: graft-step;
+}
+
+.graft-settings .graft-start-steps li {
+	display: flex;
+	gap: var(--size-4-3);
+	margin: 0 0 var(--size-4-3);
+	counter-increment: graft-step;
+}
+
+.graft-settings .graft-start-steps li::before {
+	content: counter(graft-step);
+	flex: 0 0 auto;
+	width: 1em;
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
 }
 
 .graft-settings .graft-error {
@@ -282,19 +300,46 @@
 }
 
 .graft-settings .graft-group {
-	margin-top: var(--size-4-4);
-	padding: 0 var(--size-4-4) var(--size-4-2);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background: var(--background-primary);
+	margin-top: var(--size-4-8);
+	padding: 0;
+	border: 0;
+	background: none;
 }
 
 .graft-settings .graft-group > summary {
-	padding: var(--size-4-3) 0;
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-3);
+	padding: 0 0 var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
 	cursor: pointer;
 	color: var(--text-normal);
 	font-size: var(--font-ui-medium);
 	font-weight: var(--font-semibold);
+}
+
+.graft-settings .graft-group > summary {
+	list-style: none;
+}
+
+.graft-settings .graft-group > summary::-webkit-details-marker {
+	display: none;
+}
+
+.graft-settings .graft-group > summary::before {
+	content: "";
+	flex: 0 0 auto;
+	align-self: center;
+	width: 0.4em;
+	height: 0.4em;
+	border-right: 2px solid var(--text-muted);
+	border-bottom: 2px solid var(--text-muted);
+	transform: rotate(-45deg);
+	transition: transform 0.1s ease;
+}
+
+.graft-settings .graft-group[open] > summary::before {
+	transform: rotate(45deg);
 }
 
 .graft-settings .graft-group > summary:hover {
@@ -307,23 +352,40 @@
 	outline: none;
 }
 
-.graft-settings .graft-group[open] > summary {
-	border-bottom: 1px solid var(--background-modifier-border);
+.graft-settings .graft-group-meta {
+	margin-left: auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+	text-align: right;
 }
 
 .graft-settings .graft-group-body {
-	padding-top: var(--size-4-2);
+	padding-top: var(--size-4-1);
+}
+
+.graft-settings .graft-group-body .setting-item {
+	padding-block: var(--size-4-3);
+}
+
+.graft-settings .graft-calendar-row .setting-item-description {
+	margin-top: var(--size-4-1);
 }
 
 .graft-settings .graft-subgroup {
-	background: var(--background-secondary);
+	margin-top: var(--size-4-6);
 }
 
 .graft-settings .graft-subgroup > summary {
 	font-size: var(--font-ui-small);
 }
 
+.graft-settings .graft-rule-row {
+	align-items: flex-start;
+}
+
 .graft-settings .graft-rule-row .setting-item-info {
+	padding-top: var(--size-4-2);
 	flex: 0 0 auto;
 	min-width: 8rem;
 	white-space: nowrap;
