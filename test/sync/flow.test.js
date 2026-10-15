@@ -40,7 +40,7 @@ const obsidian = { TFile, Modal, Notice, Plugin, PluginSettingTab, Setting: clas
 async function load(entry) {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module = { exports: {} };
-	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, Date: Clock });
+	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, structuredClone, Date: Clock });
 	return module.exports;
 }
 const { prepareSync, applySync } = await load("src/sync/flow.ts");
