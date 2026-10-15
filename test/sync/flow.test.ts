@@ -213,7 +213,10 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	const setup = () => {
 		const f = fixture();
 		f.settings.cancelVanishedSeries = true;
-		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-05"));
+		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/Gone 2.md", meeting("gone@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
+		f.put("Meetings/Single.md", meeting("single@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/OneOff.md", meeting("oneoff@example.com", "2026-10-05"));
 		f.put("Meetings/Today.md", meeting("today@example.com", "2026-10-04"));
 		f.put("Meetings/Partial.md", meeting("here@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
 		f.put("Meetings/Far.md", meeting("far@example.com", "2026-10-20"));
@@ -223,10 +226,11 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	const f = setup();
 	const prepared = await prepareSync(f.app, f.settings, feed, now);
 	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.path === "Meetings/Gone.md")), [{ path: "Meetings/Gone.md", changes: [{ field: "occurrence_status", before: "Scheduled", after: "Cancelled" }] }]);
-	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/Partial.md", "Meetings/Today.md"]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/OneOff.md", "Meetings/Partial.md", "Meetings/Single.md", "Meetings/Today.md"]);
 	await applySync(f.app, prepared);
 	assert.equal(fields(f.texts.get("Meetings/Gone.md")).occurrence_status, "Cancelled");
-	for (const path of ["Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
+	assert.equal(fields(f.texts.get("Meetings/Gone 2.md")).occurrence_status, "Cancelled");
+	for (const path of ["Meetings/Single.md", "Meetings/OneOff.md", "Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
 	assert.ok(f.files.has("Meetings/Gone.md"));
 	const off = setup();
 	off.settings.cancelVanishedSeries = false;
