@@ -1,6 +1,6 @@
 import { Notice, Plugin } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
-import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
+import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal } from "./preview/modal.ts";
 import { prepareSync, applySync, type PreparedSync } from "./sync/flow.ts";
 import { UserFacingError } from "./sync/userFacingError.ts";
@@ -9,7 +9,7 @@ import { fetchIcs } from "./ics/fetch.ts";
 
 /** Loads settings and connects the sync commands. */
 export default class GraftPlugin extends Plugin {
-	settings: GraftSettings;
+	settings: GraftSettings = structuredClone(DEFAULT_SETTINGS);
 	private settingsSave: Promise<void> = Promise.resolve();
 	private syncing = false;
 	private previewModal?: SyncPreviewModal;
