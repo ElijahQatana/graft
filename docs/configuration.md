@@ -8,7 +8,7 @@ The search box at the top filters rows by name and description as you type. Ever
 
 For a first-run walk-through, see [Getting started](getting-started.md).
 
-Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately.
+Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately. While Graft reads your calendars or writes notes, a spinner with a short label shows in the status bar on desktop, and as a notice on mobile, until the run ends.
 
 - **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one. A saved calendar shows as one line with its type, Invited as value and whether its address is on this device; use **Edit** to change its fields, then **Save** (or **Cancel**), and **Up**, **Down** and **Remove** on the line. Each calendar has:
   - a **name**, which is required and must be unique (case is ignored). Previews use it to say which calendar had a problem.

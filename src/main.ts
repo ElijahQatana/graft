@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Platform, Plugin } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal } from "./preview/modal.ts";
@@ -14,6 +14,8 @@ export default class GraftPlugin extends Plugin {
 	private syncing = false;
 	private previewModal?: SyncPreviewModal;
 	private unloaded = false;
+	/** Clears the running status, if one is showing. */
+	private clearBusy?: () => void;
 	/** Calendar ids as last saved, so a removed calendar's secret can be cleared. */
 	private savedCalendarIds = new Set<string>();
 
@@ -29,6 +31,7 @@ export default class GraftPlugin extends Plugin {
 
 	onunload() {
 		this.unloaded = true;
+		this.clearBusy?.();
 		this.previewModal?.close();
 	}
 
@@ -40,7 +43,7 @@ export default class GraftPlugin extends Plugin {
 		this.syncing = true;
 		try {
 			const settings: GraftSettings = structuredClone(this.settings);
-			const prepared = await prepareSync(this.app, settings, fetchIcs);
+			const prepared = await this.whileBusy(previewOnly ? "Graft: checking calendars" : "Graft: syncing", () => prepareSync(this.app, settings, fetchIcs));
 			if (this.unloaded) return;
 			const apply = () => this.applyPrepared(prepared);
 			if (previewOnly || settings.previewBeforeApply || !prepared.canApply) {
@@ -58,10 +61,35 @@ export default class GraftPlugin extends Plugin {
 	private async applyPrepared(prepared: PreparedSync) {
 		if (this.unloaded) return;
 		try {
-			await applySync(this.app, prepared);
+			await this.whileBusy("Graft: writing notes", () => applySync(this.app, prepared));
 			new Notice("Graft sync finished.");
 		} catch (error) {
 			new Notice(errorMessage(error, "Graft sync stopped. Check the vault and run Preview sync again."));
+		}
+	}
+
+	/** Shows a spinner with `label` while `work` runs: in the status bar on desktop, and as a notice on mobile,
+	 * which has no status bar. It clears when the work ends, whether it succeeds or fails. */
+	private async whileBusy<T>(label: string, work: () => Promise<T>): Promise<T> {
+		this.clearBusy?.();
+		let clear: () => void;
+		if (Platform.isMobile) {
+			const notice = new Notice(label, 0);
+			clear = () => notice.hide();
+		} else {
+			const item = this.addStatusBarItem();
+			item.addClass("graft-status");
+			item.setAttribute("role", "status");
+			item.createSpan({ cls: "graft-spinner", attr: { "aria-hidden": "true" } });
+			item.createSpan({ text: label });
+			clear = () => item.remove();
+		}
+		this.clearBusy = clear;
+		try {
+			return await work();
+		} finally {
+			clear();
+			if (this.clearBusy === clear) this.clearBusy = undefined;
 		}
 	}
 
