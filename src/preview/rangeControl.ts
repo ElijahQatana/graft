@@ -1,4 +1,4 @@
-import { MAX_RANGE_DAYS, rangeDays, rangeProblem, type SyncRange } from "../sync/range.ts";
+import { MAX_RANGE_DAYS, clampRange, rangeDays, rangeProblem, type SyncRange } from "../sync/range.ts";
 
 /** Held as text so a half-typed field survives a redraw. */
 export interface RangeDraft {
@@ -6,9 +6,13 @@ export interface RangeDraft {
 	daysAhead: string;
 }
 
-export function draftOf({ daysBack, daysAhead }: SyncRange): RangeDraft {
+/** Trims a window longer than the cap so Load range works at once. */
+export function draftOf(range: SyncRange): RangeDraft {
+	const { daysBack, daysAhead } = clampRange(range);
 	return { daysBack: String(daysBack), daysAhead: String(daysAhead) };
 }
+
+export const CLAMPED_NOTE = `The range in settings is longer than ${MAX_RANGE_DAYS} days, so these fields start shorter. The preview shown still covers the full range.`;
 
 /** An empty field becomes NaN, which `rangeProblem` rejects. */
 function parse(draft: RangeDraft): SyncRange {
@@ -17,7 +21,7 @@ function parse(draft: RangeDraft): SyncRange {
 }
 
 /** `custom` adds a button that returns to the settings range. */
-export function addRangeControl(parent: HTMLElement, draft: RangeDraft, custom: boolean, load: (range?: SyncRange) => void) {
+export function addRangeControl(parent: HTMLElement, draft: RangeDraft, custom: boolean, clamped: boolean, load: (range?: SyncRange) => void) {
 	const box = parent.createEl("div", { cls: "graft-range" });
 	const fields = box.createEl("div", { cls: "graft-range-fields" });
 	const inputs: Record<keyof RangeDraft, HTMLInputElement> = {} as never;
@@ -30,6 +34,7 @@ export function addRangeControl(parent: HTMLElement, draft: RangeDraft, custom: 
 	}
 	const buttons = box.createEl("div", { cls: "graft-range-buttons" });
 	const run = buttons.createEl("button", { text: "Load range", cls: "mod-cta", attr: { type: "button" } });
+	if (clamped) box.createEl("p", { text: CLAMPED_NOTE, cls: "graft-muted graft-range-note graft-range-clamped" });
 	const note = box.createEl("p", { cls: "graft-muted graft-range-note" });
 	const check = () => {
 		draft.daysBack = inputs.daysBack.value;

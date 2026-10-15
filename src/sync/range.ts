@@ -17,3 +17,10 @@ export function rangeProblem(range: SyncRange): string | undefined {
 	if (rangeDays(range) > MAX_RANGE_DAYS) return `A one-off range can cover at most ${MAX_RANGE_DAYS} days, counting today.`;
 	return undefined;
 }
+
+/** Keeps days ahead first and trims days back to fit the cap. */
+export function clampRange(range: SyncRange): SyncRange {
+	if (rangeDays(range) <= MAX_RANGE_DAYS) return range;
+	const daysAhead = Math.min(range.daysAhead, MAX_RANGE_DAYS - 1);
+	return { daysBack: Math.min(range.daysBack, MAX_RANGE_DAYS - 1 - daysAhead), daysAhead };
+}

@@ -1,7 +1,7 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
 import { buildRangeText, buildSummary, buildWindowLabel, count } from "./summary.ts";
-import type { SyncRange } from "../sync/range.ts";
+import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
 import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
 
@@ -113,7 +113,7 @@ export class SyncPreviewModal extends Modal {
 		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
 		if (this.view === "calendar") {
 			const container = body.createEl("div", { cls: "graft-cal" });
-			if (this.reload) addRangeControl(container, this.draft, this.oneOff, (range) => { void this.loadRange(range); });
+			if (this.reload) addRangeControl(container, this.draft, this.oneOff, rangeDays(this.preview.window) > MAX_RANGE_DAYS, (range) => { void this.loadRange(range); });
 			renderCalendar(container, this.preview, this.calendar, () => this.renderView());
 		}
 		else this.renderList(body);

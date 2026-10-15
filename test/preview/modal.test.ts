@@ -529,3 +529,24 @@ test("a range that fails to load brings back the previous plan and its range", a
 	await settle();
 	assert.deepEqual(applied, ["old"]);
 });
+
+test("fields start trimmed to the cap for a longer window, with a note, and Load range is enabled", () => {
+	const modal = new SyncPreviewModal({}, rangePreview(7, 30), undefined, undefined, async () => ({ preview: rangePreview(0, 29) }));
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.equal(field(modal, "Days back").value, "0");
+	assert.equal(field(modal, "Days ahead").value, "29");
+	assert.equal(buttonOf(modal, "Load range").disabled, false);
+	assert.match(rangeNote(modal), /^30 of 30 days\./);
+	assert.ok(allElements(modal.contentEl).some((element) => String(element.cls).includes("graft-range-clamped")));
+	assert.ok(texts(modal).some((text) => text.includes("(7 days back, 30 ahead)")), "the preview still shows the full range");
+});
+
+test("a window that fits starts as it is, with no note", () => {
+	const modal = new SyncPreviewModal({}, rangePreview(7, 12), undefined, undefined, async () => ({ preview: rangePreview(1, 1) }));
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.equal(field(modal, "Days back").value, "7");
+	assert.equal(field(modal, "Days ahead").value, "12");
+	assert.equal(allElements(modal.contentEl).some((element) => String(element.cls).includes("graft-range-clamped")), false);
+});
