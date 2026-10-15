@@ -8,6 +8,7 @@ import { makeEvent } from "../helpers.ts";
 import { extractSection } from "../../src/util/markdownSections.ts";
 
 class Element {
+	[key: string]: any;
 	tag = "";
 	text = "";
 	children: any[] = [];
@@ -16,6 +17,7 @@ class Element {
 		const child = new Element();
 		child.tag = tag;
 		child.text = options.text ?? "";
+		child.cls = options.cls ?? "";
 		this.children.push(child);
 		return child;
 	}
@@ -180,8 +182,8 @@ test("summary and note rows use singular for one and plural for zero or many", (
 	preview.updates = [0, 1, 2].map((n) => ({ path: `Meetings/R${n}.md`, changes: Array.from({ length: n }, (_: unknown, i: number) => ({ field: `f${i}`, before: "a", after: "b" })) }));
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
-	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary").map((element) => element.text);
-	assert.deepEqual(rows, ["Meetings/R0.md (0 changes)", "Meetings/R1.md (1 change)", "Meetings/R2.md (2 changes)"]);
+	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary" && element.text.startsWith("Meetings/")).map((element) => element.text);
+	assert.deepEqual(rows, ["Meetings/R1.md (1 change)", "Meetings/R2.md (2 changes)", "Meetings/R0.md (0 changes)"]);
 });
 
 test("preview new-note payload matches writeMeetingNote directly", async () => {
@@ -309,4 +311,38 @@ test("dismissing a preview mid-apply does not let another open until apply finis
 	await tick();
 	assert.equal(state.open.size, 1);
 	assert.equal(state.maxOpen, 1);
+});
+
+test("each kind of item is its own collapsible section with a count, and only the long quiet ones start closed", () => {
+	const preview = emptyPreview(features, { newMeetings: 2, personStubs: 1, seriesStubs: 3, skipped: 4 });
+	preview.updates = [
+		{ path: "Meetings/Changed.md", changes: [{ field: "title", before: "a", after: "b" }] },
+		{ path: "Meetings/Same 1.md", changes: [] },
+		{ path: "Meetings/Same 2.md", changes: [] },
+	];
+	preview.warnings = [{ kind: "ambiguous-person", subject: "Alex" }];
+	preview.errors = [{ feed: "Work", message: "x" }];
+	const modal = new SyncPreviewModal({}, preview);
+	modal.onOpen();
+	const sections = allElements(modal.contentEl).filter((element) => element.cls === "graft-section");
+	const state = Object.fromEntries(sections.map((section) => [section.children[0].text, section.open]));
+	assert.deepEqual(state, {
+		"New Meeting notes (2)": true,
+		"Existing Meeting notes with changes (1)": true,
+		"Unchanged Meeting notes (2)": false,
+		"New Person stubs (1)": true,
+		"New Series stubs (3)": true,
+		"Skipped events (4)": false,
+		"Warnings (1)": true,
+		"Calendar errors (1)": true,
+	});
+	assert.ok(sections.every((section) => section.tag === "details" && section.children[0].tag === "summary"));
+});
+
+test("a section with nothing in it is not shown", () => {
+	const preview = emptyPreview(features, { newMeetings: 1 });
+	const modal = new SyncPreviewModal({}, preview);
+	modal.onOpen();
+	const titles = allElements(modal.contentEl).filter((element) => element.cls === "graft-section").map((section) => section.children[0].text);
+	assert.deepEqual(titles, ["New Meeting notes (1)"]);
 });

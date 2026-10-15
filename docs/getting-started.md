@@ -59,10 +59,10 @@ Preview sync never writes anything. Closing the window discards the preview.
 
 ## 5. Read the preview
 
-The top line counts what Graft plans, for example `3 new Meetings, 1 existing Meeting, 2 Person stubs, 1 Series stub, 0 skipped.` The sections below it appear only when they have something in them.
+The top line counts what Graft plans, for example `3 new Meetings, 1 existing Meeting, 2 Person stubs, 1 Series stub, 0 skipped.` The sections below it appear only when they have something in them. Each section is collapsible, with its count in the heading. Sections with something to review start open; Unchanged Meeting notes and Skipped events start closed.
 
 - **New Meeting notes:** notes Graft will create. Select one to see its properties and body. Check the filename, date and invited people.
-- **Existing Meeting notes:** notes that already match an event, found by the event's UID (and its recurrence ID for a single occurrence). Each shows its number of changes, with the old and new value of every field. A rescheduled or retitled event edits the existing note rather than making a second one. If nothing changed it says so.
+- **Existing Meeting notes with changes** and **Unchanged Meeting notes:** notes that already match an event, found by the event's UID (and its recurrence ID for a single occurrence). Each shows its number of changes, with the old and new value of every field. A rescheduled or retitled event edits the existing note rather than making a second one. If nothing changed it says so.
 - **New Person stubs and New Series stubs:** minimal notes for attendees and recurring events with no match. You can turn these off in the sync behavior settings.
 - **Skipped events:** events Graft will not write, each with a reason. This includes events skipped by a title rule or the ignore list, and duplicates. When the same event is in two calendars, the copy from the lower calendar is listed here with the reason `Same event as one in` followed by the winning calendar. Duplicates are skipped even when you have no filters.
 - **Warnings:** things to look at that do not block Apply. They include a Company link that could not be resolved, an event that is in a note but missing from the feed (this does not mean it was cancelled), and an existing note that lacks the invite agenda heading, so its agenda is not updated. An ambiguous Person match is also a warning, but it does block Apply.
