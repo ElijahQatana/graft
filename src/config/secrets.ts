@@ -43,7 +43,7 @@ export function hydrateSecrets(settings: GraftSettings, store: SecretStore | und
  * storage and clearing the secrets of calendars in `removedIds`. With no storage the copy is unchanged.
  * A URL that cannot be stored stays in the copy so it is never lost, and `failed` counts it. */
 export function prepareForSave(settings: GraftSettings, store: SecretStore | undefined, removedIds: string[] = []): { data: GraftSettings; failed: number } {
-	const data: GraftSettings = JSON.parse(JSON.stringify(settings));
+	const data = JSON.parse(JSON.stringify(settings)) as GraftSettings;
 	let failed = 0;
 	if (!store) return { data, failed };
 	for (const id of removedIds) {

@@ -97,7 +97,8 @@ export function sameCalendarName(left: string, right: string): boolean {
 
 export function isVaultPath(value: string, allowEmpty = true): boolean {
 	if (!value) return allowEmpty;
-	return value === value.trim() && !/^[\/\\]|[\\\x00-\x1f]|:/.test(value)
+	// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+	return value === value.trim() && !/^[/\\]|[\\\x00-\x1f]|:/.test(value)
 		&& value.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 }
 
@@ -131,9 +132,9 @@ export function isFilenameRule(value: unknown): value is FilenameConventionRule 
  * Settings saved before the schema existed keep the original schema so their notes still match.
  * Settings saved before Company linking was optional keep it on. */
 export function loadGraftSettings(saved: unknown): GraftSettings {
-	const result: GraftSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+	const result = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as GraftSettings;
 	const input = record(saved);
-	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
+	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema") as boolean;
 	result.companyLinking = Object.keys(input).length > 0;
 	result.schema = loadSchema(input.schema, hasSchema || !Object.keys(input).length ? MINIMAL_SCHEMA : ORIGINAL_SCHEMA);
 	result.calendars = loadCalendars(input);
