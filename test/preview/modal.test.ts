@@ -19,6 +19,7 @@ class Element {
 		child.tag = tag;
 		child.text = options.text ?? "";
 		child.cls = options.cls ?? "";
+		child.attr = options.attr;
 		this.children.push(child);
 		return child;
 	}
@@ -549,4 +550,24 @@ test("a window that fits starts as it is, with no note", () => {
 	assert.equal(field(modal, "Days back").value, "7");
 	assert.equal(field(modal, "Days ahead").value, "12");
 	assert.equal(allElements(modal.contentEl).some((element) => String(element.cls).includes("graft-range-clamped")), false);
+});
+
+test("the calendar draws a time grid with side by side events and a current time marker", () => {
+	const source = calendarSource();
+	source.plan.toProcess = [
+		makeEvent({ summary: "First", start: "2020-03-10T09:00:00.000Z", end: "2020-03-10T10:00:00.000Z" }),
+		makeEvent({ summary: "Second", start: "2020-03-10T09:30:00.000Z", end: "2020-03-10T10:30:00.000Z" }),
+		makeEvent({ summary: "Holiday", allDay: true, start: "2020-03-10", end: "2020-03-11" }),
+	];
+	source.meetings = source.plan.toProcess.map((event: any) => ({ ...source.meetings[0], input: { ...source.meetings[0].input, event } }));
+	const preview = buildSyncPreview(source);
+	const now = new Date("2020-03-10T09:45:00Z");
+	const root = new Element();
+	renderCalendar(root, preview, initialCalendarState(preview, now), () => {}, now);
+	const elements = allElements(root);
+	const timed = elements.filter((element) => String(element.cls).includes("is-timed"));
+	assert.deepEqual(timed.map((element) => element.attr?.style.match(/left:[\d.]+%;width:[\d.]+%/)[0]), ["left:0.000%;width:50.000%", "left:50.000%;width:50.000%"]);
+	const row = elements.filter((element) => element.cls === "graft-cal-allday")[1];
+	assert.deepEqual(row.children.map((child: any) => child.children.map((part: any) => part.text)), [["Holiday"]]);
+	assert.equal(elements.filter((element) => element.cls === "graft-cal-now").length, 1);
 });

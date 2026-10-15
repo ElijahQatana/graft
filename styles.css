@@ -309,40 +309,54 @@
 }
 
 .graft-cal-scroll {
-	overflow-x: auto;
-}
-
-.graft-cal-grid {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(7rem, 1fr));
-	gap: var(--size-4-1);
-}
-
-.graft-cal-grid.graft-cal-days-7 {
-	grid-template-columns: repeat(7, minmax(6.5rem, 1fr));
-}
-
-.graft-cal-day {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-4-1);
-	min-width: 0;
-	padding: var(--size-4-1);
+	overflow: auto;
+	max-height: min(32rem, 55vh);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	background: var(--background-primary);
 }
 
-.graft-cal-day.is-today {
-	border-color: var(--interactive-accent);
-	box-shadow: 0 0 0 1px var(--interactive-accent);
+.graft-cal-grid {
+	--graft-cal-hour-height: 3rem;
+	--graft-cal-head-height: 2rem;
+	display: grid;
+	grid-template-columns: 4rem repeat(3, minmax(7rem, 1fr));
+	grid-template-rows: var(--graft-cal-head-height) auto calc(var(--graft-cal-hours) * var(--graft-cal-hour-height));
+}
+
+.graft-cal-grid.graft-cal-days-7 {
+	grid-template-columns: 4rem repeat(7, minmax(6.5rem, 1fr));
+}
+
+.graft-cal-gutter,
+.graft-cal-day {
+	display: grid;
+	grid-row: span 3;
+	grid-template-rows: subgrid;
+	min-width: 0;
+}
+
+.graft-cal-day {
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+.graft-cal-day.is-today .graft-cal-day-head {
+	color: var(--interactive-accent);
+}
+
+.graft-cal-day-head,
+.graft-cal-allday {
+	position: sticky;
+	z-index: 2;
+	background: var(--background-primary);
 }
 
 .graft-cal-day-head {
+	top: 0;
 	display: flex;
 	align-items: baseline;
 	gap: var(--size-4-1);
-	padding: 0 var(--size-4-1);
+	padding: var(--size-4-1) var(--size-4-2);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
@@ -353,16 +367,59 @@
 	font-weight: var(--font-semibold);
 }
 
-.graft-cal-day-body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-4-1);
+.graft-cal-zone {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.graft-cal-none {
-	padding: 0 var(--size-4-1);
+.graft-cal-allday {
+	top: var(--graft-cal-head-height);
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 0 2px 2px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.graft-cal-day-body,
+.graft-cal-gutter-body {
+	position: relative;
+	background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--graft-cal-hour-height) - 1px), var(--background-modifier-border) calc(var(--graft-cal-hour-height) - 1px), var(--background-modifier-border) var(--graft-cal-hour-height));
+}
+
+.graft-cal-gutter-body {
+	background-image: none;
+}
+
+.graft-cal-hour {
+	position: absolute;
+	right: var(--size-4-1);
+	transform: translateY(-0.6em);
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.graft-cal-now {
+	position: absolute;
+	left: 0;
+	right: 0;
+	z-index: 1;
+	height: 0;
+	border-top: 2px solid var(--color-red);
+	pointer-events: none;
+}
+
+.graft-cal-now::before {
+	content: "";
+	position: absolute;
+	top: -5px;
+	left: -4px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--color-red);
 }
 
 .graft-cal-event {
@@ -382,6 +439,23 @@
 	font-size: var(--font-ui-smaller);
 	text-align: left;
 	white-space: normal;
+}
+
+.graft-cal-event.is-timed {
+	position: absolute;
+	box-sizing: border-box;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 0 var(--size-4-1);
+	overflow: hidden;
+	padding-block: 1px;
+	background: var(--background-secondary-alt);
+}
+
+.graft-cal-event.is-timed:hover,
+.graft-cal-event.is-timed.is-selected {
+	z-index: 1;
 }
 
 .graft-cal-event .graft-cal-time {

@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
-import { addDays, bucketByDay, dayRange, localDate, weekStart, type DayEntry } from "./calendar.ts";
+import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
 export type CalendarSpan = 3 | 7;
 
@@ -11,6 +11,8 @@ export interface CalendarState {
 	/** YYYY-MM-DD. The week view starts on the Monday on or before it. */
 	anchor: string;
 	selected?: string;
+	/** Unset until the user scrolls. The grid then opens near now or the first event. */
+	scrollTop?: number;
 }
 
 interface CalendarItem {
@@ -77,19 +79,43 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 	bar.createEl("span", { text: rangeLabel(dates), cls: "graft-cal-range" });
 	addSegmented<CalendarSpan>(bar, "Days shown", [[3, "3 days"], [7, "Week"]], state.span, (span) => { state.span = span; update(); });
 
-	const days = bucketByDay(items, dates, zone);
+	const days = bucketByDay(items, dates, zone).map(({ date, entries }) => ({ date, allDay: entries.filter((entry) => entry.allDay), blocks: layoutDay(entries) }));
+	const hours = visibleHours(days.flatMap((day) => day.blocks));
+	const span = (hours.end - hours.start) * 60;
+	const percent = (minutes: number) => `${(((minutes - hours.start * 60) / span) * 100).toFixed(3)}%`;
+	const marks = days.map(({ date }) => (date === today ? minuteOnDate(now, date, zone) : undefined));
 	const scroll = container.createEl("div", { cls: "graft-cal-scroll" });
-	const grid = scroll.createEl("div", { cls: `graft-cal-grid graft-cal-days-${dates.length}` });
-	for (const { date, entries } of days) {
+	scroll.addEventListener("scroll", () => { state.scrollTop = scroll.scrollTop; });
+	const grid = scroll.createEl("div", { cls: `graft-cal-grid graft-cal-days-${dates.length}`, attr: { style: `--graft-cal-hours:${hours.end - hours.start}` } });
+
+	const gutter = grid.createEl("div", { cls: "graft-cal-gutter" });
+	gutter.createEl("div", { text: zone, cls: "graft-cal-day-head graft-cal-zone" });
+	gutter.createEl("div", { cls: "graft-cal-allday" });
+	const gutterBody = gutter.createEl("div", { cls: "graft-cal-gutter-body" });
+	for (let hour = hours.start; hour < hours.end; hour++) {
+		gutterBody.createEl("span", { text: `${String(hour).padStart(2, "0")}:00`, cls: "graft-cal-hour", attr: { style: `top:${percent(hour * 60)}` } });
+	}
+
+	days.forEach(({ date, allDay, blocks }, index) => {
 		const day = DateTime.fromISO(date, { zone: "utc" });
 		const column = grid.createEl("div", { cls: date === today ? "graft-cal-day is-today" : "graft-cal-day" });
 		const head = column.createEl("div", { cls: "graft-cal-day-head" });
 		head.createEl("span", { text: day.toFormat("ccc"), cls: "graft-cal-day-name" });
 		head.createEl("span", { text: day.toFormat("d"), cls: "graft-cal-day-num" });
-		const list = column.createEl("div", { cls: "graft-cal-day-body" });
-		if (!entries.length) list.createEl("span", { text: "No events", cls: "graft-cal-none" });
-		for (const entry of entries) addChip(list, entry.item, entry, state, update);
-	}
+		const row = column.createEl("div", { cls: "graft-cal-allday" });
+		for (const entry of allDay) addChip(row, entry.item, entry, state, update);
+		const body = column.createEl("div", { cls: "graft-cal-day-body" });
+		for (const { entry, startMin, endMin, column: slot, columns } of blocks) {
+			const position = `top:${percent(startMin)};height:${(((endMin - startMin) / span) * 100).toFixed(3)}%;left:${((slot / columns) * 100).toFixed(3)}%;width:${(100 / columns).toFixed(3)}%`;
+			addChip(body, entry.item, entry, state, update, position);
+		}
+		const mark = marks[index];
+		if (mark !== undefined && mark >= hours.start * 60 && mark <= hours.end * 60) {
+			body.createEl("div", { cls: "graft-cal-now", attr: { style: `top:${percent(mark)}`, "aria-hidden": "true" } });
+		}
+	});
+	const target = marks.find((mark) => mark !== undefined) ?? Math.min(...days.flatMap((day) => day.blocks.map((block) => block.startMin)), hours.end * 60);
+	scrollToState(scroll, grid, state, (Math.max(target, hours.start * 60) - hours.start * 60) / span);
 
 	const legend = container.createEl("div", { cls: "graft-cal-legend" });
 	for (const kind of Object.keys(kindLabel) as Array<keyof typeof kindLabel>) {
@@ -101,15 +127,24 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 	container.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-cal-detail graft-muted" });
 }
 
-function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>, state: CalendarState, update: () => void) {
+/** Restores the scroll position, or on first show brings now or the first event into view. */
+function scrollToState(scroll: HTMLElement, grid: HTMLElement, state: CalendarState, fraction: number) {
+	if (state.scrollTop !== undefined) { scroll.scrollTop = state.scrollTop; return; }
+	const body = grid.querySelector?.<HTMLElement>(".graft-cal-day-body");
+	if (!body || !Number.isFinite(body.offsetTop)) return;
+	scroll.scrollTop = Math.max(0, body.offsetTop + fraction * body.offsetHeight - scroll.clientHeight / 4);
+}
+
+function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>, state: CalendarState, update: () => void, position?: string) {
 	const time = entry.allDay ? "All day" : entry.continuesFromPrevious ? `Until ${entry.endTime}` : entry.startTime;
 	const title = item.event.summary || "(No title)";
 	const classes = ["graft-cal-event", `graft-cal-${item.kind}`];
+	if (position) classes.push("is-timed");
 	if (item.id === state.selected) classes.push("is-selected");
 	if (entry.continuesFromPrevious) classes.push("is-continued");
 	if (entry.continuesToNext) classes.push("is-continuing");
-	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}` } });
-	chip.createEl("span", { text: time, cls: "graft-cal-time" });
+	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}`, ...(position ? { style: position } : {}) } });
+	if (!entry.allDay) chip.createEl("span", { text: time, cls: "graft-cal-time" });
 	chip.createEl("span", { text: title, cls: "graft-cal-title" });
 	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; update(); });
 }
