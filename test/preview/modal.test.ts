@@ -53,7 +53,7 @@ function fixture(): any {
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC", organizer: { filename: "Alex Example", companyLinks: ["[[Missing]]"] } } }],
 		personStubs: [{ path: "People/Alex Example.md", stub: { filename: "Alex Example", frontmatter: { full_name: "Alex Example", email: "alex@example.com", company: [] } } }],
 		seriesStubs: [{ path: "Series/Example.md", stub: { filename: "Example", frontmatter: { series_title: "Example", google_recurring_event_id: "series@example.com" } } }],
-		companies: [], meetingFolder: "Meetings", features: { personStubs: true, seriesStubs: true, skipped: true }, warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }],
+		companies: [], meetingFolder: "Meetings", features: { personStubs: true, seriesStubs: true, skipped: true }, warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }, { kind: "possible-duplicate-person", subject: "People/Pat Example 2.md and People/Pat Example.md" }],
 	};
 }
 
@@ -66,7 +66,7 @@ test("modal displays each section as literal text and never shows raw feed error
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.equal(elements.filter((element) => element.tag === "button").length, 1);
 	modal.onOpen();
@@ -216,9 +216,9 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 			assert.deepEqual(existing.frontmatter[change.field], change.before);
 		}
 		const changedFields = Object.keys(actualFields).filter((field) => JSON.stringify(actualFields[field]) !== JSON.stringify(existing.frontmatter[field]));
-		assert.deepEqual(changedFields, preview.updates[0].changes.filter((item) => item.field !== "Invite Agenda").map((item) => item.field));
+		assert.deepEqual([...changedFields].sort(), preview.updates[0].changes.filter((item) => item.field !== "Invite Agenda").map((item) => item.field).sort());
 		assert.equal(actualBody.includes("Keep this"), true);
-		assert.equal(actualFields.date, "2026-08-01");
+		assert.equal(actualFields.date, "2026-09-01");
 		assert.deepEqual(actualFields.participants, ["[[Pat Example]]"]);
 		assert.equal(preview.updates[0].changes.some((item) => item.field === "Invite Agenda"), body.includes("## Invite Agenda"));
 		const agenda = preview.updates[0].changes.find((item) => item.field === "Invite Agenda");

@@ -18,9 +18,9 @@ function baseInput(overrides: Partial<MeetingUpdateInput> = {}): MeetingUpdateIn
 	};
 }
 
-test("never includes date, week, month, year, or weekday", () => {
+test("never includes week, month, year, or weekday", () => {
 	const update = buildMeetingFrontmatterUpdate(baseInput(), companies);
-	for (const forbidden of ["date", "week", "month", "year", "weekday"]) {
+	for (const forbidden of ["week", "month", "year", "weekday"]) {
 		assert.equal(forbidden in update, false, `${forbidden} must not be in the update`);
 	}
 });
@@ -34,6 +34,15 @@ test("updates the time fields for a reschedule", () => {
 	);
 	assert.equal(update.scheduled_start, "12:00");
 	assert.equal(update.scheduled_end, "12:30");
+});
+
+test("a reschedule to another day updates the date in the configured timezone", () => {
+	const update = buildMeetingFrontmatterUpdate(
+		baseInput({ event: makeEvent({ start: "2026-09-09T02:00:00.000Z", end: "2026-09-09T02:30:00.000Z" }) }),
+		companies,
+	);
+	assert.equal(update.date, "2026-09-08");
+	assert.equal(update.scheduled_start, "22:00");
 });
 
 test("occurrence_status is only set when the invite is explicitly cancelled", () => {
@@ -98,4 +107,13 @@ test("an empty invite keeps a section that holds the old default or the configur
 test("an empty invite replaces other section text with the configured placeholder", () => {
 	const body = "## Invite Agenda\n\nStale text\n\n# Notes\n";
 	assert.equal(buildMeetingBodyUpdate(body, undefined, HEADING, "- "), "## Invite Agenda\n\n- \n\n# Notes\n");
+});
+
+test("an update never writes the participants property, so an edited list is left alone", () => {
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.meetingExtras = schema.meetingExtras.filter((field) => field.key !== "participants");
+	schema.meeting.participants = "attendees";
+	const update = buildMeetingFrontmatterUpdate(baseInput({ schema, invited: [{ filename: "Sam Example", companyLinks: [] }] }), companies);
+	assert.equal("attendees" in update, false);
+	assert.deepEqual(update.invited, ["[[Sam Example]]"]);
 });

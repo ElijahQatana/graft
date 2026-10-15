@@ -25,7 +25,8 @@ export interface MeetingUpdateInput {
 	timezone: string;
 }
 
-/** Fields owned by calendar sync. Date fields and filenames stay unchanged on reschedule.
+/** Fields owned by calendar sync. The Date property follows a reschedule to another day; week, month,
+ * year and weekday are written only through extras, and filenames stay unchanged.
  * occurrence_status changes only for an explicit cancellation. */
 export function buildMeetingFrontmatterUpdate(
 	input: MeetingUpdateInput,
@@ -54,6 +55,7 @@ export function buildMeetingFrontmatterUpdate(
 	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
 	put(names.invitedAs, input.invitedAs);
 	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
+	put(names.date, start.date);
 	put(names.scheduledStart, start.time);
 	put(names.scheduledEnd, end.time);
 	put(names.inviteUpdated, input.event.lastModified ?? "");

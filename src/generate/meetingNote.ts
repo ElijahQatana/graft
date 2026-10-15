@@ -67,6 +67,8 @@ export function buildMeetingNote(
 	put(names.title, input.event.summary);
 	put(names.organizer, input.organizer ? `[[${input.organizer.filename}]]` : "");
 	put(names.invited, input.invited.map((person) => `[[${person.filename}]]`));
+	// A copy for new notes only; meetingUpdate never writes it, so later edits to the list stay.
+	put(names.participants, input.invited.map((person) => `[[${person.filename}]]`));
 	put(names.invitedAs, input.invitedAs);
 	put(names.series, input.series ? `[[${input.series.filename}]]` : "");
 	put(names.scheduledStart, start.time);

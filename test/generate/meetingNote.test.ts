@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingNote, type MeetingNoteInput } from "../../src/generate/meetingNote.ts";
-import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
+import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
 
 function baseInput(overrides: Partial<MeetingNoteInput> = {}): MeetingNoteInput {
@@ -144,4 +144,16 @@ test("an all-day event's date comes from the plain calendar date, not a timezone
 		}),
 	);
 	assert.equal(note.frontmatter.date, "2026-09-10");
+});
+
+test("writes a participants copy of the invited list only when the property is named", () => {
+	const invited = [{ filename: "Sam Example", companyLinks: [] }, { filename: "Kim Example", companyLinks: [] }];
+	const off = buildMeetingNote(baseInput({ invited, schema: MINIMAL_SCHEMA }));
+	assert.equal("participants" in off.frontmatter, false);
+	const schema = cloneSchema(ORIGINAL_SCHEMA);
+	schema.meetingExtras = schema.meetingExtras.filter((field) => field.key !== "participants");
+	schema.meeting.participants = "attendees";
+	const on = buildMeetingNote(baseInput({ invited, schema }));
+	assert.deepEqual(on.frontmatter.attendees, ["[[Sam Example]]", "[[Kim Example]]"]);
+	assert.deepEqual(on.frontmatter.attendees, on.frontmatter.invited);
 });

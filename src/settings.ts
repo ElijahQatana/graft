@@ -18,7 +18,7 @@ const LABEL = { meeting: "Meeting", person: "Person", series: "Series", company:
 const MEETING_LABELS: Record<MeetingFieldKey, string> = {
 	title: "Title", date: "Date", scheduledStart: "Scheduled start", scheduledEnd: "Scheduled end", organizer: "Organizer",
 	invited: "Invited", series: "Series link", invitedAs: "Invited as", inviteUpdated: "Invite updated", uid: "Event UID",
-	recurrenceId: "Recurrence ID", occurrenceStatus: "Occurrence status",
+	recurrenceId: "Recurrence ID", occurrenceStatus: "Occurrence status", participants: "Participants",
 };
 const PERSON_LABELS: Record<PersonFieldKey, string> = {
 	email: "Email", emailAliases: "Email aliases", company: "Company links", fullName: "Full name", firstName: "First name", lastName: "Last name",
@@ -94,6 +94,8 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.text("Ignore-list file", "Vault-relative JSON file path. Blank disables the ignore list; a missing file ignores nothing.", settings.ignoreListPath,
 			(value) => { settings.ignoreListPath = value; },
 			(value) => isVaultPath(value) ? undefined : "Use a vault-relative path without parent traversal, or leave blank.");
+		this.text("Title prefixes to strip", "Comma-separated text removed from the start of event titles, ignoring case, before title rules, filenames, Series names and the title property. Blank strips nothing.", settings.titlePrefixesToStrip.join(", "),
+			(value) => { settings.titlePrefixesToStrip = value.split(",").map((prefix) => prefix.trim()).filter(Boolean); });
 		this.titleRules();
 		const noIdentity = !settings.calendars.some((calendar) => calendar.invitedAs.trim());
 		this.row("Only events I have accepted", "Skip events where your own response is declined, tentative or not yet given. Events where you are the organiser, or have no guest entry, are kept, and so are events whose feed gives no response. Your entry is found with the calendar's Invited as value, which should be your email address."
@@ -479,7 +481,8 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.group("schema.meeting", "Meeting properties", schemaGroup);
 		for (const key of Object.keys(MEETING_LABELS) as MeetingFieldKey[]) {
 			const optional = OPTIONAL_MEETING_FIELDS.includes(key);
-			this.schemaText(`Meeting property: ${MEETING_LABELS[key]}`, optional ? "Property name. Leave blank to skip it." : "Property name.", optional ? "optionalName" : "name", (s) => s.meeting[key], (s, v) => { s.meeting[key] = v; }, MEETING_MATCH.includes(key));
+			this.schemaText(`Meeting property: ${MEETING_LABELS[key]}`, key === "participants" ? "Property written on new Meeting notes as a copy of the invited list, then left for you to edit. Blank, the default, writes none."
+				: optional ? "Property name. Leave blank to skip it." : "Property name.", optional ? "optionalName" : "name", (s) => s.meeting[key], (s, v) => { s.meeting[key] = v; }, MEETING_MATCH.includes(key));
 		}
 		this.group("schema.person", "Person properties", schemaGroup);
 		for (const key of Object.keys(PERSON_LABELS) as PersonFieldKey[]) {

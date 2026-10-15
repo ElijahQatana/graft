@@ -129,3 +129,10 @@ test("Strict Company links keeps its default and saved value whether linking is 
 	assert.equal(loadGraftSettings({}).strictCompanyLinks, true);
 	assert.equal(loadGraftSettings({ strictCompanyLinks: false }).strictCompanyLinks, false);
 });
+
+test("title prefixes default to forward and reply markers and reject bad saved values", () => {
+	assert.deepEqual(loadGraftSettings({}).titlePrefixesToStrip, ["FW:", "Fwd:", "RE:"]);
+	assert.deepEqual(loadGraftSettings({ titlePrefixesToStrip: [" Sent: ", ""] }).titlePrefixesToStrip, ["Sent:"]);
+	assert.deepEqual(loadGraftSettings({ titlePrefixesToStrip: [] }).titlePrefixesToStrip, []);
+	assert.deepEqual(loadGraftSettings({ titlePrefixesToStrip: [1] }).titlePrefixesToStrip, ["FW:", "Fwd:", "RE:"]);
+});
