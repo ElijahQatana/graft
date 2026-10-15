@@ -140,5 +140,6 @@ test("Invite Agenda drops join text and falls back to the placeholder when nothi
 	assert.match(empty.body, /## Invite Agenda\n\nNo agenda provided/);
 
 	const mixed = buildMeetingNote(baseInput({ event: makeEvent({ description: `Discuss Q3 numbers\n\n${joinOnly}` }) }));
-	assert.match(mixed.body, /## Invite Agenda\n\nDiscuss Q3 numbers\n*$/);
+	assert.match(mixed.body, /## Invite Agenda\n\nDiscuss Q3 numbers\n/);
+	assert.doesNotMatch(mixed.body, /zoom\.us|Meeting ID/);
 });
