@@ -254,6 +254,223 @@
 	font-size: var(--font-ui-small);
 }
 
+/* Preview calendar */
+
+.graft-preview-views {
+	display: flex;
+	flex: 0 0 auto;
+}
+
+.graft-segmented {
+	display: inline-flex;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+}
+
+.graft-segmented .graft-segment {
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-muted);
+}
+
+.graft-segmented .graft-segment + .graft-segment {
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+.graft-segmented .graft-segment.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.graft-cal {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+}
+
+.graft-cal-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+}
+
+.graft-cal-nav {
+	display: flex;
+	gap: var(--size-4-1);
+}
+
+.graft-cal-range {
+	flex: 1 1 auto;
+	font-weight: var(--font-medium);
+}
+
+.graft-cal-scroll {
+	overflow-x: auto;
+}
+
+.graft-cal-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(7rem, 1fr));
+	gap: var(--size-4-1);
+}
+
+.graft-cal-grid.graft-cal-days-7 {
+	grid-template-columns: repeat(7, minmax(6.5rem, 1fr));
+}
+
+.graft-cal-day {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	min-width: 0;
+	padding: var(--size-4-1);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+}
+
+.graft-cal-day.is-today {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.graft-cal-day-head {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-1);
+	padding: 0 var(--size-4-1);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-cal-day-num {
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+}
+
+.graft-cal-day-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+}
+
+.graft-cal-none {
+	padding: 0 var(--size-4-1);
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-cal-event {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0;
+	height: auto;
+	min-width: 0;
+	padding: var(--size-4-1) var(--size-4-2);
+	border: 1px solid transparent;
+	border-left: 3px solid var(--graft-cal-color, var(--text-muted));
+	border-radius: var(--radius-s);
+	box-shadow: none;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	text-align: left;
+	white-space: normal;
+}
+
+.graft-cal-event .graft-cal-time {
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.graft-cal-event .graft-cal-title {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.graft-cal-event.is-selected {
+	border-color: var(--interactive-accent);
+}
+
+.graft-cal-event.is-continued {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+.graft-cal-event.is-continuing {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.graft-cal-new {
+	--graft-cal-color: var(--color-green);
+}
+
+.graft-cal-changed {
+	--graft-cal-color: var(--color-orange);
+}
+
+.graft-cal-unchanged {
+	--graft-cal-color: var(--text-muted);
+}
+
+.graft-cal-skipped {
+	--graft-cal-color: var(--text-faint);
+}
+
+.graft-cal-event.graft-cal-skipped {
+	border-style: dashed;
+	border-color: var(--background-modifier-border);
+	border-left: 3px dashed var(--text-faint);
+	background: transparent;
+	color: var(--text-muted);
+	opacity: 0.7;
+}
+
+.graft-cal-event.graft-cal-skipped.is-selected {
+	border-color: var(--interactive-accent);
+	opacity: 1;
+}
+
+.graft-cal-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1) var(--size-4-4);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-cal-key {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.graft-cal-swatch {
+	width: 0.9em;
+	height: 0.9em;
+	border-radius: var(--radius-s);
+	background: var(--graft-cal-color);
+}
+
+.graft-cal-swatch.graft-cal-skipped {
+	border: 1px dashed var(--text-faint);
+	background: transparent;
+}
+
+.graft-cal-detail {
+	margin: 0;
+	min-height: 1.5em;
+	font-size: var(--font-ui-small);
+	overflow-wrap: anywhere;
+}
+
 /* Settings tab */
 
 .graft-settings .graft-intro {
