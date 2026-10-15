@@ -31,6 +31,10 @@ Filenames are made from the Meeting filename pattern, `{{title}} {{date}}` by de
 
 When a new note would take a name that another planned note or an existing note already has, Graft adds a number to the new one, such as `Standup 2026-10-04 2`. The preview shows the final names. Existing notes are never overwritten, and a repeat sync finds each note again by its event UID or email, so the numbers do not change.
 
+### Frontmatter formatting after an update
+
+When Graft updates a Meeting note it uses Obsidian's own frontmatter writer, so the values you wrote are kept but Obsidian may reformat the properties block. Comments inside the block, custom quote styles and blank lines between properties can be lost the first time a note is updated. The body outside the Invite Agenda section is not touched. If you keep comments in Meeting frontmatter, move them into the note body.
+
 ### Calendar errors in the preview
 
 A calendar error means that calendar could not be fetched or understood. The preview names the calendar and Apply is unavailable. Check that:
