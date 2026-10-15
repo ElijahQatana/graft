@@ -70,3 +70,7 @@ npm run dev
 ```
 
 `npm run build` type-checks and writes a production `main.js` in the project root. `npm run dev` rebuilds it as you edit. To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/graft/` in a test vault and enable Graft. Use a test vault with made-up calendar data, not your real one.
+
+## License
+
+Graft is released under the [MIT License](LICENSE).
