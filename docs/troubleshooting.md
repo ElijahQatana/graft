@@ -53,6 +53,10 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 - The same event in an earlier calendar takes priority. The other copy is listed as skipped.
 - Unless **Only events I have accepted** is on, an event you declined or have tentatively accepted is still included. With it on, such events are listed as skipped with the reason.
 
+### A note stays cancelled
+
+Graft sets the occurrence status to cancelled when the calendar marks an event cancelled, or when Cancel vanished series is on and a whole series has gone from the feeds. It never sets the status back, because it cannot tell that value from one you chose, for example for a meeting you skipped. If an event returns, change the status back by hand.
+
 ### Ambiguous Person match
 
 Two or more Person notes share an email or alias with an attendee. Fix the duplicate and preview again. Apply stays unavailable until you do.

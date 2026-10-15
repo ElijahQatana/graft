@@ -67,6 +67,7 @@ export const MINIMAL_SCHEMA: NoteSchema = {
 /** The schema used before the schema settings existed. Saved settings without a schema load as this. */
 export const ORIGINAL_SCHEMA: NoteSchema = {
 	...MINIMAL_SCHEMA,
+	meeting: { ...MINIMAL_SCHEMA.meeting, participants: "participants" },
 	series: { uid: "google_recurring_event_id", title: "series_title" },
 	meetingBody: "# Agenda\n{{series_section}}{{invite_section}}\n\n\n# Context\n## Pre Reads\n\n\n## Pre Notes\n\n\n## Attachments\n\n\n# Human Notes (yay)\n",
 	meetingExtras: [
@@ -77,7 +78,6 @@ export const ORIGINAL_SCHEMA: NoteSchema = {
 		{ key: "year", value: "{{year}}", updateOnSync: false },
 		{ key: "weekday", value: "{{weekday}}", updateOnSync: false },
 		{ key: "channel", value: "", updateOnSync: false },
-		{ key: "participants", value: [], updateOnSync: false },
 		{ key: "actual_start", value: "", updateOnSync: false },
 		{ key: "actual_end", value: "", updateOnSync: false },
 		{ key: "output_notes", value: "", updateOnSync: false },

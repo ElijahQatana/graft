@@ -334,6 +334,8 @@ export class GraftSettingTab extends PluginSettingTab {
 	}
 
 	private calendars(): void {
+		// Open for a first-time user, and stay open after the first calendar is added.
+		if (!this.plugin.settings.calendars.length && !this.openState.has("calendars")) this.openState.set("calendars", true);
 		this.group("calendars", "Calendars");
 		this.help("Add each calendar's private ICS URL. Keep URLs out of shared notes, screenshots, and logs. Calendars sync from top to bottom; if two hold the same event, the earlier one is used. Removing a calendar does not change existing notes. Save each row after editing.");
 		this.help(secretStoreOf(this.app)
