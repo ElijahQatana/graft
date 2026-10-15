@@ -84,7 +84,7 @@ export const ORIGINAL_SCHEMA: NoteSchema = {
 };
 
 export function cloneSchema(schema: NoteSchema): NoteSchema {
-	return JSON.parse(JSON.stringify(schema));
+	return structuredClone(schema);
 }
 
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);

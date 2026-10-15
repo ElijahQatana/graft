@@ -31,7 +31,7 @@ export default class GraftPlugin extends Plugin {
 		if (this.syncing) { new Notice("A Graft sync or preview is already open."); return; }
 		this.syncing = true;
 		try {
-			const settings: GraftSettings = JSON.parse(JSON.stringify(this.settings));
+			const settings: GraftSettings = structuredClone(this.settings);
 			const prepared = await prepareSync(this.app, settings, fetchIcs);
 			if (this.unloaded) return;
 			const apply = async () => {
@@ -59,7 +59,7 @@ export default class GraftPlugin extends Plugin {
 	}
 
 	async saveSettings() {
-		const snapshot: GraftSettings = JSON.parse(JSON.stringify(this.settings));
+		const snapshot: GraftSettings = structuredClone(this.settings);
 		this.settingsSave = this.settingsSave.catch(() => {}).then(async () => {
 			const ids = new Set(snapshot.calendars.map((calendar) => calendar.id));
 			const removed = [...this.savedCalendarIds].filter((id) => !ids.has(id));

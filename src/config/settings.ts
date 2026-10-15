@@ -131,7 +131,7 @@ export function isFilenameRule(value: unknown): value is FilenameConventionRule 
  * Settings saved before the schema existed keep the original schema so their notes still match.
  * Settings saved before Company linking was optional keep it on. */
 export function loadGraftSettings(saved: unknown): GraftSettings {
-	const result: GraftSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+	const result: GraftSettings = structuredClone(DEFAULT_SETTINGS);
 	const input = record(saved);
 	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
 	result.companyLinking = Object.keys(input).length > 0;
