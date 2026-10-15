@@ -30,6 +30,10 @@ Graft shows a short notice when a sync cannot start or stops. The preview window
 
 Filenames are made from the Meeting filename pattern, `{{title}} {{date}}` by default. Characters Obsidian does not allow are replaced with a hyphen, so two titles that differ only in those characters can collide. The note's title property keeps the original text. Person and Series files are named in the same way.
 
+### Frontmatter formatting after an update
+
+When Graft updates a Meeting note it uses Obsidian's own frontmatter writer, so the values you wrote are kept but Obsidian may reformat the properties block. Comments inside the block, custom quote styles and blank lines between properties can be lost the first time a note is updated. The body outside the Invite Agenda section is not touched. If you keep comments in Meeting frontmatter, move them into the note body.
+
 ### Calendar errors in the preview
 
 A calendar error means that calendar could not be fetched or understood. The preview names the calendar and Apply is unavailable. Check that:
