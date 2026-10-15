@@ -853,6 +853,14 @@ test("group headings summarise their contents and follow saved changes", async (
 	assert.equal(meta("schema"), undefined);
 });
 
+test("the invite text clean-up toggle is on by default and saves when turned off", async () => {
+	const { plugin, control, saves } = fixture();
+	assert.equal(plugin.settings.cleanInviteText, true);
+	await control("Clean up invite text", "toggle").change(false);
+	assert.equal(plugin.settings.cleanInviteText, false);
+	assert.equal(loadGraftSettings(saves.at(-1)).cleanInviteText, false);
+});
+
 test("the Calendars group starts open with no calendars and stays open after the first is added", async () => {
 	const empty = fixture();
 	assert.equal(group(empty.tab, "calendars").open, true);

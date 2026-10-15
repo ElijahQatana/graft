@@ -120,6 +120,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			["createSeriesStubs", "Create Series stubs", "Create a minimal Series note when a recurring event has no match."],
 			["companyLinking", "Company linking", "Link Person and Meeting notes to existing Company notes. Off by default. Turn on to set the Company folder, type, domain property and strict links."],
 			["strictCompanyLinks", "Strict Company links", "Require Company links to resolve to existing Company notes."],
+			["cleanInviteText", "Clean up invite text", "Remove Teams, Meet and Zoom join links, dial-in numbers and meeting IDs from the invite agenda. Turn off to write the invite description as it arrives."],
 			["cancelVanishedSeries", "Cancel vanished series", "Off by default. When on, a future Meeting note inside the sync window is marked cancelled if its whole series is gone from every feed. A single missing occurrence, a past date, or any feed error changes nothing, and notes are never deleted."],
 			["previewBeforeApply", "Preview before apply", "Show planned changes before writing notes."],
 			["autoRunOnStartup", "Sync on startup", "Run Sync now when Obsidian starts. Follows the preview setting."],

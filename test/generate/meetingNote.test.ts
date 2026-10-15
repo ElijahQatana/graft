@@ -167,3 +167,11 @@ test("writes a participants copy of the invited list only when the property is n
 	assert.deepEqual(on.frontmatter.attendees, ["[[Sam Example]]", "[[Kim Example]]"]);
 	assert.deepEqual(on.frontmatter.attendees, on.frontmatter.invited);
 });
+
+test("Invite Agenda keeps the description as written when clean-up is off", () => {
+	const description = "Discuss Q3 numbers\n\nJoin Zoom Meeting\nhttps://example.zoom.us/j/12345678901";
+	const note = buildMeetingNote(baseInput({ cleanInvite: false, event: makeEvent({ description }) }));
+	assert.match(note.body, /## Invite Agenda\n\nDiscuss Q3 numbers\n\nJoin Zoom Meeting\nhttps:\/\/example\.zoom\.us/);
+	const empty = buildMeetingNote(baseInput({ cleanInvite: false, event: makeEvent({ description: "  " }) }));
+	assert.match(empty.body, /## Invite Agenda\n\nNo agenda provided/);
+});

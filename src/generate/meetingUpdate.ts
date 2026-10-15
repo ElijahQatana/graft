@@ -8,9 +8,9 @@ import { DEFAULT_AGENDA_PLACEHOLDER, evaluateExtras, type NoteSchema } from "../
 
 /** Avoid rewriting body spacing when the invite text has not changed. An empty invite keeps a section
  * that already holds a placeholder, the configured one or the old built-in one. */
-export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string, placeholder = DEFAULT_AGENDA_PLACEHOLDER): string {
+export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string, placeholder = DEFAULT_AGENDA_PLACEHOLDER, clean = true): string {
 	const current = extractSection(body, heading);
-	const text = cleanInviteText(description);
+	const text = clean ? cleanInviteText(description) : description?.trim();
 	if (text) return current === text ? body : replaceSection(body, heading, text);
 	const known = [placeholder, DEFAULT_AGENDA_PLACEHOLDER].map((item) => item.trim());
 	return current !== undefined && known.includes(current) ? body : replaceSection(body, heading, placeholder);
@@ -24,6 +24,8 @@ export interface MeetingUpdateInput {
 	invitedAs: string;
 	schema: NoteSchema;
 	timezone: string;
+	/** Remove join and dial-in text from the invite description. Defaults to true. */
+	cleanInvite?: boolean;
 }
 
 /** Fields owned by calendar sync. The Date property follows a reschedule to another day; week, month,

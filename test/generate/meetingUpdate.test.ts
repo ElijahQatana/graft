@@ -124,3 +124,11 @@ test("an update never writes the participants property, so an edited list is lef
 	assert.equal("attendees" in update, false);
 	assert.deepEqual(update.invited, ["[[Sam Example]]"]);
 });
+
+test("a body update keeps join text when clean-up is off and does not rewrite an unchanged section", () => {
+	const description = "Discuss Q3 numbers\n\nJoin Zoom Meeting";
+	const body = "## Invite Agenda\n\nDiscuss Q3 numbers\n\n## Notes\n";
+	assert.match(buildMeetingBodyUpdate(body, description, "## Invite Agenda", undefined, false), /Discuss Q3 numbers\n\nJoin Zoom Meeting/);
+	const stored = "## Invite Agenda\n\nDiscuss Q3 numbers\n\nJoin Zoom Meeting\n\n## Notes\n";
+	assert.equal(buildMeetingBodyUpdate(stored, description, "## Invite Agenda", undefined, false), stored);
+});

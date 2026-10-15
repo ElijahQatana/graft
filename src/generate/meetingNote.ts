@@ -29,6 +29,8 @@ export interface MeetingNoteInput {
 	/** Content from the Series note's Standing Agenda, if present. */
 	seriesStandingAgenda?: string;
 	bodyTemplate?: string;
+	/** Remove join and dial-in text from the invite description. Defaults to true. */
+	cleanInvite?: boolean;
 }
 
 export interface MeetingNote {
@@ -82,7 +84,7 @@ export function buildMeetingNote(
 		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies,
 	}));
 
-	const inviteAgenda = cleanInviteText(input.event.description) || schema.agendaPlaceholder;
+	const inviteAgenda = (input.cleanInvite === false ? input.event.description?.trim() : cleanInviteText(input.event.description)) || schema.agendaPlaceholder;
 	const seriesAgenda = input.seriesStandingAgenda?.trim() || "";
 	const body = input.bodyTemplate === undefined ? buildBody(schema, inviteAgenda, seriesAgenda)
 		: renderTemplate(input.bodyTemplate, {
