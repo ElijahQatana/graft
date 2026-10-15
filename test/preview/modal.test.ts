@@ -252,7 +252,7 @@ async function loadPlugin(canApply = true) {
 	class Notice { constructor(message: string) { state.notices.push(message); } }
 	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, {
-		module, exports: module.exports, Promise, JSON, globalThis: { __applySync: () => state.applySync() },
+		module, exports: module.exports, Promise, JSON, structuredClone, globalThis: { __applySync: () => state.applySync() },
 		require: () => ({ Modal: TrackedModal, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
 	});
 	const plugin = new module.exports.default();

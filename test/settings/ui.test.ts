@@ -79,7 +79,7 @@ const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal };
 async function loadModule(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
-	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl });
+	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, structuredClone });
 	return module.exports;
 }
 let GraftSettingTab: any;
