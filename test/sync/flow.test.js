@@ -375,10 +375,10 @@ test("event titles with a colon preview and apply with cleaned filenames", async
 	f.fetch = async (url) => url.includes("google") ? calendar("colon@example.com", "Sync: Planning") : calendar("private@example.com", "Private: dentist? [2026] #1");
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(prepared.preview.newMeetings.length, 2);
-	assert.deepEqual(clean(prepared.preview.newMeetings.map((item) => item.path).sort()), ["Meetings/Private- dentist- -2026- -1 2026-10-04.md", "Meetings/Sync- Planning 2026-10-04.md"]);
+	assert.deepEqual(clean(prepared.preview.newMeetings.map((item) => item.path).sort()), ["Meetings/Private - dentist - 2026 - 1 2026-10-04.md", "Meetings/Sync - Planning 2026-10-04.md"]);
 	assert.equal(prepared.preview.newMeetings.find((item) => item.path.startsWith("Meetings/Sync")).note.frontmatter.title, "Sync: Planning");
 	await applySync(f.app, prepared);
-	assert.ok(f.texts.has("Meetings/Sync- Planning 2026-10-04.md"));
+	assert.ok(f.texts.has("Meetings/Sync - Planning 2026-10-04.md"));
 	const again = await prepareSync(f.app, f.settings, f.fetch, now);
 	assert.equal(again.preview.newMeetings.length, 0);
 });
