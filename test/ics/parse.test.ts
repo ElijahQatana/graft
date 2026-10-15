@@ -223,3 +223,21 @@ END:VCALENDAR
 	assert.equal(events[0].start, "2026-09-10");
 	assert.equal(events[0].end, "2026-09-11");
 });
+
+test("keeps each attendee's PARTSTAT, upper-cased, and leaves it out when absent", () => {
+	const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:partstat-1@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic partstat
+ATTENDEE;PARTSTAT=declined:mailto:one@example.com
+ATTENDEE;CN=Two:mailto:two@example.com
+END:VEVENT
+END:VCALENDAR
+`;
+	const [event] = parseIcs(ics, { start: new Date("2026-08-25T00:00:00Z"), end: new Date("2026-09-30T00:00:00Z") });
+	assert.deepEqual(event.attendees, [{ email: "one@example.com", partstat: "DECLINED" }, { email: "two@example.com", name: "Two" }]);
+});

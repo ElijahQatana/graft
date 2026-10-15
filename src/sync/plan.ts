@@ -1,12 +1,15 @@
 import type { CalendarEvent, SyncWindow } from "../types.ts";
 import { parseIcs } from "../ics/parse.ts";
 import { filterByTitle, type TitleMatchRule } from "../filters/titleMatch.ts";
+import { filterByRsvp } from "../filters/rsvp.ts";
 import { filterByIgnoreList, type IgnoreListEntry } from "../filters/ignoreList.ts";
 
 export interface FeedConfig {
 	/** Calendar name used to associate events and errors with their source. */
 	name: string;
 	url: string;
+	/** The calendar's "invited as" identity, used to find the user's own attendee entry. */
+	invitedAs?: string;
 }
 
 export interface SyncPlan {
@@ -26,6 +29,7 @@ export async function buildSyncPlan(
 	titleMatchRules: TitleMatchRule[],
 	ignoreListEntries: IgnoreListEntry[],
 	fetchFeed: FeedFetcher,
+	acceptedOnly = false,
 ): Promise<SyncPlan> {
 	const allEvents: CalendarEvent[] = [];
 	const errors: SyncPlan["errors"] = [];
@@ -60,9 +64,13 @@ export async function buildSyncPlan(
 	const titleFiltered = filterByTitle(events, titleMatchRules);
 	const ignoreFiltered = filterByIgnoreList(titleFiltered.kept, ignoreListEntries);
 
+	const rsvpFiltered = acceptedOnly
+		? filterByRsvp(ignoreFiltered.kept, new Map(feeds.map((feed) => [feed.name, feed.invitedAs ?? ""])))
+		: { kept: ignoreFiltered.kept, skipped: [] };
+
 	return {
-		toProcess: ignoreFiltered.kept,
-		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped],
+		toProcess: rsvpFiltered.kept,
+		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped, ...rsvpFiltered.skipped],
 		errors,
 	};
 }

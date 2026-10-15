@@ -46,7 +46,7 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 - The sync window only covers the days set in Days back and Days ahead, in the chosen timezone.
 - The event may be skipped by a title rule or the ignore list. Skipped events are listed.
 - The same event in an earlier calendar takes priority. The other copy is listed as skipped.
-- An event you declined or have tentatively accepted is still included. Graft does not use RSVP status.
+- Unless **Only events I have accepted** is on, an event you declined or have tentatively accepted is still included. With it on, such events are listed as skipped with the reason.
 
 ### Ambiguous Person match
 

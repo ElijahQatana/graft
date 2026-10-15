@@ -117,7 +117,10 @@ function toAttendee(prop: ICAL.Property | null): Attendee | undefined {
 	const email = raw.replace(/^mailto:/i, "").trim();
 	if (!email) return undefined;
 	const cn = prop.getParameter("cn");
-	return cn ? { email, name: String(cn) } : { email };
+	const attendee: Attendee = cn ? { email, name: String(cn) } : { email };
+	const partstat = prop.getParameter("partstat");
+	if (partstat) attendee.partstat = String(partstat).trim().toUpperCase();
+	return attendee;
 }
 
 /** Keep all-day dates without applying the local timezone. */

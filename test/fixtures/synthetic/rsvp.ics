@@ -1,0 +1,70 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Synthetic//Graft test//EN
+BEGIN:VEVENT
+UID:rsvp-accepted@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic accepted meeting
+ORGANIZER;CN=Sam Host:mailto:host@example.com
+ATTENDEE;CN=Sam Host;PARTSTAT=ACCEPTED:mailto:host@example.com
+ATTENDEE;CN=Alex Tester;PARTSTAT=ACCEPTED:mailto:Alex.Tester@Example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-declined@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic declined meeting
+ORGANIZER;CN=Sam Host:mailto:host@example.com
+ATTENDEE;CN=Sam Host;PARTSTAT=ACCEPTED:mailto:host@example.com
+ATTENDEE;CN=Alex Tester;PARTSTAT=DECLINED:mailto:Alex.Tester@Example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-tentative@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic tentative meeting
+ORGANIZER;CN=Sam Host:mailto:host@example.com
+ATTENDEE;CN=Sam Host;PARTSTAT=ACCEPTED:mailto:host@example.com
+ATTENDEE;CN=Alex Tester;PARTSTAT=TENTATIVE:mailto:Alex.Tester@Example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-needs-action@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic needs-action meeting
+ORGANIZER;CN=Sam Host:mailto:host@example.com
+ATTENDEE;CN=Sam Host;PARTSTAT=ACCEPTED:mailto:host@example.com
+ATTENDEE;CN=Alex Tester;PARTSTAT=NEEDS-ACTION:mailto:Alex.Tester@Example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-no-partstat@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T140000Z
+DTEND:20260901T143000Z
+SUMMARY:Synthetic no-partstat meeting
+ORGANIZER;CN=Sam Host:mailto:host@example.com
+ATTENDEE;CN=Sam Host;PARTSTAT=ACCEPTED:mailto:host@example.com
+ATTENDEE;CN=Alex Tester:mailto:Alex.Tester@Example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-organiser@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T150000Z
+DTEND:20260901T153000Z
+SUMMARY:Synthetic organiser meeting
+ORGANIZER;CN=Alex Tester:mailto:alex.tester@example.com
+ATTENDEE;CN=Sam Guest;PARTSTAT=NEEDS-ACTION:mailto:guest@example.com
+END:VEVENT
+BEGIN:VEVENT
+UID:rsvp-no-guests@example.com
+DTSTAMP:20260101T000000Z
+DTSTART:20260901T160000Z
+DTEND:20260901T163000Z
+SUMMARY:Synthetic no guests
+END:VEVENT
+END:VCALENDAR

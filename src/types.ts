@@ -2,6 +2,8 @@
 export interface Attendee {
 	email: string;
 	name?: string;
+	/** Upper-cased PARTSTAT of an attendee entry. Absent when the feed leaves it out. */
+	partstat?: string;
 }
 
 /** One dated event occurrence, expanded from its recurrence rule when present. */

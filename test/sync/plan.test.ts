@@ -138,3 +138,24 @@ END:VEVENT
 test("a calendar with no events and no calendars at all produce an empty plan", async () => {
 	assert.deepEqual(await buildSyncPlan([], WINDOW, [], [], async () => icsWith()), { toProcess: [], skipped: [], errors: [] });
 });
+
+test("accepted-only drops events the user has not accepted, using the synthetic RSVP feed", async () => {
+	const { readFile } = await import("node:fs/promises");
+	const ics = await readFile(new URL("../fixtures/synthetic/rsvp.ics", import.meta.url), "utf8");
+	const feeds: FeedConfig[] = [{ name: "Work", url: "https://work.example/feed.ics", invitedAs: "alex.tester@example.com" }];
+	const fetchFeed = async () => ics;
+
+	const off = await buildSyncPlan(feeds, WINDOW, [], [], fetchFeed);
+	assert.equal(off.toProcess.length, 7);
+	assert.equal(off.skipped.length, 0);
+
+	const on = await buildSyncPlan(feeds, WINDOW, [], [], fetchFeed, true);
+	assert.deepEqual(on.toProcess.map((e) => e.uid).sort(), [
+		"rsvp-accepted@example.com", "rsvp-no-guests@example.com", "rsvp-no-partstat@example.com", "rsvp-organiser@example.com",
+	]);
+	assert.deepEqual(on.skipped.map((s) => [s.event.uid, s.reason]).sort(), [
+		["rsvp-declined@example.com", "not accepted (declined)"],
+		["rsvp-needs-action@example.com", "not accepted (no response yet)"],
+		["rsvp-tentative@example.com", "not accepted (tentative)"],
+	]);
+});

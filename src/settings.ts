@@ -90,6 +90,13 @@ export class GraftSettingTab extends PluginSettingTab {
 			(value) => { settings.ignoreListPath = value; },
 			(value) => isVaultPath(value) ? undefined : "Use a vault-relative path without parent traversal, or leave blank.");
 		this.titleRules();
+		const noIdentity = !settings.calendars.some((calendar) => calendar.invitedAs.trim());
+		this.row("Only events I have accepted", "Skip events where your own response is declined, tentative or not yet given. Events where you are the organiser, or have no guest entry, are kept, and so are events whose feed gives no response. Your entry is found with the calendar's Invited as value, which should be your email address."
+			+ (noIdentity ? " No calendar has an Invited as value yet, so this filter has nothing to match and will skip nothing." : ""), "accepted rsvp declined tentative")
+			.addToggle((toggle) => toggle.setValue(settings.acceptedOnly).onChange(async (value) => {
+				settings.acceptedOnly = value;
+				await this.plugin.saveSettings();
+			}));
 		this.filenameRules();
 
 		this.group("window", "Sync window");
