@@ -185,6 +185,37 @@ test("vanished events are checked against every configured calendar's identity",
 	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
 });
 
+test("a vanished series is marked cancelled only when the setting is on and every guard rail holds", async () => {
+	const meeting = (uid: string, date: string, extra: any = {}) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled", ...extra }, "## Invite Agenda\n\nOld");
+	const setup = () => {
+		const f = fixture();
+		f.settings.cancelVanishedSeries = true;
+		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-05"));
+		f.put("Meetings/Today.md", meeting("today@example.com", "2026-10-04"));
+		f.put("Meetings/Partial.md", meeting("here@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/Far.md", meeting("far@example.com", "2026-10-20"));
+		return f;
+	};
+	const feed = async () => calendar("here@example.com");
+	const f = setup();
+	const prepared = await prepareSync(f.app, f.settings, feed, now);
+	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.path === "Meetings/Gone.md")), [{ path: "Meetings/Gone.md", changes: [{ field: "occurrence_status", before: "Scheduled", after: "Cancelled" }] }]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/Partial.md", "Meetings/Today.md"]);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Gone.md")).occurrence_status, "Cancelled");
+	for (const path of ["Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
+	assert.ok(f.files.has("Meetings/Gone.md"));
+	const off = setup();
+	off.settings.cancelVanishedSeries = false;
+	const plain = await prepareSync(off.app, off.settings, feed, now);
+	assert.equal(plain.preview.updates.some((item: any) => item.path === "Meetings/Gone.md"), false);
+	assert.ok(plain.preview.warnings.some((item: any) => item.subject === "Meetings/Gone.md"));
+	const failed = setup();
+	const broken = await prepareSync(failed.app, failed.settings, async () => { throw new Error("Synthetic feed failure"); }, now);
+	assert.equal(broken.preview.updates.some((item: any) => item.path === "Meetings/Gone.md"), false);
+	assert.equal(broken.canApply, false);
+});
+
 test("two feeds preview without writes, apply matches preview, and repeat sync reuses stubs", async () => {
 	const f = fixture();
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
