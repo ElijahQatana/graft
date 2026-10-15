@@ -10,10 +10,11 @@ export async function writeMeetingNote(
 	companies: CompanyRecord[],
 	filenamePattern?: string,
 	strictCompanyLinks = true,
+	filename?: string,
 ): Promise<TFile> {
 	const note = buildMeetingNote(input, filenamePattern, { companies, strictCompanyLinks });
 
-	const path = `${folder}/${note.filename}.md`;
+	const path = `${folder}/${filename ?? note.filename}.md`;
 	if (app.vault.getAbstractFileByPath(path)) {
 		throw new Error(`A file already exists at ${path}`);
 	}

@@ -373,11 +373,10 @@ test("custom bodies, filenames, disabled stubs and non-strict links are honored"
 	assert.deepEqual(fields(other.texts.get(next.preview.newMeetings[0].path)).companies, ["[[Missing]]"]);
 });
 
-test("invalid ignore lists, duplicate keys and invalid or conflicting filenames fail without writes", async () => {
-	for (const kind of ["ignore", "collision", "duplicate", "invalid"]) {
+test("invalid ignore lists, duplicate keys and invalid filenames fail without writes", async () => {
+	for (const kind of ["ignore", "duplicate", "invalid"]) {
 		const f = fixture();
 		if (kind === "ignore") { f.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); }
-		if (kind === "collision") f.settings.meetingFilenamePattern = "Same";
 		if (kind === "invalid") f.settings.folders.meeting = "Bad:folder";
 		if (kind === "duplicate") for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" }));
 		await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now));
@@ -399,11 +398,42 @@ test("event titles with a colon preview and apply with cleaned filenames", async
 	assert.equal(again.preview.newMeetings.length, 0);
 });
 
-test("two titles that clean to the same filename are reported as a planned-name conflict", async () => {
+test("two titles that clean to the same filename get a numbered name and apply without a clash", async () => {
 	const f = fixture();
+	f.settings.createSeriesStubs = false;
 	f.fetch = async (url) => url.includes("google") ? calendar("a@example.com", "Sync: Planning") : calendar("b@example.com", "Sync? Planning");
-	await assert.rejects(() => prepareSync(f.app, f.settings, f.fetch, now), /same name/);
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.deepEqual(clean(prepared.preview.newMeetings.map((item: any) => item.path)), ["Meetings/Sync - Planning 2026-10-04.md", "Meetings/Sync - Planning 2026-10-04 2.md"]);
 	assert.equal(f.writes.length, 0);
+	await applySync(f.app, prepared);
+	assert.ok(f.texts.has("Meetings/Sync - Planning 2026-10-04.md") && f.texts.has("Meetings/Sync - Planning 2026-10-04 2.md"));
+	const again = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(again.preview.newMeetings.length, 0);
+});
+
+test("a new note never takes the name of an unrelated existing note", async () => {
+	const f = fixture();
+	f.settings.createSeriesStubs = false;
+	const first = (await prepareSync(f.app, f.settings, f.fetch, now)).preview.newMeetings[0];
+	f.put(first.path, note({ type: "Meeting", ics_uid: "other@example.com" }));
+	f.put("People/Alex Example.md", note({ type: "Person", email: "someone@example.com" }));
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.ok(prepared.preview.newMeetings.some((item: any) => item.path === first.path.replace(/\.md$/, " 2.md")));
+	assert.ok(prepared.input.personStubs.some((item: any) => item.path === "People/Alex Example 2.md" && item.stub.filename === "Alex Example 2"));
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get(first.path.replace(/\.md$/, " 2.md"))).organizer, "[[Alex Example 2]]");
+});
+
+test("Series stubs for different recurring events with the same title get numbered names", async () => {
+	const f = fixture();
+	const rule = "RRULE:FREQ=WEEKLY;COUNT=2\r\n";
+	f.fetch = async (url) => url.includes("google") ? calendar("one@example.com", "1:1", rule) : calendar("two@example.com", "1:1", rule);
+	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.deepEqual(clean(prepared.input.seriesStubs.map((item: any) => item.path)).sort(), ["Series/1-1 2.md", "Series/1-1.md"]);
+	await applySync(f.app, prepared);
+	const again = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(again.input.seriesStubs.length, 0);
+	assert.equal(again.preview.newMeetings.length, 0);
 });
 
 async function pluginFixture(previewBeforeApply = true) {
@@ -556,7 +586,6 @@ test("deliberate prepare errors show their own message in the notice", async () 
 		"The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.": (f: any) => { f.plugin.settings.ignoreListPath = "ignore.json"; f.put("ignore.json", JSON.stringify({ ignored: [null] })); },
 		"A template file set in Graft settings was not found. Fix the template path or clear it.": (f: any) => { f.plugin.settings.templates.meeting = "Templates/Missing.md"; },
 		"A planned note filename is not valid. Change the filename pattern or folder in Graft settings.": (f: any) => { f.plugin.settings.folders.meeting = "Bad:folder"; },
-		"Two notes would get the same name, or a note with that name already exists. Change the filename pattern or folders in Graft settings.": (f: any) => { f.plugin.settings.meetingFilenamePattern = "Same"; },
 		"More than one Meeting note has the same event UID. Remove the duplicate from the Meeting folder.": (f: any) => { for (const name of ["One", "Two"]) f.put(`Meetings/${name}.md`, note({ type: "Meeting", ics_uid: "outlook@example.com" })); },
 	};
 	for (const [message, arrange] of Object.entries(cases)) {
