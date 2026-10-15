@@ -212,9 +212,9 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 function splitNote(text: string): { frontmatter: Record<string, unknown>; body: string } {
 	const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
 	if (!match) return { frontmatter: {}, body: text };
-	const value = parseYaml(match[1]);
+	const value: unknown = parseYaml(match[1]);
 	if (value !== null && (typeof value !== "object" || Array.isArray(value))) throw new UserFacingError("A note in the configured folders has frontmatter that cannot be read. Fix its properties and run Preview sync again.");
-	return { frontmatter: value ?? {}, body: text.slice(match[0].length) };
+	return { frontmatter: (value ?? {}) as Record<string, unknown>, body: text.slice(match[0].length) };
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -228,7 +228,7 @@ function links(value: unknown): string[] {
 
 function stubBody(template: string | undefined, fields: object): string {
 	if (template === undefined) return "";
-	const values = Object.entries(fields).map(([key, value]) => [key, Array.isArray(value) ? value.join(", ") : String(value)]);
+	const values = Object.entries(fields).map(([key, value]: [string, unknown]): [string, string] => [key, Array.isArray(value) ? value.join(", ") : String(value)]);
 	return renderTemplate(template, Object.fromEntries(values));
 }
 
@@ -253,7 +253,7 @@ async function readIgnoreList(app: App, path: string, templates: PreparedSync["t
 	templates.push({ file, text });
 	let value: { ignored?: unknown } | null;
 	try {
-		value = text.trim() ? JSON.parse(text) : { ignored: [] };
+		value = text.trim() ? JSON.parse(text) as { ignored?: unknown } | null : { ignored: [] };
 	} catch {
 		throw new UserFacingError("The ignore list is not valid JSON. Fix the file or clear the ignore list setting.");
 	}

@@ -24,16 +24,4 @@ export default defineConfig([
 			"obsidianmd/prefer-create-el": "off",
 		},
 	},
-	{
-		// Values from loadData, JSON.parse and parseYaml are typed any and are checked field by field right after.
-		// These two files are being reworked in other changes, so the unsafe-any rules are relaxed here instead of
-		// editing them for lint alone. Tighten once they settle.
-		files: ["src/main.ts", "src/sync/flow.ts"],
-		rules: {
-			"@typescript-eslint/no-unsafe-assignment": "off",
-			"@typescript-eslint/no-unsafe-member-access": "off",
-			"@typescript-eslint/no-unsafe-call": "off",
-			"@typescript-eslint/no-unsafe-argument": "off",
-		},
-	},
 ]);
