@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
+import { readFile } from "node:fs/promises";
 import { parseIcs } from "../../src/ics/parse.ts";
 
 const WINDOW = {
@@ -240,4 +241,60 @@ END:VCALENDAR
 `;
 	const [event] = parseIcs(ics, { start: new Date("2026-08-25T00:00:00Z"), end: new Date("2026-09-30T00:00:00Z") });
 	assert.deepEqual(event.attendees, [{ email: "one@example.com", partstat: "DECLINED" }, { email: "two@example.com", name: "Two" }]);
+});
+
+async function readFixture(name: string): Promise<string> {
+	return readFile(new URL(`../fixtures/synthetic/${name}`, import.meta.url), "utf8");
+}
+
+const MID_SERIES_WINDOW = {
+	start: new Date("2026-03-11T00:00:00Z"),
+	end: new Date("2026-03-25T00:00:00Z"),
+};
+
+test("keeps the INTERVAL phase when the window starts mid-series", async () => {
+	const events = parseIcs(await readFixture("biweekly-mid-series.ics"), MID_SERIES_WINDOW).filter(
+		(e) => e.uid === "biweekly@example.com",
+	);
+
+	// Occurrences fall on Jan 5, Jan 19, ... Mar 2, Mar 16, Mar 30.
+	assert.deepEqual(
+		events.map((e) => e.start),
+		["2026-03-16T10:00:00.000Z"],
+	);
+});
+
+test("does not extend a COUNT-limited series past its last occurrence", async () => {
+	const ics = await readFixture("biweekly-mid-series.ics");
+
+	const late = parseIcs(ics, MID_SERIES_WINDOW).filter((e) => e.uid === "ended@example.com");
+	assert.deepEqual(late, []);
+
+	const early = parseIcs(ics, {
+		start: new Date("2026-01-01T00:00:00Z"),
+		end: new Date("2026-03-01T00:00:00Z"),
+	}).filter((e) => e.uid === "ended@example.com");
+	assert.deepEqual(
+		early.map((e) => e.start),
+		[
+			"2026-01-05T15:00:00.000Z",
+			"2026-01-12T15:00:00.000Z",
+			"2026-01-19T15:00:00.000Z",
+			"2026-01-26T15:00:00.000Z",
+			"2026-02-02T15:00:00.000Z",
+		],
+	);
+});
+
+test("keeps local wall-clock time for a TZID series across a DST change", async () => {
+	const events = parseIcs(await readFixture("tzid-dst-series.ics"), {
+		start: new Date("2026-03-01T00:00:00Z"),
+		end: new Date("2026-04-01T00:00:00Z"),
+	});
+
+	// 09:00 New York is 14:00Z before the Mar 8 change and 13:00Z after it.
+	assert.deepEqual(
+		events.map((e) => e.start),
+		["2026-03-02T14:00:00.000Z", "2026-03-16T13:00:00.000Z", "2026-03-30T13:00:00.000Z"],
+	);
 });
