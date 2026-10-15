@@ -32,6 +32,8 @@ export interface PreviewInput {
 	meetings: Array<{
 		input: MeetingNoteInput;
 		existing?: { path: string; frontmatter: Record<string, unknown>; body: string };
+		/** Final filename of a new note, set once name clashes are settled. */
+		filename?: string;
 	}>;
 	personStubs: Array<{ path: string; stub: PersonStub; body?: string }>;
 	seriesStubs: Array<{ path: string; stub: SeriesStub; body?: string }>;
