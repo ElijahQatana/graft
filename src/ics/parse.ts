@@ -38,7 +38,8 @@ export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 			continue;
 		}
 
-		const iterator = event.iterator(seedForWindow(event, windowStart));
+		// Start at DTSTART: INTERVAL phase and COUNT depend on the true first occurrence.
+		const iterator = event.iterator();
 		let next: ICAL.Time | null;
 		let iterations = 0;
 		while ((next = iterator.next())) {
@@ -62,19 +63,6 @@ export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 	}
 
 	return results;
-}
-
-/** Seed with the event's time of day so occurrences keep their scheduled time.
- * Do not seed before DTSTART. */
-function seedForWindow(event: ICAL.Event, windowStart: ICAL.Time): ICAL.Time {
-	if (event.startDate.compare(windowStart) >= 0) {
-		return event.startDate.clone();
-	}
-	const seed = windowStart.clone();
-	seed.hour = event.startDate.hour;
-	seed.minute = event.startDate.minute;
-	seed.second = event.startDate.second;
-	return seed;
 }
 
 function isWithinWindow(time: ICAL.Time, windowStart: ICAL.Time, windowEnd: ICAL.Time): boolean {
