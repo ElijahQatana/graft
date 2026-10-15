@@ -43,6 +43,10 @@ Graft needs Obsidian 1.4.4 or later. The newest feature it uses before that is t
 
 No release is published yet. When one is, download `main.js`, `manifest.json` and `styles.css` from the release page and copy them as described in the next section.
 
+### A pre-release with BRAT
+
+Pre-releases are marked as such on the release page. To try one, install the BRAT plugin from Settings, Community plugins, run **BRAT: Add a beta plugin for testing**, and enter `ElijahQatana/graft`. Pre-release builds can change between versions, so use a test vault.
+
 ### Manually
 
 1. In your vault, create the folder `.obsidian/plugins/graft/`. It is a hidden folder, so use your file manager's option to show hidden files if you cannot see it.

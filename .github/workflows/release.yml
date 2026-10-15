@@ -1,11 +1,13 @@
 name: Release
 
 # Runs when a bare version tag such as 0.1.0 is pushed (no "v" prefix).
+# A tag with a suffix, such as 1.0.0-rc.1, is published as a pre-release.
 # Pushing the tag is a manual decision; see CONTRIBUTING.md.
 on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
 
 permissions:
   contents: write
@@ -41,4 +43,7 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --title "$GITHUB_REF_NAME" --generate-notes $flags
