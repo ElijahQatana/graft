@@ -50,6 +50,8 @@ export interface GraftSettings {
 	strictCompanyLinks: boolean;
 	/** Skip events whose own RSVP is declined, tentative or not yet answered. Needs "invited as". */
 	acceptedOnly: boolean;
+	/** Remove join and dial-in text from the invite description before it is written. */
+	cleanInviteText: boolean;
 	/** Mark future Meeting notes cancelled when their whole series has gone from the feeds. */
 	cancelVanishedSeries: boolean;
 	previewBeforeApply: boolean;
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	companyLinking: false,
 	strictCompanyLinks: true,
 	acceptedOnly: false,
+	cleanInviteText: true,
 	cancelVanishedSeries: false,
 	previewBeforeApply: true,
 	autoRunOnStartup: false,
@@ -168,7 +171,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}
-	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "cancelVanishedSeries", "previewBeforeApply", "autoRunOnStartup"] as const) {
+	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "cleanInviteText", "cancelVanishedSeries", "previewBeforeApply", "autoRunOnStartup"] as const) {
 		if (typeof input[key] === "boolean") result[key] = input[key];
 	}
 	return result;

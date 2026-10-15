@@ -159,6 +159,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 				schema: meetingSchema,
 				timezone: settings.timezone,
 				bodyTemplate: bodies.meeting,
+				cleanInvite: settings.cleanInviteText,
 			},
 			existing: existing ? { path: existing.file.path, frontmatter: existing.frontmatter, body: existing.body } : undefined,
 		});

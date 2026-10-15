@@ -43,7 +43,7 @@ test("all settings survive JSON persistence without sharing input objects", () =
 		personFilenameRules: [{ domain: "example.com", style: "initialLast" as const }],
 		meetingFilenamePattern: "{{date}} {{title}}", timezone: "Europe/London",
 		daysBack: 0, daysAhead: 60, createPersonStubs: false, createSeriesStubs: false,
-		companyLinking: true, strictCompanyLinks: false, acceptedOnly: true, cancelVanishedSeries: true, previewBeforeApply: false, autoRunOnStartup: true,
+		companyLinking: true, strictCompanyLinks: false, acceptedOnly: true, cleanInviteText: false, cancelVanishedSeries: true, previewBeforeApply: false, autoRunOnStartup: true,
 	};
 	assert.deepEqual(loadGraftSettings(JSON.parse(JSON.stringify(saved))), saved);
 	const loaded = loadGraftSettings(saved);
