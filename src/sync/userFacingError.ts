@@ -5,3 +5,11 @@ export class UserFacingError extends Error {
 		this.name = "UserFacingError";
 	}
 }
+
+/** Apply stopped because notes changed after the plan was made. Planning again is safe, so a scheduled run retries quietly. */
+export class VaultChangedError extends UserFacingError {
+	constructor(message: string) {
+		super(message);
+		this.name = "VaultChangedError";
+	}
+}

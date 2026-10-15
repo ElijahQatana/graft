@@ -34,6 +34,7 @@ const hidden: any[] = [];
 class Notice { constructor(message: any) { notices.push(message); this.message = message; } message: any; hide() { hidden.push(this.message); } }
 const platform = { isMobile: false };
 const statusBar: any[] = [];
+let onStatusItem: (() => void) | undefined;
 const timers: Array<{ id: number; ms: number; cleared: boolean }> = [];
 const fakeWindow = {
 	setInterval(_callback: any, ms: number) { const id = timers.length + 1; timers.push({ id, ms, cleared: false }); return id; },
@@ -52,6 +53,7 @@ class Plugin {
 	addStatusBarItem() {
 		const item: any = { spans: [], listeners: {}, classes: [], addClass(...names: string[]) { item.classes.push(...names); }, setAttribute() {}, addEventListener(name: string, callback: any) { item.listeners[name] = callback; }, createSpan(options: any) { item.spans.push(options); return {}; }, remove() { statusBar.splice(statusBar.indexOf(item), 1); } };
 		statusBar.push(item);
+		const hook = onStatusItem; onStatusItem = undefined; hook?.();
 		return item;
 	}
 	addSettingTab() {}
@@ -888,4 +890,70 @@ test("on mobile the ready message is only a notice", async () => {
 	} finally {
 		platform.isMobile = false;
 	}
+});
+
+async function automaticFixture(minutes = 30) {
+	const f = await scheduledFixture("automatic", minutes);
+	f.plugin.settings.syncLogPath = "Graft/Sync log.md";
+	return f;
+}
+
+test("Automatic applies a clean plan like Apply, logs it, says so once, and has nothing left to do", async () => {
+	const f = await automaticFixture();
+	const noticesBefore = notices.length;
+	await f.plugin.scheduledCheck();
+	assert.ok(f.writes.some((path: string) => path.startsWith("Meetings/")));
+	assert.equal(readyItems().length, 0);
+	assert.ok(notices.slice(noticesBefore).some((message: any) => /scheduled sync wrote \d+ changes?\. See the sync log/.test(message)));
+	assert.match(f.texts.get("Graft/Sync log.md"), /· Scheduled sync\n- Created \d+ Meeting notes?/);
+	const writes = f.writes.length;
+	await f.plugin.scheduledCheck();
+	assert.equal(f.writes.length, writes);
+});
+
+test("Automatic leaves a plan over the limit for the user, announced like Notify and not written", async () => {
+	const f = await automaticFixture();
+	f.plugin.settings.automaticMaxNotes = 1;
+	await f.plugin.scheduledCheck();
+	assert.equal(f.writes.filter((path: string) => path.startsWith("Meetings/")).length, 0);
+	assert.equal(readyItems().length, 1);
+	assert.match(itemText(readyItems()[0]), /ready to review \(over the automatic limit of 1\)$/);
+	assert.equal(f.files.has("Graft/Sync log.md"), false);
+});
+
+test("Automatic never applies a blocked plan", async () => {
+	const f = await automaticFixture();
+	f.put("People/Pat One.md", note({ type: "Person", email: "pat@example.com" }));
+	f.put("People/Pat Two.md", note({ type: "Person", email: "pat@example.com" }));
+	await f.plugin.scheduledCheck();
+	assert.equal(f.writes.filter((path: string) => path.startsWith("Meetings/")).length, 0);
+	assert.match(itemText(readyItems()[0]), /need review before they can be applied$/);
+});
+
+test("Automatic retries quietly when the vault changed after the plan, without a notice, a log entry or a failure", async () => {
+	const f = await automaticFixture();
+	const noticesBefore = notices.length;
+	onStatusItem = () => f.put("Meetings/Added during the run.md", note({ type: "Meeting", ics_uid: "added@example.com" }));
+	await f.plugin.scheduledCheck();
+	assert.equal(notices.length, noticesBefore);
+	assert.equal(f.files.has("Graft/Sync log.md"), false);
+	assert.equal(f.writes.filter((path: string) => path.startsWith("Meetings/")).length, 0);
+	await f.plugin.scheduledCheck();
+	assert.ok(f.writes.some((path: string) => path.startsWith("Meetings/")));
+});
+
+test("Automatic shows, logs and counts any other failure, and the third one shows the failed item", async () => {
+	const f = await automaticFixture();
+	const create = f.app.vault.create;
+	f.app.vault.create = async (path: string, text: string) => { if (path.startsWith("Meetings/")) throw new Error("Synthetic write failure"); return create(path, text); };
+	const noticesBefore = notices.length;
+	await f.plugin.scheduledCheck();
+	assert.ok(notices.slice(noticesBefore).some((message: any) => /^Graft: scheduled sync stopped\. Graft sync stopped/.test(message)));
+	assert.match(f.texts.get("Graft/Sync log.md"), /- Stopped: Graft sync stopped/);
+	assert.equal(f.texts.get("Graft/Sync log.md").includes("Synthetic write failure"), false);
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 0);
+	await f.plugin.scheduledCheck();
+	assert.equal(itemText(readyItems()[0]), "Graft: the last check failed");
+	f.app.vault.create = create;
 });

@@ -1,7 +1,7 @@
-import { App, PluginSettingTab, Setting, TFile } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
 import {
-	isCalendarType, isCalendarUrl, isDayCount, isIntervalMinutes, isScheduledMode, MAX_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
+	isCalendarType, isCalendarUrl, isDayCount, isAutomaticLimit, isIntervalMinutes, isScheduledMode, MAX_AUTOMATIC_NOTES, MAX_INTERVAL_MINUTES, MIN_AUTOMATIC_NOTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
 	type CalendarSettings,
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
@@ -135,18 +135,24 @@ export class GraftSettingTab extends PluginSettingTab {
 					if (key === "companyLinking") this.display();
 				}));
 		}
-		this.row("Scheduled sync", "Check for changes in the background while Obsidian is open. Notify shows a notice and a status bar item when something is ready, and nothing is written until you open Preview sync and apply. Obsidian only runs this while it is open, and mobile may pause it.")
-			.addDropdown((dropdown) => dropdown.addOptions({ off: "Off", notify: "Notify" }).setValue(settings.scheduledSync)
+		this.row("Scheduled sync", "Check for changes in the background while Obsidian is open. Notify shows a notice and a status bar item when something is ready, and nothing is written until you open Preview sync and apply. Automatic applies the changes itself, like pressing Apply in the preview with all your settings, so use it only once you trust your setup, and set a Sync log note so you can see what it did. Obsidian only runs this while it is open, and mobile may pause it.")
+			.addDropdown((dropdown) => dropdown.addOptions({ off: "Off", notify: "Notify", automatic: "Automatic" }).setValue(settings.scheduledSync)
 				.onChange(async (value) => {
 					if (!isScheduledMode(value)) return;
 					settings.scheduledSync = value;
 					await this.plugin.saveSettings();
+					if (value === "automatic" && !settings.syncLogPath) new Notice("Automatic sync is easier to trust with a sync log note. Set one in the sync behavior settings to see what each run did.");
 					this.display();
 				}));
 		if (settings.scheduledSync !== "off") {
 			this.text("Sync interval (minutes)", `How often a scheduled check runs, from ${MIN_INTERVAL_MINUTES} to ${MAX_INTERVAL_MINUTES} minutes. The first check runs one interval after Obsidian starts or the setting changes.`, String(settings.syncIntervalMinutes),
 				(value) => { settings.syncIntervalMinutes = Number(value); },
 				(value) => /^\d+$/.test(value) && isIntervalMinutes(Number(value)) ? undefined : `Enter a whole number of minutes from ${MIN_INTERVAL_MINUTES} to ${MAX_INTERVAL_MINUTES}.`);
+		}
+		if (settings.scheduledSync === "automatic") {
+			this.text("Automatic run limit (notes)", `The most notes an Automatic run writes, from ${MIN_AUTOMATIC_NOTES} to ${MAX_AUTOMATIC_NOTES}. A bigger plan is left for you to review in Preview sync, as in Notify mode. A plan blocked by a calendar error or an ambiguous Person is never applied.`, String(settings.automaticMaxNotes),
+				(value) => { settings.automaticMaxNotes = Number(value); },
+				(value) => /^\d+$/.test(value) && isAutomaticLimit(Number(value)) ? undefined : `Enter a whole number from ${MIN_AUTOMATIC_NOTES} to ${MAX_AUTOMATIC_NOTES}.`);
 		}
 		this.text("Sync log note", "Vault-relative path of a Markdown note where Graft records each sync that wrote notes or stopped with an error, newest last, keeping the latest 200. Blank turns the log off. It lists note links and counts, never feed addresses, and must be outside the Meeting, Person, Series and Company folders.", settings.syncLogPath,
 			(value) => { settings.syncLogPath = value; },

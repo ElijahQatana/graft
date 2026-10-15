@@ -891,3 +891,26 @@ test("scheduled sync shows its interval only when on, and rejects an interval ou
 	assert.equal(row("Sync interval (minutes)"), undefined);
 	assert.ok(tab);
 });
+
+test("Automatic shows the run limit, reminds about the log note, and validates the limit", async () => {
+	const { plugin, control, row, saves } = fixture();
+	notices.length = 0;
+	await control("Scheduled sync", "dropdown").change("automatic");
+	assert.equal(plugin.settings.scheduledSync, "automatic");
+	assert.ok(notices.some((message: string) => /sync log note/.test(message)));
+	assert.ok(row("Automatic run limit (notes)"));
+	for (const bad of ["0", "501", "abc", "2.5"]) {
+		const before = saves.length;
+		await control("Automatic run limit (notes)", "text").change(bad);
+		assert.match(row("Automatic run limit (notes)").descEl.children[0].text, /Change not saved/);
+		assert.equal(saves.length, before);
+	}
+	await control("Automatic run limit (notes)", "text").change("40");
+	assert.equal(plugin.settings.automaticMaxNotes, 40);
+	await control("Scheduled sync", "dropdown").change("notify");
+	assert.equal(row("Automatic run limit (notes)"), undefined);
+	plugin.settings.syncLogPath = "Graft/log.md";
+	notices.length = 0;
+	await control("Scheduled sync", "dropdown").change("automatic");
+	assert.equal(notices.length, 0);
+});
