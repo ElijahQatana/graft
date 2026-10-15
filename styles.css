@@ -318,6 +318,30 @@
 	font-weight: var(--font-semibold);
 }
 
+.graft-settings .graft-group > summary {
+	list-style: none;
+}
+
+.graft-settings .graft-group > summary::-webkit-details-marker {
+	display: none;
+}
+
+.graft-settings .graft-group > summary::before {
+	content: "";
+	flex: 0 0 auto;
+	align-self: center;
+	width: 0.4em;
+	height: 0.4em;
+	border-right: 2px solid var(--text-muted);
+	border-bottom: 2px solid var(--text-muted);
+	transform: rotate(-45deg);
+	transition: transform 0.1s ease;
+}
+
+.graft-settings .graft-group[open] > summary::before {
+	transform: rotate(45deg);
+}
+
 .graft-settings .graft-group > summary:hover {
 	color: var(--text-accent);
 }
