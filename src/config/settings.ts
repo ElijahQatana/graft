@@ -1,6 +1,6 @@
 import type { TitleMatchRule } from "../filters/titleMatch.ts";
 import type { FilenameConventionRule } from "../generate/personStub.ts";
-import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, loadSchema, type NoteSchema } from "./schema.ts";
+import { MINIMAL_SCHEMA, cloneSchema, loadSchema, type NoteSchema } from "./schema.ts";
 
 export type CalendarType = "google" | "outlook";
 
@@ -131,15 +131,11 @@ export function isFilenameRule(value: unknown): value is FilenameConventionRule 
 		&& typeof rule.style === "string" && ["full", "firstOnly", "initialLast"].includes(rule.style);
 }
 
-/** Restores valid saved fields while supplying fresh nested defaults for older settings.
- * Settings saved before the schema existed keep the original schema so their notes still match.
- * Settings saved before Company linking was optional keep it on. */
+/** Restores valid saved fields while supplying fresh nested defaults for anything missing or invalid. */
 export function loadGraftSettings(saved: unknown): GraftSettings {
 	const result: GraftSettings = structuredClone(DEFAULT_SETTINGS);
 	const input = record(saved);
-	const hasSchema = Object.prototype.hasOwnProperty.call(input, "schema");
-	result.companyLinking = Object.keys(input).length > 0;
-	result.schema = loadSchema(input.schema, hasSchema || !Object.keys(input).length ? MINIMAL_SCHEMA : ORIGINAL_SCHEMA);
+	result.schema = loadSchema(input.schema, MINIMAL_SCHEMA);
 	result.calendars = loadCalendars(input);
 	const folders = record(input.folders);
 	for (const key of ["meeting", "person", "series", "company"] as const) {
@@ -169,8 +165,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	return result;
 }
 
-/** Reads the calendar list. Settings saved before it existed hold a fixed Google and Outlook
- * feed; each one with a URL becomes an entry, and blank ones are dropped. Every calendar gets an id.
+/** Reads the calendar list. Every calendar gets an id.
  * A saved calendar with an id may have no URL: it is in secret storage, or missing on this device. */
 function loadCalendars(input: Record<string, unknown>): CalendarSettings[] {
 	const calendars: CalendarSettings[] = [];
@@ -188,10 +183,6 @@ function loadCalendars(input: Record<string, unknown>): CalendarSettings[] {
 	}
 	if (Array.isArray(input.calendars)) {
 		for (const entry of input.calendars) add(record(entry));
-	} else {
-		const feeds = record(input.feeds);
-		add({ ...record(feeds.google), name: "Google", type: "google" });
-		add({ ...record(feeds.outlook), name: "Outlook", type: "outlook" });
 	}
 	return calendars;
 }

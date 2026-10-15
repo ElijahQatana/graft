@@ -6,7 +6,7 @@ import {
 	isDayCount, isTimezone, isTitleRule, isFilenameRule,
 } from "../../src/config/settings.ts";
 
-test("empty and legacy settings get independent defaults", () => {
+test("empty and invalid settings get independent defaults", () => {
 	for (const value of [undefined, null, {}, [], "invalid"]) assert.deepEqual(loadGraftSettings(value), DEFAULT_SETTINGS);
 	const first = loadGraftSettings({});
 	first.calendars.push({ id: "work", name: "Work", type: "google", url: "https://example.com/calendar.ics", invitedAs: "" });
@@ -85,37 +85,6 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 	assert.deepEqual(loaded.personFilenameRules, []);
 });
 
-test("settings saved with the fixed Google and Outlook feeds become calendar entries", () => {
-	const loaded = loadGraftSettings({
-		feeds: { google: { url: " https://example.com/google.ics ", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } },
-		daysBack: 3,
-	});
-	assert.deepEqual(noIds(loaded.calendars), [
-		{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "one@example.com" },
-		{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "two@example.com" },
-	]);
-	assert.equal(loaded.daysBack, 3);
-	assert.equal("feeds" in loaded, false);
-	// Saving the result and loading it again keeps the same list.
-	assert.deepEqual(loadGraftSettings(JSON.parse(JSON.stringify(loaded))).calendars, loaded.calendars);
-});
-
-test("migration drops blank and invalid old feeds and keeps the other one", () => {
-	assert.deepEqual(loadGraftSettings({ feeds: { google: { url: "", invitedAs: "one@example.com" }, outlook: { url: "  ", invitedAs: "" } } }).calendars, []);
-	assert.deepEqual(noIds(loadGraftSettings({ feeds: { google: { url: "file:///private.ics" }, outlook: { url: "https://example.com/outlook.ics" } } }).calendars),
-		[{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "" }]);
-	assert.deepEqual(noIds(loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics" } } }).calendars),
-		[{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "" }]);
-	assert.deepEqual(loadGraftSettings({ feeds: "invalid" }).calendars, []);
-});
-
-test("a saved calendar list wins over old feeds, and an emptied list stays empty", () => {
-	const old = { google: { url: "https://example.com/google.ics", invitedAs: "one@example.com" } };
-	assert.deepEqual(loadGraftSettings({ feeds: old, calendars: [] }).calendars, []);
-	const loaded = loadGraftSettings({ feeds: old, calendars: [{ name: "Mine", type: "google", url: "https://example.com/mine.ics", invitedAs: "" }] });
-	assert.deepEqual(loaded.calendars.map((calendar) => calendar.name), ["Mine"]);
-});
-
 test("calendar validators require a URL and compare names without case", () => {
 	assert.equal(isCalendarUrl(""), false);
 	assert.equal(isCalendarUrl("  "), false);
@@ -145,18 +114,15 @@ test("validators reject unsafe paths, URLs, windows, and rule rows", () => {
 	assert.equal(isFilenameRule({ domain: "example.com", style: "firstOnly" }), true);
 });
 
-test("Company linking is off for a new install and on for settings saved before it existed", () => {
-	for (const value of [undefined, null, {}, [], "invalid"]) assert.equal(loadGraftSettings(value).companyLinking, false);
+test("Company linking is off unless it was saved on", () => {
+	for (const value of [undefined, null, {}, [], "invalid", { daysBack: 3 }, { strictCompanyLinks: false }]) assert.equal(loadGraftSettings(value).companyLinking, false);
 	assert.equal(DEFAULT_SETTINGS.companyLinking, false);
-	assert.equal(loadGraftSettings({ daysBack: 3 }).companyLinking, true);
-	assert.equal(loadGraftSettings({ strictCompanyLinks: false }).companyLinking, true);
-	assert.equal(loadGraftSettings({ schema: {}, createPersonStubs: true }).companyLinking, true);
 });
 
 test("a saved Company linking choice is kept either way", () => {
 	assert.equal(loadGraftSettings({ companyLinking: true }).companyLinking, true);
 	assert.equal(loadGraftSettings({ daysBack: 3, companyLinking: false }).companyLinking, false);
-	assert.equal(loadGraftSettings({ daysBack: 3, companyLinking: "yes" }).companyLinking, true);
+	assert.equal(loadGraftSettings({ daysBack: 3, companyLinking: "yes" }).companyLinking, false);
 });
 
 test("Strict Company links keeps its default and saved value whether linking is on or off", () => {
