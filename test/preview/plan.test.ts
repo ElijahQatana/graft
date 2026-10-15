@@ -49,13 +49,12 @@ test("no unresolved-Company warning is raised when strict links are off, as when
 test("updates show only changed calendar fields and the Invite Agenda", () => {
 	const source = fixture();
 	const input = source.meetings[0].input;
-	const frontmatter = { ...buildMeetingFrontmatterUpdate(input, []), title: "Old title", invited: [], date: "2026-08-01", participants: ["[[Pat Example]]"] };
+	const frontmatter = { ...buildMeetingFrontmatterUpdate(input, []), title: "Old title", invited: [], participants: ["[[Pat Example]]"] };
 	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter, body: "## Invite Agenda\n\nOld agenda\n\n# Human Notes (yay)\n\nKeep this" };
 	assert.deepEqual(buildSyncPreview(source).updates, [{ path: "Meetings/Original.md", changes: [
 		{ field: "title", before: "Old title", after: "Synthetic sync" },
 		{ field: "Invite Agenda", before: "Old agenda", after: "New agenda" },
 	] }]);
-	assert.equal(frontmatter.date, "2026-08-01");
 	assert.deepEqual(frontmatter.participants, ["[[Pat Example]]"]);
 });
 
@@ -126,4 +125,15 @@ test("the preview carries a copy of the enabled-feature flags", () => {
 	assert.deepEqual(preview.features, source.features);
 	source.features.personStubs = true;
 	assert.equal(preview.features.personStubs, false);
+});
+
+test("a reschedule to another day shows the Date change in the preview", () => {
+	const source = fixture();
+	source.meetings[0].existing = {
+		path: "Meetings/Old.md",
+		frontmatter: { date: "2026-08-31", scheduled_start: "14:00", scheduled_end: "14:30" },
+		body: "",
+	};
+	const changes = buildSyncPreview(source).updates[0].changes;
+	assert.deepEqual(changes.find((change) => change.field === "date"), { field: "date", before: "2026-08-31", after: "2026-09-01" });
 });

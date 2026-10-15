@@ -216,9 +216,9 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 			assert.deepEqual(existing.frontmatter[change.field], change.before);
 		}
 		const changedFields = Object.keys(actualFields).filter((field) => JSON.stringify(actualFields[field]) !== JSON.stringify(existing.frontmatter[field]));
-		assert.deepEqual(changedFields, preview.updates[0].changes.filter((item) => item.field !== "Invite Agenda").map((item) => item.field));
+		assert.deepEqual([...changedFields].sort(), preview.updates[0].changes.filter((item) => item.field !== "Invite Agenda").map((item) => item.field).sort());
 		assert.equal(actualBody.includes("Keep this"), true);
-		assert.equal(actualFields.date, "2026-08-01");
+		assert.equal(actualFields.date, "2026-09-01");
 		assert.deepEqual(actualFields.participants, ["[[Pat Example]]"]);
 		assert.equal(preview.updates[0].changes.some((item) => item.field === "Invite Agenda"), body.includes("## Invite Agenda"));
 		const agenda = preview.updates[0].changes.find((item) => item.field === "Invite Agenda");
