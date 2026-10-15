@@ -1,6 +1,6 @@
 # Settings
 
-Open Graft in Obsidian's settings. Text fields and toggles save automatically. Rows in lists use **Add** (or **Add calendar**) and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
+Open Graft in Obsidian's settings. Text fields and toggles save automatically. Folder, template and ignore-list fields suggest matching paths from your vault as you type; pick one or type the path yourself. Rows in lists use **Add** (or **Add calendar**) and **Save**; save a row before moving or adding another. Invalid edits show a message and leave the saved value unchanged.
 
 Each group of settings is a collapsible section: Calendars, Folders and templates, Filters, Sync window, Sync behavior, and Note schema, which has collapsible sub-groups of its own. Each heading shows a short summary of its contents at the right, such as the number of calendars. Select a heading, or tab to it and press Enter or Space, to open or close it. Sections stay open or closed when you save, move, or remove a row, and when you close and reopen the settings in the same session. Every group starts closed, except Calendars while you have none.
 
@@ -56,7 +56,7 @@ Paths are relative to the vault root and cannot contain parent traversal. Templa
 A private feed URL works like a password for the calendar, so Graft keeps it out of the plugin's `data.json` when it can.
 
 - **Obsidian 1.11.4 and later:** each URL is saved in Obsidian's secret storage under a name based on the calendar's id. `data.json` holds the calendar's id, name, type, and invited-as identity, but no URL. Settings, Preview sync, and Sync now read the URL from secret storage. A URL found in plain text in `data.json`, for example one saved while secret storage was unavailable, is moved into secret storage the first time Graft loads, and is removed from `data.json` at once. Removing a calendar clears its secret.
-- **Older Obsidian (1.4.4 to 1.11.3):** there is no secret storage, so URLs stay in `data.json` as plain text, and the Calendars section says so. This is also what happens if secret storage reports an error: Graft keeps the URL in `data.json` rather than lose it, and shows a notice.
+- **Older Obsidian (1.4.10 to 1.11.3):** there is no secret storage, so URLs stay in `data.json` as plain text, and the Calendars section says so. This is also what happens if secret storage reports an error: Graft keeps the URL in `data.json` rather than lose it, and shows a notice.
 
 Secret storage is local to the device and is not synced, while `data.json` can be. If the plugin settings reach a second device, its calendars appear with the message "No feed address on this device. Enter it again." Sync stops with the same message until you enter each URL there. Once you do, they are stored on that device only.
 

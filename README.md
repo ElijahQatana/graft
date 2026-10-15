@@ -37,7 +37,7 @@ The full walk-through is in [Getting started](docs/getting-started.md).
 
 ## Install
 
-Graft needs Obsidian 1.4.4 or later. The newest feature it uses before that is the frontmatter update API added in 1.4.4. Keeping feed addresses in secret storage needs 1.11.4; on older versions Graft still works and keeps them in the plugin's data file.
+Graft needs Obsidian 1.4.10 or later, for the path suggestions in its settings. Keeping feed addresses in secret storage needs 1.11.4; on older versions Graft still works and keeps them in the plugin's data file.
 
 ### From a release
 
