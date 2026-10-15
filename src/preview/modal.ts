@@ -34,8 +34,7 @@ export class SyncPreviewModal extends Modal {
 			body.createEl("p", { text: "No note changes planned.", cls: "graft-empty" });
 		}
 		if (newMeetings.length) {
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "New Meeting notes" });
+			const section = addSection(body, "New Meeting notes", newMeetings.length, true);
 			for (const { path, note } of newMeetings) {
 				const details = section.createEl("details", { cls: "graft-item" });
 				details.createEl("summary", { text: path });
@@ -44,10 +43,12 @@ export class SyncPreviewModal extends Modal {
 				content.createEl("pre", { text: note.body, cls: "graft-note-body" });
 			}
 		}
-		if (updates.length) {
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "Existing Meeting notes" });
-			for (const { path, changes } of updates) {
+		const changed = updates.filter((update) => update.changes.length > 0);
+		const unchanged = updates.filter((update) => update.changes.length === 0);
+		for (const [title, items, open] of [["Existing Meeting notes with changes", changed, true], ["Unchanged Meeting notes", unchanged, false]] as const) {
+			if (!items.length) continue;
+			const section = addSection(body, title, items.length, open);
+			for (const { path, changes } of items) {
 				const details = section.createEl("details", { cls: changes.length ? "graft-item" : "graft-item graft-item-clean" });
 				details.createEl("summary", { text: `${path} (${count(changes.length, "change")})` });
 				const content = details.createEl("div", { cls: "graft-item-body" });
@@ -67,8 +68,7 @@ export class SyncPreviewModal extends Modal {
 		}
 		for (const [label, stubs] of [["New Person stubs", personStubs], ["New Series stubs", seriesStubs]] as const) {
 			if (!stubs.length) continue;
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: label });
+			const section = addSection(body, label, stubs.length, true);
 			for (const { path, stub, body: stubBody } of stubs) {
 				const details = section.createEl("details", { cls: "graft-item" });
 				details.createEl("summary", { text: path });
@@ -78,18 +78,15 @@ export class SyncPreviewModal extends Modal {
 			}
 		}
 		if (skipped.length) {
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "Skipped events" });
+			const section = addSection(body, "Skipped events", skipped.length, false);
 			for (const { event, reason } of skipped) section.createEl("p", { text: `${event.summary}: ${reason}`, cls: "graft-note graft-note-skipped" });
 		}
 		if (warnings.length) {
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "Warnings" });
+			const section = addSection(body, "Warnings", warnings.length, true);
 			for (const warning of warnings) section.createEl("p", { text: `${warning.subject}: ${warningText[warning.kind]}`, cls: "graft-note graft-note-warning" });
 		}
 		if (errors.length) {
-			const section = body.createEl("div", { cls: "graft-section" });
-			section.createEl("h3", { text: "Calendar errors" });
+			const section = addSection(body, "Calendar errors", errors.length, true);
 			section.createEl("p", { text: "Some calendars could not be read. This preview is incomplete.", cls: "graft-note graft-note-error" });
 			for (const error of errors) section.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		}
@@ -116,6 +113,14 @@ export class SyncPreviewModal extends Modal {
 		this.contentEl.empty();
 		if (!this.applying) this.done?.();
 	}
+}
+
+/** A collapsible section with its count in the heading. Returns the element to fill. */
+function addSection(parent: HTMLElement, title: string, total: number, open: boolean): HTMLElement {
+	const details = parent.createEl("details", { cls: "graft-section" });
+	details.open = open;
+	details.createEl("summary", { text: `${title} (${total})` });
+	return details.createEl("div", { cls: "graft-section-body" });
 }
 
 function showFields(container: HTMLElement, fields: Record<string, unknown>) {
