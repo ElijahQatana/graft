@@ -53,6 +53,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const notes = (folder: string, type: string) => snapshots.filter((note) => isInFolder(note.file, folder) && note.frontmatter[schema.typeField] === type);
 	const people = notes(settings.folders.person, schema.types.person).map((note) => ({
 		path: note.file.path,
+		fullName: stringValue(note.frontmatter[schema.person.fullName]),
 		email: stringValue(note.frontmatter[schema.person.email]),
 		emailAliases: links(note.frontmatter[schema.person.emailAliases]),
 		note,
@@ -114,6 +115,9 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const stub = { ...built, filename: reserve(settings.folders.person, built.filename) };
 		const path = `${settings.folders.person}/${stub.filename}.md`;
 		input.personStubs.push({ path, stub, body: stubBody(bodies.person, stub.frontmatter) });
+		const stubName = normalizeName(stringValue(stub.frontmatter[schema.person.fullName]));
+		const sameName = stubName ? people.find((person) => normalizeName(person.fullName) === stubName || normalizeName(person.note.file.basename) === stubName) : undefined;
+		if (sameName) input.warnings.push({ kind: "possible-duplicate-person", subject: `${path} and ${sameName.path}` });
 		const resolved = { filename: stub.filename, companyLinks: stub.companyLinks };
 		newPeople.set(key, resolved);
 		return resolved;
@@ -227,6 +231,10 @@ function splitNote(text: string): { frontmatter: Record<string, unknown>; body: 
 
 function stringValue(value: unknown): string | undefined {
 	return typeof value === "string" ? value : undefined;
+}
+
+function normalizeName(value: string | undefined): string {
+	return (value ?? "").trim().toLowerCase();
 }
 
 function links(value: unknown): string[] {
