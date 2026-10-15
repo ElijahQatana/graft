@@ -10,7 +10,7 @@ export interface ExtraField {
 
 export type MeetingFieldKey =
 	| "title" | "date" | "scheduledStart" | "scheduledEnd" | "organizer" | "invited" | "series"
-	| "invitedAs" | "inviteUpdated" | "uid" | "recurrenceId" | "occurrenceStatus";
+	| "invitedAs" | "inviteUpdated" | "uid" | "recurrenceId" | "occurrenceStatus" | "participants";
 export type PersonFieldKey = "email" | "emailAliases" | "company" | "fullName" | "firstName" | "lastName";
 export type SeriesFieldKey = "uid" | "title";
 
@@ -33,8 +33,8 @@ export interface NoteSchema {
 	meetingExtras: ExtraField[];
 }
 
-/** Meeting fields that may be left blank to skip writing them. */
-export const OPTIONAL_MEETING_FIELDS: MeetingFieldKey[] = ["inviteUpdated", "occurrenceStatus"];
+/** Meeting fields that may be left blank to skip writing them. Participants is blank, so off, by default. */
+export const OPTIONAL_MEETING_FIELDS: MeetingFieldKey[] = ["inviteUpdated", "occurrenceStatus", "participants"];
 
 export const MINIMAL_SCHEMA: NoteSchema = {
 	typeField: "type",
@@ -43,7 +43,7 @@ export const MINIMAL_SCHEMA: NoteSchema = {
 		title: "title", date: "date", scheduledStart: "scheduled_start", scheduledEnd: "scheduled_end",
 		organizer: "organizer", invited: "invited", series: "series", invitedAs: "invited_as",
 		inviteUpdated: "invite_updated", uid: "ics_uid", recurrenceId: "ics_recurrence_id",
-		occurrenceStatus: "occurrence_status",
+		occurrenceStatus: "occurrence_status", participants: "",
 	},
 	person: {
 		email: "email", emailAliases: "email_aliases", company: "company",
