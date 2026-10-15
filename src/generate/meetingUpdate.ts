@@ -3,11 +3,12 @@ import type { ResolvedAttendee } from "./meetingNote.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 import { extractSection, replaceSection } from "../util/markdownSections.ts";
+import { inviteAgendaText } from "../util/inviteText.ts";
 import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
 
 /** Avoid rewriting body spacing when the invite text has not changed. */
 export function buildMeetingBodyUpdate(body: string, description: string | undefined, heading: string): string {
-	const agenda = description?.trim() || "No agenda provided";
+	const agenda = inviteAgendaText(description);
 	return extractSection(body, heading) === agenda ? body : replaceSection(body, heading, agenda);
 }
 

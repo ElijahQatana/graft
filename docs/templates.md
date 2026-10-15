@@ -30,7 +30,7 @@ These placeholders are available in a Meeting template:
 | `{{ics_uid}}`, `{{ics_recurrence_id}}` | The event's UID and, for a single occurrence of a series, its recurrence ID. |
 | `{{occurrence_status}}` | `Scheduled`, or `Cancelled` if the calendar marks the event cancelled. |
 | `{{type}}` | The note type value, `Meeting`. |
-| `{{invite_agenda}}` | The event's description text, or `No agenda provided`. |
+| `{{invite_agenda}}` | The event's description text with join and dial-in text removed, or `No agenda provided`. |
 | `{{series_agenda}}` | The standing agenda copied from the Series note, or empty. |
 
 Any extra Meeting property you define in the note schema settings is also available by its name, for example `{{week}}` if you added a `week` property. An extra whose value is a list of Company links is joined with commas.

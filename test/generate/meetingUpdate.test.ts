@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
+import { buildMeetingBodyUpdate, buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
 import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
@@ -77,4 +77,11 @@ test("ics_recurrence_id updates to the event's own value", () => {
 	);
 	assert.equal(update.ics_uid, "series-1");
 	assert.equal(update.ics_recurrence_id, "2026-09-08T14:00:00.000Z");
+});
+
+test("body update cleans the invite text and leaves a cleaned section untouched", () => {
+	const joinText = "Join with Google Meet\nMeeting link: https://meet.google.com/abc-defg-hij";
+	const body = "# Notes\n\n## Invite Agenda\n\nDiscuss Q3 numbers\n\n## Notes\n\nMine";
+	assert.equal(buildMeetingBodyUpdate(body, `Discuss Q3 numbers\n\n${joinText}`, "## Invite Agenda"), body);
+	assert.match(buildMeetingBodyUpdate(body, joinText, "## Invite Agenda"), /## Invite Agenda\n\nNo agenda provided/);
 });
