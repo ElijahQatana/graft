@@ -146,5 +146,9 @@ test("scheduled sync settings default to off and every hour, and invalid values 
 	assert.equal(ok.scheduledSync, "notify");
 	assert.equal(ok.syncIntervalMinutes, 15);
 	for (const bad of [14, 1441, 30.5, "30", null]) assert.equal(loadGraftSettings({ syncIntervalMinutes: bad }).syncIntervalMinutes, 60);
-	assert.equal(loadGraftSettings({ scheduledSync: "automatic" }).scheduledSync, "off");
+	assert.equal(loadGraftSettings({ scheduledSync: "automatic" }).scheduledSync, "automatic");
+	assert.equal(loadGraftSettings({ scheduledSync: "sometimes" }).scheduledSync, "off");
+	assert.equal(DEFAULT_SETTINGS.automaticMaxNotes, 25);
+	assert.equal(loadGraftSettings({ automaticMaxNotes: 100 }).automaticMaxNotes, 100);
+	for (const bad of [0, 501, 2.5, "25"]) assert.equal(loadGraftSettings({ automaticMaxNotes: bad }).automaticMaxNotes, 25);
 });

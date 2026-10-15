@@ -16,7 +16,7 @@ import type { Attendee } from "../types.ts";
 import { extractSection } from "../util/markdownSections.ts";
 import { isInFolder, uniqueName } from "../util/vaultPath.ts";
 import { renderTemplate } from "../templates/engine.ts";
-import { UserFacingError } from "./userFacingError.ts";
+import { UserFacingError, VaultChangedError } from "./userFacingError.ts";
 import type { NoteSchema } from "../config/schema.ts";
 
 interface NoteSnapshot {
@@ -202,14 +202,14 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 	if (!prepared.canApply) throw new UserFacingError("The sync plan has errors, so nothing was written. Run Preview sync and fix what it reports.");
 	const current = app.vault.getMarkdownFiles().filter((file) => prepared.folders.some((folder) => isInFolder(file, folder))).map((file) => file.path).sort();
 	const expected = prepared.snapshots.map((note) => note.file.path).sort();
-	if (JSON.stringify(current) !== JSON.stringify(expected)) throw new UserFacingError("The vault changed. Run Preview sync again.");
+	if (JSON.stringify(current) !== JSON.stringify(expected)) throw new VaultChangedError("The vault changed. Run Preview sync again.");
 	for (const snapshot of [...prepared.snapshots, ...prepared.templates]) {
 		const file = app.vault.getAbstractFileByPath(snapshot.file.path);
-		if (!(file instanceof TFile) || await app.vault.read(file) !== snapshot.text) throw new UserFacingError("The vault changed. Run Preview sync again.");
+		if (!(file instanceof TFile) || await app.vault.read(file) !== snapshot.text) throw new VaultChangedError("The vault changed. Run Preview sync again.");
 	}
 	const newPaths = [...prepared.preview.newMeetings, ...prepared.input.personStubs, ...prepared.input.seriesStubs].map((note) => note.path);
 	for (const path of newPaths) {
-		if (app.vault.getAbstractFileByPath(path)) throw new UserFacingError("A planned note already exists. Run Preview sync again.");
+		if (app.vault.getAbstractFileByPath(path)) throw new VaultChangedError("A planned note already exists. Run Preview sync again.");
 		assertNoNoteInFolderPath(app, path);
 	}
 	for (const path of newPaths) await ensureFolder(app, path.split("/").slice(0, -1).join("/"));
@@ -218,7 +218,7 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 	}
 	for (const { path, field, after } of prepared.input.vanishedCancellations ?? []) {
 		const file = app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile)) throw new UserFacingError("A Meeting note is missing. Run Preview sync again.");
+		if (!(file instanceof TFile)) throw new VaultChangedError("A Meeting note is missing. Run Preview sync again.");
 		await app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => { frontmatter[field] = after; });
 	}
 	for (const meeting of prepared.input.meetings) {
@@ -226,8 +226,8 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 			const changes = prepared.preview.updates.find((update) => update.path === meeting.existing!.path)?.changes;
 			if (!changes?.length) continue;
 			const file = app.vault.getAbstractFileByPath(meeting.existing.path);
-			if (!(file instanceof TFile)) throw new UserFacingError("A Meeting note is missing. Run Preview sync again.");
-			if (await app.vault.read(file) !== prepared.snapshots.find((note) => note.file.path === file.path)?.text) throw new UserFacingError("The vault changed. Run Preview sync again.");
+			if (!(file instanceof TFile)) throw new VaultChangedError("A Meeting note is missing. Run Preview sync again.");
+			if (await app.vault.read(file) !== prepared.snapshots.find((note) => note.file.path === file.path)?.text) throw new VaultChangedError("The vault changed. Run Preview sync again.");
 			await updateMeetingNote(app, file, meeting.input, prepared.input.companies, prepared.input.strictCompanyLinks);
 		} else await writeMeetingNote(app, prepared.input.meetingFolder, meeting.input, prepared.input.companies, prepared.input.filenamePattern, prepared.input.strictCompanyLinks, meeting.filename);
 	}

@@ -28,11 +28,18 @@ export function newCalendarId(taken: Iterable<string>): string {
 	}
 }
 
-/** What a scheduled run does: nothing, or check in the background and tell the user when something is ready. */
-export type ScheduledMode = "off" | "notify";
-export const SCHEDULED_MODES: ScheduledMode[] = ["off", "notify"];
+/** What a scheduled run does: nothing, check and tell the user when something is ready, or check and apply. */
+export type ScheduledMode = "off" | "notify" | "automatic";
+export const SCHEDULED_MODES: ScheduledMode[] = ["off", "notify", "automatic"];
 export const MIN_INTERVAL_MINUTES = 15;
 export const MAX_INTERVAL_MINUTES = 1440;
+
+export const MIN_AUTOMATIC_NOTES = 1;
+export const MAX_AUTOMATIC_NOTES = 500;
+
+export function isAutomaticLimit(value: unknown): value is number {
+	return typeof value === "number" && Number.isInteger(value) && value >= MIN_AUTOMATIC_NOTES && value <= MAX_AUTOMATIC_NOTES;
+}
 
 export function isScheduledMode(value: unknown): value is ScheduledMode {
 	return SCHEDULED_MODES.includes(value as ScheduledMode);
@@ -76,6 +83,8 @@ export interface GraftSettings {
 	scheduledSync: ScheduledMode;
 	/** Minutes between scheduled checks. */
 	syncIntervalMinutes: number;
+	/** The most notes an Automatic run writes. A bigger plan is left for the user to review. */
+	automaticMaxNotes: number;
 	/** Note types, property names and headings Graft reads and writes. */
 	schema: NoteSchema;
 }
@@ -104,6 +113,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	autoRunOnStartup: false,
 	scheduledSync: "off",
 	syncIntervalMinutes: 60,
+	automaticMaxNotes: 25,
 	schema: cloneSchema(MINIMAL_SCHEMA),
 };
 
@@ -194,6 +204,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	if (typeof input.timezone === "string" && isTimezone(input.timezone)) result.timezone = input.timezone;
 	if (isScheduledMode(input.scheduledSync)) result.scheduledSync = input.scheduledSync;
 	if (isIntervalMinutes(input.syncIntervalMinutes)) result.syncIntervalMinutes = input.syncIntervalMinutes;
+	if (isAutomaticLimit(input.automaticMaxNotes)) result.automaticMaxNotes = input.automaticMaxNotes;
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}

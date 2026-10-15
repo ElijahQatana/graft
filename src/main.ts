@@ -3,7 +3,7 @@ import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal } from "./preview/modal.ts";
 import { prepareSync, applySync, type PreparedSync } from "./sync/flow.ts";
-import { UserFacingError } from "./sync/userFacingError.ts";
+import { UserFacingError, VaultChangedError } from "./sync/userFacingError.ts";
 import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.ts";
 import { fetchIcs } from "./ics/fetch.ts";
 import { isLoggable, isInsideNoteFolders, logEntryFromPreview } from "./sync/log.ts";
@@ -103,7 +103,8 @@ export default class GraftPlugin extends Plugin {
 		this.checkTimer = this.registerInterval(window.setInterval(() => { void this.scheduledCheck(); }, syncIntervalMinutes * 60_000));
 	}
 
-	/** One background check. It plans like Preview sync but writes nothing, and says so only when new changes are ready. */
+	/** One background check. It plans like Preview sync. In Notify mode it writes nothing and says so only when new
+	 * changes are ready. In Automatic mode it applies a plan that is clean and small enough, and otherwise falls back to Notify. */
 	async scheduledCheck() {
 		if (this.syncing || this.unloaded || this.settings.scheduledSync === "off") return;
 		this.syncing = true;
@@ -111,23 +112,51 @@ export default class GraftPlugin extends Plugin {
 			const prepared = await prepareSync(this.app, structuredClone(this.settings), fetchIcs);
 			if (this.unloaded) return;
 			if (prepared.preview.errors.length) throw new Error("A calendar could not be read.");
-			this.checkFailures = 0;
 			const changes = countPlannedChanges(prepared.preview);
 			if (!changes) {
+				this.checkFailures = 0;
 				this.lastAnnounced = "";
 				this.clearReady();
 				return;
 			}
+			const { scheduledSync, automaticMaxNotes } = this.settings;
+			if (scheduledSync === "automatic" && prepared.canApply && changes <= automaticMaxNotes) {
+				await this.applyScheduled(prepared, changes);
+				return;
+			}
+			this.checkFailures = 0;
 			const fingerprint = planFingerprint(prepared.preview);
 			if (fingerprint === this.lastAnnounced) return;
 			this.lastAnnounced = fingerprint;
-			this.announceReady(`Graft: ${changes} ${changes === 1 ? "change" : "changes"} ready to review`);
+			const noun = changes === 1 ? "change" : "changes";
+			if (scheduledSync === "automatic" && !prepared.canApply) this.announceReady(`Graft: ${changes} ${noun} need review before they can be applied`);
+			else if (scheduledSync === "automatic") this.announceReady(`Graft: ${changes} ${noun} ready to review (over the automatic limit of ${automaticMaxNotes})`);
+			else this.announceReady(`Graft: ${changes} ${noun} ready to review`);
 		} catch {
 			this.checkFailures++;
 			if (this.checkFailures === FAILURES_BEFORE_WARNING) this.announceReady("Graft: the last check failed", "Graft: scheduled checks keep failing. Run Preview sync to see why.");
 		} finally {
 			this.syncing = false;
 		}
+	}
+
+	/** Applies a plan from a scheduled run, as if the user had read the preview and pressed Apply. A stop because
+	 * the vault changed is retried on the next run without a word. Any other failure is shown, logged and counted. */
+	private async applyScheduled(prepared: PreparedSync, changes: number) {
+		try {
+			await this.whileBusy("Graft: writing notes", () => applySync(this.app, prepared));
+		} catch (error) {
+			if (error instanceof VaultChangedError) return;
+			const message = errorMessage(error, "Graft sync stopped. Check the vault and run Preview sync again.");
+			new Notice(`Graft: scheduled sync stopped. ${message}`);
+			await this.recordRun(prepared, "Scheduled sync", message);
+			throw error;
+		}
+		this.checkFailures = 0;
+		this.lastAnnounced = "";
+		this.clearReady();
+		new Notice(`Graft: scheduled sync wrote ${changes} ${changes === 1 ? "change" : "changes"}.${this.settings.syncLogPath ? " See the sync log for details." : ""}`);
+		await this.recordRun(prepared, "Scheduled sync");
 	}
 
 	/** Shows `label` in the status bar on desktop, and as a notice that opens Preview sync when clicked. */
