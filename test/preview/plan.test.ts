@@ -6,6 +6,7 @@ import { buildMeetingFrontmatterUpdate } from "../../src/generate/meetingUpdate.
 import { buildPersonStub } from "../../src/generate/personStub.ts";
 import { buildSeriesStub } from "../../src/generate/seriesStub.ts";
 import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
+import { buildWindowLabel } from "../../src/preview/summary.ts";
 import { makeEvent } from "../helpers.ts";
 
 export function fixture(): PreviewInput {
@@ -14,6 +15,7 @@ export function fixture(): PreviewInput {
 		plan: { toProcess: [event], skipped: [], errors: [] },
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC" } }],
 		personStubs: [], seriesStubs: [], companies: [], meetingFolder: "Meetings", warnings: [],
+		window: { start: new Date("2026-10-08T00:00:00Z"), end: new Date("2026-11-15T00:00:00Z"), daysBack: 7, daysAhead: 30, timezone: "UTC" },
 		features: { personStubs: true, seriesStubs: true, skipped: false },
 	};
 }
@@ -136,4 +138,21 @@ test("a reschedule to another day shows the Date change in the preview", () => {
 	};
 	const changes = buildSyncPreview(source).updates[0].changes;
 	assert.deepEqual(changes.find((change) => change.field === "date"), { field: "date", before: "2026-08-31", after: "2026-09-01" });
+});
+
+test("the preview carries a copy of the sync window", () => {
+	const source = fixture();
+	const preview = buildSyncPreview(source);
+	assert.deepEqual(preview.window, source.window);
+	source.window.daysBack = 1;
+	assert.equal(preview.window.daysBack, 7);
+});
+
+test("the window label covers the default settings", () => {
+	assert.equal(buildWindowLabel(fixture().window), "Covers 8 Oct to 14 Nov 2026 (7 days back, 30 ahead).");
+});
+
+test("the window label follows custom settings, the time zone and a year change", () => {
+	const window = { start: new Date("2026-12-29T08:00:00Z"), end: new Date("2027-01-06T08:00:00Z"), daysBack: 1, daysAhead: 6, timezone: "America/Los_Angeles" };
+	assert.equal(buildWindowLabel(window), "Covers 29 Dec 2026 to 5 Jan 2027 (1 day back, 6 ahead).");
 });

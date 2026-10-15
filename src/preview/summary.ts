@@ -1,4 +1,5 @@
-import type { SyncPreview } from "./plan.ts";
+import { DateTime } from "luxon";
+import type { PreviewWindow, SyncPreview } from "./plan.ts";
 
 /** Picks the singular form for exactly one, the plural otherwise (zero included). */
 export function count(n: number, singular: string, plural = `${singular}s`): string {
@@ -16,4 +17,12 @@ export function buildSummary({ newMeetings, updates, personStubs, seriesStubs, s
 	// non-zero count is never hidden. With filters on, a zero still shows.
 	if (features.skipped || skipped.length > 0) parts.push(`${skipped.length} skipped`);
 	return `${parts.join(", ")}.`;
+}
+
+/** Shows the start year only when the range crosses a year boundary. */
+export function buildWindowLabel({ start, end, daysBack, daysAhead, timezone }: PreviewWindow): string {
+	const first = DateTime.fromJSDate(start).setZone(timezone);
+	const last = DateTime.fromJSDate(end).setZone(timezone).minus({ days: 1 });
+	const from = first.year === last.year ? first.toFormat("d MMM") : first.toFormat("d MMM yyyy");
+	return `Covers ${from} to ${last.toFormat("d MMM yyyy")} (${count(daysBack, "day")} back, ${daysAhead} ahead).`;
 }

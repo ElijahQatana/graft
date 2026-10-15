@@ -79,6 +79,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const invitedAsBySource = new Map(settings.calendars.map((calendar) => [calendar.name, calendar.invitedAs]));
 	const input: PreviewInput = {
 		plan,
+		window: { ...window, daysBack: settings.daysBack, daysAhead: settings.daysAhead, timezone: settings.timezone },
 		meetings: [],
 		personStubs: [],
 		seriesStubs: [],

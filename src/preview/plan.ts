@@ -1,4 +1,5 @@
 import type { SyncPlan } from "../sync/plan.ts";
+import type { SyncWindow } from "../types.ts";
 import { buildMeetingNote, type MeetingNote, type MeetingNoteInput } from "../generate/meetingNote.ts";
 import { buildMeetingFrontmatterUpdate, buildMeetingBodyUpdate } from "../generate/meetingUpdate.ts";
 import type { PersonStub } from "../generate/personStub.ts";
@@ -26,8 +27,16 @@ export interface PreviewFeatures {
 	skipped: boolean;
 }
 
+/** The sync window the plan was built from, with the settings behind it. `end` is exclusive. */
+export interface PreviewWindow extends SyncWindow {
+	daysBack: number;
+	daysAhead: number;
+	timezone: string;
+}
+
 export interface PreviewInput {
 	plan: SyncPlan;
+	window: PreviewWindow;
 	/** One resolved input per toProcess event, in the same order. */
 	meetings: Array<{
 		input: MeetingNoteInput;
@@ -49,6 +58,7 @@ export interface PreviewInput {
 }
 
 export interface SyncPreview {
+	window: PreviewWindow;
 	newMeetings: Array<{ path: string; note: MeetingNote }>;
 	updates: Array<{ path: string; changes: FieldChange[] }>;
 	personStubs: PreviewInput["personStubs"];
@@ -66,6 +76,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 		throw new Error("Preview needs a resolved input for each planned event.");
 	}
 	const preview: SyncPreview = {
+		window: { ...source.window },
 		newMeetings: [], updates: [], personStubs: source.personStubs,
 		seriesStubs: source.seriesStubs, skipped: source.plan.skipped,
 		errors: source.plan.errors, warnings: [...source.warnings], features: { ...source.features },

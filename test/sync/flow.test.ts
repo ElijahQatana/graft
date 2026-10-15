@@ -4,6 +4,7 @@ import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 import { loadGraftSettings } from "../../src/config/settings.ts";
 import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
+import { buildWindowLabel } from "../../src/preview/summary.ts";
 
 const now = new Date("2026-10-04T12:00:00Z");
 class Clock extends Date {
@@ -117,6 +118,15 @@ test("two calendars sync with their own invited-as identities", async () => {
 	const prepared = await prepareSync(f.app, f.settings, f.fetch, now);
 	const invitedAs = prepared.preview.newMeetings.map(({ note }: any) => note.frontmatter.invited_as);
 	assert.deepEqual(clean(invitedAs).sort(), ["one@example.com", "one@example.com", "two@example.com"]);
+});
+
+test("the preview window comes from the days back and ahead settings", async () => {
+	const f = fixture();
+	f.settings.daysBack = 3;
+	const { preview } = await prepareSync(f.app, f.settings, f.fetch, now);
+	assert.equal(preview.window.daysBack, 3);
+	assert.equal(preview.window.daysAhead, 2);
+	assert.equal(buildWindowLabel(preview.window), "Covers 1 Oct to 6 Oct 2026 (3 days back, 2 ahead).");
 });
 
 test("sync with no calendars asks for one and writes nothing", async () => {
