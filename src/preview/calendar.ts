@@ -68,3 +68,83 @@ export function bucketByDay<T extends { event: CalendarEvent }>(items: T[], date
 		return { date, entries };
 	});
 }
+
+/** Times are minutes after local midnight. */
+export interface TimedBlock<T> {
+	entry: DayEntry<T>;
+	startMin: number;
+	/** At least MIN_BLOCK after startMin, to keep very short events clickable. */
+	endMin: number;
+	column: number;
+	/** Slots in the group of overlapping events. */
+	columns: number;
+}
+
+export interface HourRange {
+	start: number;
+	/** Exclusive, so 24 ends the day. */
+	end: number;
+}
+
+export const MIN_BLOCK = 30;
+export const DEFAULT_HOURS: HourRange = { start: 7, end: 20 };
+
+function minutesOf(time: string): number {
+	return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+}
+
+/** Overlapping spans form a group with one slot count. A span that starts as another ends reuses its slot. */
+export function assignColumns(spans: Array<{ start: number; end: number }>): Array<{ column: number; columns: number }> {
+	const order = spans.map((_, index) => index).sort((a, b) => spans[a].start - spans[b].start || spans[b].end - spans[a].end || a - b);
+	const result = spans.map(() => ({ column: 0, columns: 1 }));
+	let group: number[] = [];
+	let slotEnds: number[] = [];
+	let groupEnd = -Infinity;
+	const close = () => {
+		for (const index of group) result[index].columns = slotEnds.length;
+		group = [];
+		slotEnds = [];
+	};
+	for (const index of order) {
+		const { start, end } = spans[index];
+		if (group.length && start >= groupEnd) close();
+		let slot = slotEnds.findIndex((slotEnd) => slotEnd <= start);
+		if (slot < 0) slot = slotEnds.length;
+		slotEnds[slot] = end;
+		result[index].column = slot;
+		group.push(index);
+		groupEnd = Math.max(groupEnd, end);
+	}
+	close();
+	return result;
+}
+
+/**
+ * Positions use the clock times in the zone, even on a daylight saving day. An event continuing from the day
+ * before starts at midnight, and one continuing to the next day ends at midnight.
+ */
+export function layoutDay<T>(entries: DayEntry<T>[]): TimedBlock<T>[] {
+	const timed = entries.filter((entry) => !entry.allDay).map((entry) => {
+		const startMin = entry.continuesFromPrevious ? 0 : minutesOf(entry.startTime);
+		const endMin = entry.continuesToNext ? 1440 : minutesOf(entry.endTime);
+		return { entry, startMin, endMin: Math.min(1440, Math.max(endMin, startMin + MIN_BLOCK)) };
+	});
+	const slots = assignColumns(timed.map(({ startMin, endMin }) => ({ start: startMin, end: endMin })));
+	return timed.map((block, index) => ({ ...block, ...slots[index] }));
+}
+
+/** The default hours, widened to whole hours that hold every block. */
+export function visibleHours(blocks: Array<{ startMin: number; endMin: number }>, defaults: HourRange = DEFAULT_HOURS): HourRange {
+	let { start, end } = defaults;
+	for (const block of blocks) {
+		start = Math.min(start, Math.floor(block.startMin / 60));
+		end = Math.max(end, Math.ceil(block.endMin / 60));
+	}
+	return { start, end };
+}
+
+/** Minutes after local midnight for an instant in the zone, or undefined when it is not on the date. */
+export function minuteOnDate(instant: Date, date: string, zone: string): number | undefined {
+	const local = DateTime.fromJSDate(instant).setZone(zone);
+	return local.toFormat(DAY) === date ? local.hour * 60 + local.minute : undefined;
+}
