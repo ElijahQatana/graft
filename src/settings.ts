@@ -5,6 +5,7 @@ import {
 	type CalendarSettings,
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
+import { attachPathSuggest, type PathKind } from "./ui/pathSuggest.ts";
 import {
 	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isAgendaPlaceholder, isExtraField, isFieldName, isHeading, isTypeValue,
 	schemaConflict, type ExtraField, type MeetingFieldKey, type NoteSchema, type PersonFieldKey, type SeriesFieldKey,
@@ -79,12 +80,12 @@ export class GraftSettingTab extends PluginSettingTab {
 			if (key === "company" && !settings.companyLinking) continue;
 			this.text(`${label} folder`, key === "company" ? "Folder containing existing Company notes. Graft does not create Company notes." : "Vault-relative folder for matching and new notes.", settings.folders[key],
 				(value) => { settings.folders[key] = value; },
-				(value) => isVaultPath(value, false) ? undefined : "Use a non-empty vault-relative path without parent traversal.");
+				(value) => isVaultPath(value, false) ? undefined : "Use a non-empty vault-relative path without parent traversal.", false, "folder");
 		}
 		for (const [key, label] of [["meeting", "Meeting"], ["person", "Person"], ["series", "Series"]] as const) {
 			this.text(`${label} template`, "Path to a Markdown template in this vault. Blank uses the built-in body. Graft placeholders use {{name}}; Templater scripts are not executed.", settings.templates[key],
 				(value) => { settings.templates[key] = value; },
-				(value) => this.templateError(value));
+				(value) => this.templateError(value), false, "markdown");
 		}
 		this.text("Meeting filename pattern", "Available placeholders: {{title}} and {{date}}. Unknown placeholders remain visible.", settings.meetingFilenamePattern,
 			(value) => { settings.meetingFilenamePattern = value; },
@@ -93,7 +94,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.group("filters", "Filters");
 		this.text("Ignore-list file", "Vault-relative JSON file path. Blank disables the ignore list; a missing file ignores nothing.", settings.ignoreListPath,
 			(value) => { settings.ignoreListPath = value; },
-			(value) => isVaultPath(value) ? undefined : "Use a vault-relative path without parent traversal, or leave blank.");
+			(value) => isVaultPath(value) ? undefined : "Use a vault-relative path without parent traversal, or leave blank.", false, "json");
 		this.text("Title prefixes to strip", "Comma-separated text removed from the start of event titles, ignoring case, before title rules, filenames, Series names and the title property. Blank strips nothing.", settings.titlePrefixesToStrip.join(", "),
 			(value) => { settings.titlePrefixesToStrip = value.split(",").map((prefix) => prefix.trim()).filter(Boolean); });
 		this.titleRules();
@@ -295,7 +296,7 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private text(
 		name: string, description: string, value: string, update: (value: string) => void,
-		validate: (value: string) => string | undefined = () => undefined, masked = false,
+		validate: (value: string) => string | undefined = () => undefined, masked = false, suggest?: PathKind,
 	): void {
 		const setting = this.row(name, description);
 		const error = this.errorSlot(setting);
@@ -307,6 +308,7 @@ export class GraftSettingTab extends PluginSettingTab {
 				input.inputEl.autocomplete = "off";
 				input.inputEl.spellcheck = false;
 			}
+			if (suggest) attachPathSuggest(this.app, input.inputEl, suggest);
 			input.onChange(async (next) => {
 				const message = validate(next);
 				error.setText(message ? `${message} Change not saved.` : "");
