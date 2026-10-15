@@ -34,17 +34,29 @@ const hidden: any[] = [];
 class Notice { constructor(message: any) { notices.push(message); this.message = message; } message: any; hide() { hidden.push(this.message); } }
 const platform = { isMobile: false };
 const statusBar: any[] = [];
+const timers: Array<{ id: number; ms: number; cleared: boolean }> = [];
+const fakeWindow = {
+	setInterval(_callback: any, ms: number) { const id = timers.length + 1; timers.push({ id, ms, cleared: false }); return id; },
+	clearInterval(id: number) { const timer = timers.find((item) => item.id === id); if (timer) timer.cleared = true; },
+};
+function fakeElement(): any {
+	const el: any = { children: [], listeners: {}, createSpan(options: any) { const c = fakeElement(); c.text = options?.text; el.children.push(c); return c; }, createEl(_tag: string, options: any) { const c = fakeElement(); c.text = options?.text; el.children.push(c); return c; }, addEventListener(name: string, callback: any) { el.listeners[name] = callback; } };
+	return el;
+}
+const fakeCreateFragment = (build: (fragment: any) => void) => { const fragment = fakeElement(); build(fragment); return fragment; };
 class Plugin {
 	[key: string]: any;
 	constructor(app: any) { this.app = app; this.commands = []; }
 	addCommand(command: any) { this.commands.push(command); }
+	registerInterval(id: number) { return id; }
 	addStatusBarItem() {
-		const item: any = { spans: [], addClass() {}, setAttribute() {}, createSpan(options: any) { item.spans.push(options); return {}; }, remove() { statusBar.splice(statusBar.indexOf(item), 1); } };
+		const item: any = { spans: [], listeners: {}, classes: [], addClass(...names: string[]) { item.classes.push(...names); }, setAttribute() {}, addEventListener(name: string, callback: any) { item.listeners[name] = callback; }, createSpan(options: any) { item.spans.push(options); return {}; }, remove() { statusBar.splice(statusBar.indexOf(item), 1); } };
 		statusBar.push(item);
 		return item;
 	}
 	addSettingTab() {}
 	async loadData() { return {}; }
+	async saveData() {}
 }
 class PluginSettingTab {}
 const feeds = new Map<string, string>();
@@ -53,7 +65,7 @@ const obsidian = { TFile, Modal, Notice, Platform: platform, Plugin, PluginSetti
 async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
-	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, structuredClone, Date: Clock });
+	runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: () => obsidian, URL, Intl, structuredClone, Date: Clock, window: fakeWindow, createFragment: fakeCreateFragment });
 	return module.exports;
 }
 let prepareSync: any;
@@ -771,4 +783,109 @@ test("a log path inside a note folder is refused with a notice and the sync stil
 	assert.ok(notices.some((message: string) => /inside a note folder/.test(message)));
 	assert.equal(f.files.has("Meetings/log.md"), false);
 	assert.ok(f.writes.some((path: string) => path.startsWith("Meetings/")));
+});
+
+async function scheduledFixture(mode = "notify", minutes = 30) {
+	const f = await pluginFixture(true);
+	f.plugin.settings.scheduledSync = mode;
+	f.plugin.settings.syncIntervalMinutes = minutes;
+	statusBar.length = 0;
+	timers.length = 0;
+	await f.plugin.saveSettings();
+	return f;
+}
+const readyItems = () => statusBar.filter((item) => item.classes.includes("graft-status-ready"));
+const itemText = (item: any) => item.spans.map((span: any) => span.text).join("");
+
+test("the scheduled check timer follows the mode and interval, and an unrelated save leaves it alone", async () => {
+	const f = await scheduledFixture("notify", 30);
+	assert.deepEqual(timers.map((timer) => [timer.ms, timer.cleared]), [[30 * 60000, false]]);
+	await f.plugin.saveSettings();
+	assert.equal(timers.length, 1);
+	f.plugin.settings.syncIntervalMinutes = 45;
+	await f.plugin.saveSettings();
+	assert.deepEqual(timers.map((timer) => [timer.ms, timer.cleared]), [[30 * 60000, true], [45 * 60000, false]]);
+	f.plugin.settings.scheduledSync = "off";
+	await f.plugin.saveSettings();
+	assert.equal(timers.at(-1)!.cleared, true);
+	assert.equal(timers.length, 2);
+});
+
+test("a scheduled check announces ready changes once, writes nothing, and clears when nothing is pending", async () => {
+	const f = await scheduledFixture();
+	const before = f.writes.length;
+	const noticesBefore = notices.length;
+	await f.plugin.scheduledCheck();
+	assert.equal(f.writes.length, before);
+	assert.equal(readyItems().length, 1);
+	assert.match(itemText(readyItems()[0]), /^Graft: \d+ changes? ready to review$/);
+	assert.equal(notices.length, noticesBefore + 1);
+	await f.plugin.scheduledCheck();
+	assert.equal(notices.length, noticesBefore + 1);
+	assert.equal(readyItems().length, 1);
+	f.plugin.settings.previewBeforeApply = false;
+	await f.plugin.runSync(false);
+	assert.equal(readyItems().length, 0);
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 0);
+	assert.equal(notices.length, noticesBefore + 1 + 1);
+});
+
+test("clicking the ready item opens a fresh preview and removes the item", async () => {
+	const f = await scheduledFixture();
+	await f.plugin.scheduledCheck();
+	const modalsBefore = modals.length;
+	const run = readyItems()[0].listeners.click();
+	await settle();
+	assert.equal(modals.length, modalsBefore + 1);
+	assert.equal(readyItems().length, 0);
+	modals.at(-1).close();
+	await run;
+});
+
+test("a scheduled check is skipped while a sync or preview is open and does nothing when the mode is off", async () => {
+	const f = await scheduledFixture();
+	const run = f.plugin.runSync(true);
+	await settle();
+	const noticesBefore = notices.length;
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 0);
+	assert.equal(notices.length, noticesBefore);
+	modals.at(-1).close();
+	await run;
+	f.plugin.settings.scheduledSync = "off";
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 0);
+});
+
+test("three failed checks in a row show that the last check failed, and a good check clears it", async () => {
+	const f = await scheduledFixture();
+	const saved = [...feeds.entries()];
+	feeds.clear();
+	const noticesBefore = notices.length;
+	await f.plugin.scheduledCheck();
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 0);
+	assert.equal(notices.length, noticesBefore);
+	await f.plugin.scheduledCheck();
+	assert.equal(readyItems().length, 1);
+	assert.equal(itemText(readyItems()[0]), "Graft: the last check failed");
+	await f.plugin.scheduledCheck();
+	assert.equal(notices.length, noticesBefore + 1);
+	for (const [url, text] of saved) feeds.set(url, text);
+	await f.plugin.scheduledCheck();
+	assert.match(itemText(readyItems()[0]), /changes? ready to review/);
+});
+
+test("on mobile the ready message is only a notice", async () => {
+	platform.isMobile = true;
+	try {
+		const f = await scheduledFixture();
+		const noticesBefore = notices.length;
+		await f.plugin.scheduledCheck();
+		assert.equal(statusBar.length, 0);
+		assert.equal(notices.length, noticesBefore + 1);
+	} finally {
+		platform.isMobile = false;
+	}
 });

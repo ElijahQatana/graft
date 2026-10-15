@@ -872,3 +872,22 @@ test("the Calendars group starts open with no calendars and stays open after the
 	const saved = fixture({ calendars: [{ id: "a1", name: "Work", type: "google", url: "https://example.com/work.ics", invitedAs: "" }] });
 	assert.equal(group(saved.tab, "calendars").open, false);
 });
+
+test("scheduled sync shows its interval only when on, and rejects an interval outside 15 to 1440", async () => {
+	const { plugin, tab, control, row, saves } = fixture();
+	assert.equal(row("Sync interval (minutes)"), undefined);
+	await control("Scheduled sync", "dropdown").change("notify");
+	assert.equal(plugin.settings.scheduledSync, "notify");
+	assert.ok(row("Sync interval (minutes)"));
+	for (const bad of ["14", "1441", "abc", "30.5", ""]) {
+		const before = saves.length;
+		await control("Sync interval (minutes)", "text").change(bad);
+		assert.match(row("Sync interval (minutes)").descEl.children[0].text, /Change not saved/);
+		assert.equal(saves.length, before);
+	}
+	await control("Sync interval (minutes)", "text").change("45");
+	assert.equal(plugin.settings.syncIntervalMinutes, 45);
+	await control("Scheduled sync", "dropdown").change("off");
+	assert.equal(row("Sync interval (minutes)"), undefined);
+	assert.ok(tab);
+});

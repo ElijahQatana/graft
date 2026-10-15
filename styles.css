@@ -492,3 +492,11 @@
 		animation: none;
 	}
 }
+
+.graft-status-ready {
+	cursor: pointer;
+}
+
+.graft-status-ready:hover {
+	color: var(--text-accent);
+}

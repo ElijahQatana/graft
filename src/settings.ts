@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
 import {
-	isCalendarType, isCalendarUrl, isDayCount, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
+	isCalendarType, isCalendarUrl, isDayCount, isIntervalMinutes, isScheduledMode, MAX_INTERVAL_MINUTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
 	type CalendarSettings,
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
@@ -134,6 +134,19 @@ export class GraftSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					if (key === "companyLinking") this.display();
 				}));
+		}
+		this.row("Scheduled sync", "Check for changes in the background while Obsidian is open. Notify shows a notice and a status bar item when something is ready, and nothing is written until you open Preview sync and apply. Obsidian only runs this while it is open, and mobile may pause it.")
+			.addDropdown((dropdown) => dropdown.addOptions({ off: "Off", notify: "Notify" }).setValue(settings.scheduledSync)
+				.onChange(async (value) => {
+					if (!isScheduledMode(value)) return;
+					settings.scheduledSync = value;
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+		if (settings.scheduledSync !== "off") {
+			this.text("Sync interval (minutes)", `How often a scheduled check runs, from ${MIN_INTERVAL_MINUTES} to ${MAX_INTERVAL_MINUTES} minutes. The first check runs one interval after Obsidian starts or the setting changes.`, String(settings.syncIntervalMinutes),
+				(value) => { settings.syncIntervalMinutes = Number(value); },
+				(value) => /^\d+$/.test(value) && isIntervalMinutes(Number(value)) ? undefined : `Enter a whole number of minutes from ${MIN_INTERVAL_MINUTES} to ${MAX_INTERVAL_MINUTES}.`);
 		}
 		this.text("Sync log note", "Vault-relative path of a Markdown note where Graft records each sync that wrote notes or stopped with an error, newest last, keeping the latest 200. Blank turns the log off. It lists note links and counts, never feed addresses, and must be outside the Meeting, Person, Series and Company folders.", settings.syncLogPath,
 			(value) => { settings.syncLogPath = value; },
