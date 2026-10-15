@@ -20,10 +20,10 @@ export class SyncPreviewModal extends Modal {
 
 	onOpen() {
 		this.modalEl?.classList?.add("graft-preview-modal");
+		this.setTitle("Graft sync preview");
 		this.contentEl.empty();
 		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
 		const head = root.createEl("div", { cls: "graft-preview-head" });
-		head.createEl("h2", { text: "Graft sync preview" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;

@@ -22,6 +22,7 @@ const modals = [];
 class Modal {
 	contentEl = new Element();
 	constructor(app) { this.app = app; }
+	setTitle(title) { this.title = title; return this; }
 	open() { modals.push(this); this.onOpen(); }
 	close() { this.closed = true; this.onClose(); }
 }
