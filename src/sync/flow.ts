@@ -37,6 +37,8 @@ export interface PreparedSync {
 export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: FeedFetcher, now = new Date()): Promise<PreparedSync> {
 	const feeds = settings.calendars.map(({ name, url }) => ({ name, url }));
 	if (!feeds.length) throw new UserFacingError("Add a calendar in Graft settings.");
+	const missing = feeds.filter((feed) => !feed.url.trim()).map((feed) => feed.name);
+	if (missing.length) throw new UserFacingError(`No feed address on this device for ${missing.join(", ")}. Open Graft settings and enter it again.`);
 	const day = DateTime.fromJSDate(now).setZone(settings.timezone).startOf("day");
 	const window = { start: day.minus({ days: settings.daysBack }).toJSDate(), end: day.plus({ days: settings.daysAhead + 1 }).toJSDate() };
 	const ignoreFile = settings.ignoreListPath ? app.vault.getAbstractFileByPath(settings.ignoreListPath) : null;

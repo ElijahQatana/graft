@@ -71,8 +71,9 @@ An entry with `"recurrenceId": null` skips the whole event or series. An entry w
 
 The private ICS address gives read access to a whole calendar to anyone who has it.
 
-<!-- Storage: update this paragraph when GFT-042 changes where feed URLs are stored. -->
-Graft currently stores the addresses as plain text in the plugin's `data.json`, in `.obsidian/plugins/graft/` inside your vault. The settings field masks them on screen, but the file itself is not encrypted. Anything that copies your vault, such as a sync service, a backup or a shared folder, also copies them. Storage may change in a later version.
+On Obsidian 1.11.4 and later, Graft keeps each address in Obsidian's secret storage on your device. The plugin's `data.json` holds only the calendar's name, type and identity, not the address. Secret storage is not synced, so on a second device a calendar shows "No feed address on this device. Enter it again." until you paste the address there.
+
+On older Obsidian there is no secret storage, so the addresses stay in `data.json` as plain text, in `.obsidian/plugins/graft/` inside your vault. The settings field masks them on screen, but the file is not encrypted, and anything that copies your vault, such as a sync service, a backup or a shared folder, copies them too. The Calendars section says which case applies. If secret storage reports an error, Graft keeps the address in `data.json` instead of losing it, and shows a notice.
 
 Practical steps:
 

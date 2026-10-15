@@ -13,7 +13,7 @@ Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the p
 - **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one, then **Save**, **Up**, **Down**, and **Remove** on its row. Each calendar has:
   - a **name**, which is required and must be unique (case is ignored). Previews use it to say which calendar had a problem.
   - a **type**, Google or Outlook / Microsoft 365.
-  - the calendar's private **ICS URL**, which is required and must be an HTTP or HTTPS address without a username or password. URLs are masked on screen but saved as plain text in the vault's plugin settings. Prefer HTTPS. Errors never repeat the URL.
+  - the calendar's private **ICS URL**, which is required and must be an HTTP or HTTPS address without a username or password. URLs are masked on screen. Prefer HTTPS. Errors never repeat the URL. Where the URL is stored depends on your Obsidian version; see [Where feed URLs are stored](#where-feed-urls-are-stored).
   - an **invited as** identity, written to each Meeting note's `invited_as` property for events from that calendar.
 
   Sync needs at least one calendar. Removing a calendar does not change existing notes. Settings saved before this list existed carry over: the old Google and Outlook feeds that had a URL become calendars named `Google` and `Outlook`, and blank ones are dropped.
@@ -45,5 +45,14 @@ The **Note schema (advanced)** section sets the note types, property names, and 
 An edit that would give two properties the same name, or leave a required name empty, shows a message and is not saved.
 
 Paths are relative to the vault root and cannot contain parent traversal. Templates must exist when selected; folders can be created later.
+
+## Where feed URLs are stored
+
+A private feed URL works like a password for the calendar, so Graft keeps it out of the plugin's `data.json` when it can.
+
+- **Obsidian 1.11.4 and later:** each URL is saved in Obsidian's secret storage under a name based on the calendar's id. `data.json` holds the calendar's id, name, type, and invited-as identity, but no URL. Settings, Preview sync, and Sync now read the URL from secret storage. A URL that an earlier version saved in plain text is moved into secret storage the first time Graft loads, and is removed from `data.json` at once. Removing a calendar clears its secret.
+- **Older Obsidian:** there is no secret storage, so URLs stay in `data.json` as plain text, and the Calendars section says so. This is also what happens if secret storage reports an error: Graft keeps the URL in `data.json` rather than lose it, and shows a notice.
+
+Secret storage is local to the device and is not synced, while `data.json` can be. If the plugin settings reach a second device, its calendars appear with the message "No feed address on this device. Enter it again." Sync stops with the same message until you enter each URL there. Once you do, they are stored on that device only.
 
 Keep feed URLs and real calendar data out of shared notes, screenshots, logs, and vault copies. See [Troubleshooting](troubleshooting.md) for notices and the privacy note.

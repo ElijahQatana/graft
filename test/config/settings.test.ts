@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
+const noIds = (calendars: Array<{ id: string }>) => calendars.map(({ id, ...rest }) => { assert.match(id, /^[a-z0-9]{1,40}$/); return rest; });
 import {
 	DEFAULT_SETTINGS, loadGraftSettings, isVaultPath, isFeedUrl, isCalendarUrl, sameCalendarName,
 	isDayCount, isTimezone, isTitleRule, isFilenameRule,
@@ -8,7 +9,7 @@ import {
 test("empty and legacy settings get independent defaults", () => {
 	for (const value of [undefined, null, {}, [], "invalid"]) assert.deepEqual(loadGraftSettings(value), DEFAULT_SETTINGS);
 	const first = loadGraftSettings({});
-	first.calendars.push({ name: "Work", type: "google", url: "https://example.com/calendar.ics", invitedAs: "" });
+	first.calendars.push({ id: "work", name: "Work", type: "google", url: "https://example.com/calendar.ics", invitedAs: "" });
 	first.titleMatchRules.push({ mode: "exact", value: "Synthetic" });
 	assert.deepEqual(loadGraftSettings({}), DEFAULT_SETTINGS);
 });
@@ -32,8 +33,8 @@ test("all settings survive JSON persistence without sharing input objects", () =
 	const saved = {
 		...loadGraftSettings({}),
 		calendars: [
-			{ name: "Work", type: "google" as const, url: "https://example.com/work.ics", invitedAs: "one@example.com" },
-			{ name: "Team", type: "outlook" as const, url: "https://example.com/team.ics", invitedAs: "two@example.com" },
+			{ id: "work", name: "Work", type: "google" as const, url: "https://example.com/work.ics", invitedAs: "one@example.com" },
+			{ id: "team", name: "Team", type: "outlook" as const, url: "https://example.com/team.ics", invitedAs: "two@example.com" },
 		],
 		folders: { meeting: "Custom/Meetings", person: "Custom/People", series: "Custom/Series", company: "Custom/Companies" },
 		templates: { meeting: "Templates/Meeting.md", person: "Templates/Person.md", series: "Templates/Series.md" },
@@ -70,7 +71,7 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 		titleMatchRules: [{ mode: "exact", value: "" }],
 		personFilenameRules: [{ domain: "example.com", style: "unknown" }],
 	});
-	assert.deepEqual(loaded.calendars, [{ name: "Good", type: "outlook", url: "https://example.com/c.ics", invitedAs: "" }]);
+	assert.deepEqual(noIds(loaded.calendars), [{ name: "Good", type: "outlook", url: "https://example.com/c.ics", invitedAs: "" }]);
 	assert.equal(loaded.folders.person, "Custom/People");
 	assert.equal(loaded.folders.meeting, DEFAULT_SETTINGS.folders.meeting);
 	assert.equal(loaded.templates.meeting, "");
@@ -88,7 +89,7 @@ test("settings saved with the fixed Google and Outlook feeds become calendar ent
 		feeds: { google: { url: " https://example.com/google.ics ", invitedAs: "one@example.com" }, outlook: { url: "https://example.com/outlook.ics", invitedAs: "two@example.com" } },
 		daysBack: 3,
 	});
-	assert.deepEqual(loaded.calendars, [
+	assert.deepEqual(noIds(loaded.calendars), [
 		{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "one@example.com" },
 		{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "two@example.com" },
 	]);
@@ -100,9 +101,9 @@ test("settings saved with the fixed Google and Outlook feeds become calendar ent
 
 test("migration drops blank and invalid old feeds and keeps the other one", () => {
 	assert.deepEqual(loadGraftSettings({ feeds: { google: { url: "", invitedAs: "one@example.com" }, outlook: { url: "  ", invitedAs: "" } } }).calendars, []);
-	assert.deepEqual(loadGraftSettings({ feeds: { google: { url: "file:///private.ics" }, outlook: { url: "https://example.com/outlook.ics" } } }).calendars,
+	assert.deepEqual(noIds(loadGraftSettings({ feeds: { google: { url: "file:///private.ics" }, outlook: { url: "https://example.com/outlook.ics" } } }).calendars),
 		[{ name: "Outlook", type: "outlook", url: "https://example.com/outlook.ics", invitedAs: "" }]);
-	assert.deepEqual(loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics" } } }).calendars,
+	assert.deepEqual(noIds(loadGraftSettings({ feeds: { google: { url: "https://example.com/google.ics" } } }).calendars),
 		[{ name: "Google", type: "google", url: "https://example.com/google.ics", invitedAs: "" }]);
 	assert.deepEqual(loadGraftSettings({ feeds: "invalid" }).calendars, []);
 });

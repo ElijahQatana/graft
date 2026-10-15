@@ -4,6 +4,7 @@ import { loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal } from "./preview/modal.ts";
 import { prepareSync, applySync } from "./sync/flow.ts";
 import { UserFacingError } from "./sync/userFacingError.ts";
+import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.ts";
 import { fetchIcs } from "./ics/fetch.ts";
 
 /** Loads settings and connects the sync commands. */
@@ -13,6 +14,8 @@ export default class GraftPlugin extends Plugin {
 	private syncing = false;
 	private previewModal?: SyncPreviewModal;
 	private unloaded = false;
+	/** Calendar ids as last saved, so a removed calendar's secret can be cleared. */
+	private savedCalendarIds = new Set<string>();
 
 	async onload() {
 		await this.loadSettings();
@@ -49,11 +52,22 @@ export default class GraftPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = loadGraftSettings(await this.loadData());
+		this.savedCalendarIds = new Set(this.settings.calendars.map((calendar) => calendar.id));
+		const { moved, failed } = hydrateSecrets(this.settings, secretStoreOf(this.app));
+		if (failed) new Notice("Graft could not read a feed address from secret storage.");
+		if (moved) await this.saveSettings();
 	}
 
 	async saveSettings() {
 		const snapshot: GraftSettings = JSON.parse(JSON.stringify(this.settings));
-		this.settingsSave = this.settingsSave.catch(() => {}).then(() => this.saveData(snapshot));
+		this.settingsSave = this.settingsSave.catch(() => {}).then(async () => {
+			const ids = new Set(snapshot.calendars.map((calendar) => calendar.id));
+			const removed = [...this.savedCalendarIds].filter((id) => !ids.has(id));
+			const { data, failed } = prepareForSave(snapshot, secretStoreOf(this.app), removed);
+			await this.saveData(data);
+			this.savedCalendarIds = ids;
+			if (failed) new Notice("Graft could not use secret storage for a feed address. It stays in the plugin settings for now.");
+		});
 		try {
 			await this.settingsSave;
 		} catch {

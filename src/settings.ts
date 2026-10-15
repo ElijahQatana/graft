@@ -1,9 +1,10 @@
 import { App, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
 import {
-	isCalendarType, isCalendarUrl, isDayCount, isFilenameRule, isTimezone, isTitleRule, isVaultPath, sameCalendarName,
+	isCalendarType, isCalendarUrl, isDayCount, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
 	type CalendarSettings,
 } from "./config/settings.ts";
+import { secretStoreOf } from "./config/secrets.ts";
 import {
 	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isExtraField, isFieldName, isHeading, isTypeValue,
 	schemaConflict, type ExtraField, type MeetingFieldKey, type NoteSchema, type PersonFieldKey, type SeriesFieldKey,
@@ -290,15 +291,19 @@ export class GraftSettingTab extends PluginSettingTab {
 
 	private calendars(): void {
 		this.group("calendars", "Calendars");
-		this.help("Add each calendar's private ICS URL, stored in this vault's plugin settings. Keep URLs out of shared notes, screenshots, and logs. Calendars sync from top to bottom; if two hold the same event, the earlier one is used. Removing a calendar does not change existing notes. Save each row after editing.");
+		this.help("Add each calendar's private ICS URL. Keep URLs out of shared notes, screenshots, and logs. Calendars sync from top to bottom; if two hold the same event, the earlier one is used. Removing a calendar does not change existing notes. Save each row after editing.");
+		this.help(secretStoreOf(this.app)
+			? "URLs are kept in Obsidian's secret storage on this device, not in the plugin's data file."
+			: "URLs are stored in the plugin's data file on this version of Obsidian.");
 		const calendars = this.plugin.settings.calendars;
 		if (!calendars.length) this.help("No calendars yet. Add one below to use Preview sync or Sync now.");
 		calendars.forEach((calendar, index) => this.calendarRow({ ...calendar }, index));
-		this.calendarRow({ name: "", type: "google", url: "", invitedAs: "" });
+		this.calendarRow({ id: "", name: "", type: "google", url: "", invitedAs: "" });
 	}
 
 	private calendarRow(draft: CalendarSettings, index?: number): void {
-		const row = this.row(index === undefined ? "New calendar" : `Calendar ${index + 1}`, "", "name type google outlook microsoft ICS URL invited as");
+		const noUrl = index !== undefined && !draft.url;
+		const row = this.row(index === undefined ? "New calendar" : `Calendar ${index + 1}`, noUrl ? "No feed address on this device. Enter it again." : "", "name type google outlook microsoft ICS URL invited as");
 		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
 		const error = this.errorSlot(row);
 		row.addText((input) => {
@@ -312,7 +317,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			input.inputEl.type = "password";
 			input.inputEl.autocomplete = "off";
 			input.inputEl.spellcheck = false;
-			input.setPlaceholder("Private ICS URL").setValue(draft.url).onChange((value) => { draft.url = value; });
+			input.setPlaceholder(noUrl ? "Enter the private ICS URL again" : "Private ICS URL").setValue(draft.url).onChange((value) => { draft.url = value; });
 		});
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Calendar invited as");
@@ -326,7 +331,7 @@ export class GraftSettingTab extends PluginSettingTab {
 				: !isCalendarUrl(draft.url) ? "Enter an HTTP or HTTPS ICS URL without a username or password."
 				: undefined;
 			if (message) { error.setText(`${message} Change not saved.`); return; }
-			const saved = { name, type: draft.type, url: draft.url.trim(), invitedAs: draft.invitedAs };
+			const saved = { id: draft.id || newCalendarId(calendars.map((calendar) => calendar.id)), name, type: draft.type, url: draft.url.trim(), invitedAs: draft.invitedAs };
 			if (index === undefined) calendars.push(saved); else calendars[index] = saved;
 			this.display();
 			await this.plugin.saveSettings();

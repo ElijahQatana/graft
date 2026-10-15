@@ -5,11 +5,27 @@ import { MINIMAL_SCHEMA, ORIGINAL_SCHEMA, cloneSchema, loadSchema, type NoteSche
 export type CalendarType = "google" | "outlook";
 
 export interface CalendarSettings {
+	/** Stable, lowercase alphanumeric and unique. Names the calendar's secret when the URL is kept in secret storage. */
+	id: string;
 	/** Required and unique among calendars, ignoring case. Shown in the preview. */
 	name: string;
 	type: CalendarType;
+	/** In memory this is the full feed URL. It is empty on a device whose secret storage holds no URL for the calendar. */
 	url: string;
 	invitedAs: string;
+}
+
+export function isCalendarId(value: unknown): value is string {
+	return typeof value === "string" && /^[a-z0-9]{1,40}$/.test(value);
+}
+
+/** A new calendar id that is not in `taken`. */
+export function newCalendarId(taken: Iterable<string>): string {
+	const used = new Set(taken);
+	for (;;) {
+		const id = Array.from({ length: 12 }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join("");
+		if (!used.has(id)) return id;
+	}
 }
 
 export interface GraftSettings {
@@ -150,15 +166,21 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 }
 
 /** Reads the calendar list. Settings saved before it existed hold a fixed Google and Outlook
- * feed; each one with a URL becomes an entry, and blank ones are dropped. */
+ * feed; each one with a URL becomes an entry, and blank ones are dropped. Every calendar gets an id.
+ * A saved calendar with an id may have no URL: it is in secret storage, or missing on this device. */
 function loadCalendars(input: Record<string, unknown>): CalendarSettings[] {
 	const calendars: CalendarSettings[] = [];
+	const ids = new Set<string>();
 	function add(candidate: Record<string, unknown>) {
 		if (typeof candidate.name !== "string" || !candidate.name.trim() || !isCalendarType(candidate.type)) return;
-		if (typeof candidate.url !== "string" || !isCalendarUrl(candidate.url)) return;
+		const hasId = isCalendarId(candidate.id);
+		const url = typeof candidate.url === "string" ? candidate.url : "";
+		if (url.trim() ? !isCalendarUrl(url) : !hasId) return;
 		const name = candidate.name.trim();
 		if (calendars.some((calendar) => sameCalendarName(calendar.name, name))) return;
-		calendars.push({ name, type: candidate.type, url: candidate.url.trim(), invitedAs: typeof candidate.invitedAs === "string" ? candidate.invitedAs : "" });
+		const id = hasId && !ids.has(candidate.id as string) ? candidate.id as string : newCalendarId(ids);
+		ids.add(id);
+		calendars.push({ id, name, type: candidate.type, url: url.trim(), invitedAs: typeof candidate.invitedAs === "string" ? candidate.invitedAs : "" });
 	}
 	if (Array.isArray(input.calendars)) {
 		for (const entry of input.calendars) add(record(entry));
