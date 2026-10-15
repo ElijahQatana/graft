@@ -141,7 +141,7 @@ export class GraftSettingTab extends PluginSettingTab {
 					if (!isScheduledMode(value)) return;
 					settings.scheduledSync = value;
 					await this.plugin.saveSettings();
-					if (value === "automatic" && !settings.syncLogPath) new Notice("Automatic sync is easier to trust with a sync log note. Set one under Sync behavior to see what each run did.");
+					if (value === "automatic" && !settings.syncLogPath) new Notice("Automatic sync is easier to trust with a sync log note. Set one in the sync behavior settings to see what each run did.");
 					this.display();
 				}));
 		if (settings.scheduledSync !== "off") {
