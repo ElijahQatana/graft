@@ -30,7 +30,7 @@ These placeholders are available in a Meeting template:
 | `{{ics_uid}}`, `{{ics_recurrence_id}}` | The event's UID and, for a single occurrence of a series, its recurrence ID. |
 | `{{occurrence_status}}` | `Scheduled`, or `Cancelled` if the calendar marks the event cancelled. |
 | `{{type}}` | The note type value, `Meeting`. |
-| `{{invite_agenda}}` | The event's description text, or `No agenda provided`. |
+| `{{invite_agenda}}` | The event's description text, or the empty agenda placeholder (`No agenda provided` unless you changed it). |
 | `{{series_agenda}}` | The standing agenda copied from the Series note, or empty. |
 
 Any extra Meeting property you define in the note schema settings is also available by its name, for example `{{week}}` if you added a `week` property. An extra whose value is a list of Company links is joined with commas.
@@ -96,3 +96,12 @@ The Meeting filename pattern is separate from the templates and has its own plac
 ## Checking a template
 
 Run **Graft: Preview sync** and open a new note in the preview. It shows the body Graft will write, so you can check the placeholders before anything is created. See [Getting started](getting-started.md).
+
+## How the Series agenda and the invite agenda combine
+
+A recurring occurrence can carry two agendas, and Graft keeps them in separate sections:
+
+- **Standing Agenda** is the text you write under the standing agenda heading of the Series note. A new Meeting note gets a copy under the Series agenda heading (or in `{{series_agenda}}`). Graft never writes to the Series note, and it never touches the copy again after the note is created, so edit it in the Meeting note freely.
+- **Invite agenda** is the event's description. It goes under the invite agenda heading, below the Series agenda. When an occurrence has no description of its own, that section holds the empty agenda placeholder.
+
+Later syncs rewrite only the invite agenda section, and only when the description changed. A section holding the placeholder stays as it is when the invite is still empty, even if you changed the placeholder setting since. Every other section, including the copied Standing Agenda, is yours.

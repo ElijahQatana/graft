@@ -16,5 +16,5 @@ export async function updateMeetingNote(
 		Object.assign(frontmatter, frontmatterUpdate);
 	});
 
-	await app.vault.process(file, (data) => buildMeetingBodyUpdate(data, input.event.description, input.schema.headings.inviteAgenda));
+	await app.vault.process(file, (data) => buildMeetingBodyUpdate(data, input.event.description, input.schema.headings.inviteAgenda, input.schema.agendaPlaceholder));
 }

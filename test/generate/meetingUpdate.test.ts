@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
+import { buildMeetingBodyUpdate, buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
 import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
@@ -77,4 +77,25 @@ test("ics_recurrence_id updates to the event's own value", () => {
 	);
 	assert.equal(update.ics_uid, "series-1");
 	assert.equal(update.ics_recurrence_id, "2026-09-08T14:00:00.000Z");
+});
+
+const HEADING = "## Invite Agenda";
+
+test("an update changes only the invite agenda section and leaves the Series Agenda and notes alone", () => {
+	const body = "# Agenda\n\n## Series Agenda\n\n- Review actions\n\n\n## Invite Agenda\n\nOld text\n\n# Notes\nMy own notes\n";
+	const updated = buildMeetingBodyUpdate(body, "New text", HEADING);
+	assert.equal(updated, body.replace("Old text", "New text"));
+});
+
+test("an empty invite keeps a section that holds the old default or the configured placeholder", () => {
+	const old = "## Invite Agenda\nNo agenda provided\n# Notes\n";
+	assert.equal(buildMeetingBodyUpdate(old, undefined, HEADING, "- "), old);
+	assert.equal(buildMeetingBodyUpdate(old, "  ", HEADING), old);
+	const bullet = "## Invite Agenda\n\n- \n\n# Notes\n";
+	assert.equal(buildMeetingBodyUpdate(bullet, undefined, HEADING, "- "), bullet);
+});
+
+test("an empty invite replaces other section text with the configured placeholder", () => {
+	const body = "## Invite Agenda\n\nStale text\n\n# Notes\n";
+	assert.equal(buildMeetingBodyUpdate(body, undefined, HEADING, "- "), "## Invite Agenda\n\n- \n\n# Notes\n");
 });

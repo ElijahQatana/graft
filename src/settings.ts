@@ -6,7 +6,7 @@ import {
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
 import {
-	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isExtraField, isFieldName, isHeading, isTypeValue,
+	MINIMAL_SCHEMA, ORIGINAL_SCHEMA, OPTIONAL_MEETING_FIELDS, cloneSchema, isAgendaPlaceholder, isExtraField, isFieldName, isHeading, isTypeValue,
 	schemaConflict, type ExtraField, type MeetingFieldKey, type NoteSchema, type PersonFieldKey, type SeriesFieldKey,
 } from "./config/schema.ts";
 import type { TitleMatchRule } from "./filters/titleMatch.ts";
@@ -496,6 +496,9 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.schemaText("Invite agenda heading", "Heading Graft keeps up to date, such as ## Invite Agenda.", "heading", (s) => s.headings.inviteAgenda, (s, v) => { s.headings.inviteAgenda = v; });
 		this.schemaText("Series agenda heading", "Heading for the Series agenda in new built-in Meeting bodies.", "heading", (s) => s.headings.seriesAgenda, (s, v) => { s.headings.seriesAgenda = v; });
 		this.schemaText("Standing agenda heading", "Heading in a Series note whose content is copied into new Meetings.", "heading", (s) => s.headings.standingAgenda, (s, v) => { s.headings.standingAgenda = v; });
+
+		this.text("Empty agenda placeholder", "Written under the invite agenda heading when the invite has no description, for example - to start a bullet list.", schema.agendaPlaceholder,
+			(value) => { schema.agendaPlaceholder = value; }, (value) => isAgendaPlaceholder(value) ? undefined : "Enter one line of text.");
 
 		const body = this.row("Built-in Meeting body", "Used when no Meeting template is set. Placeholders: {{series_section}} and {{invite_section}}; the invite section is required.");
 		body.settingEl?.classList?.add("graft-wide-row");
