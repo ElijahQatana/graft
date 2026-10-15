@@ -365,7 +365,7 @@
 }
 
 .graft-settings .graft-group-body .setting-item {
-	padding: var(--size-4-3) 0;
+	padding-block: var(--size-4-3);
 }
 
 .graft-settings .graft-calendar-row .setting-item-description {
