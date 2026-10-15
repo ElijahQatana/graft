@@ -19,10 +19,15 @@ export function buildSummary({ newMeetings, updates, personStubs, seriesStubs, s
 	return `${parts.join(", ")}.`;
 }
 
+export function buildWindowLabel(window: PreviewWindow): string {
+	const { daysBack, daysAhead } = window;
+	return `Covers ${buildRangeText(window)} (${count(daysBack, "day")} back, ${daysAhead} ahead).`;
+}
+
 /** Shows the start year only when the range crosses a year boundary. */
-export function buildWindowLabel({ start, end, daysBack, daysAhead, timezone }: PreviewWindow): string {
+export function buildRangeText({ start, end, timezone }: PreviewWindow): string {
 	const first = DateTime.fromJSDate(start).setZone(timezone);
 	const last = DateTime.fromJSDate(end).setZone(timezone).minus({ days: 1 });
 	const from = first.year === last.year ? first.toFormat("d MMM") : first.toFormat("d MMM yyyy");
-	return `Covers ${from} to ${last.toFormat("d MMM yyyy")} (${count(daysBack, "day")} back, ${daysAhead} ahead).`;
+	return `${from} to ${last.toFormat("d MMM yyyy")}`;
 }

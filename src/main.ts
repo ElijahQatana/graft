@@ -1,7 +1,8 @@
 import { Notice, Platform, Plugin } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
-import { SyncPreviewModal } from "./preview/modal.ts";
+import { SyncPreviewModal, type LoadedPreview } from "./preview/modal.ts";
+import type { SyncRange } from "./sync/range.ts";
 import { prepareSync, applySync, type PreparedSync } from "./sync/flow.ts";
 import { UserFacingError, VaultChangedError } from "./sync/userFacingError.ts";
 import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.ts";
@@ -63,7 +64,7 @@ export default class GraftPlugin extends Plugin {
 			const direct = !previewOnly && !settings.previewBeforeApply && prepared.canApply;
 			const apply = () => this.applyPrepared(prepared, direct ? "Sync now" : "Apply from preview");
 			if (previewOnly || settings.previewBeforeApply || !prepared.canApply) {
-				await this.showPreview(prepared, apply);
+				await this.showPreview(prepared, apply, settings);
 			} else {
 				await apply();
 			}
@@ -227,9 +228,19 @@ export default class GraftPlugin extends Plugin {
 	}
 
 	/** Resolves when the preview closes. Apply is offered only when the plan can be applied. */
-	private async showPreview(prepared: PreparedSync, apply: () => Promise<void>) {
+	private async showPreview(prepared: PreparedSync, apply: () => Promise<void>, settings: GraftSettings) {
+		// Plans the chosen range against the loaded settings. Nothing is saved.
+		const reload = async (range?: SyncRange): Promise<LoadedPreview> => {
+			try {
+				const next = await this.whileBusy("Graft: reading calendars", () => prepareSync(this.app, settings, fetchIcs, new Date(), range));
+				return { preview: next.preview, apply: next.canApply ? () => this.applyPrepared(next, "Apply from preview") : undefined };
+			} catch (error) {
+				new Notice(errorMessage(error, "Graft could not prepare that range. Check the calendar settings, folders, templates, and ignore list."));
+				throw error;
+			}
+		};
 		await new Promise<void>((resolve) => {
-			this.previewModal = new SyncPreviewModal(this.app, prepared.preview, prepared.canApply ? apply : undefined, resolve);
+			this.previewModal = new SyncPreviewModal(this.app, prepared.preview, prepared.canApply ? apply : undefined, resolve, reload);
 			this.previewModal.open();
 		});
 		this.previewModal = undefined;

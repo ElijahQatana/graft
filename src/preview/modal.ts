@@ -1,6 +1,8 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
-import { buildSummary, buildWindowLabel, count } from "./summary.ts";
+import { buildRangeText, buildSummary, buildWindowLabel, count } from "./summary.ts";
+import type { SyncRange } from "../sync/range.ts";
+import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
 import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
 
 const warningText = {
@@ -11,35 +13,61 @@ const warningText = {
 	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
 
-/** Displays a prepared plan. Applying never fetches the feeds again. */
+export interface LoadedPreview {
+	preview: SyncPreview;
+	apply?: () => Promise<void>;
+}
+
+/** Displays a prepared plan. Applying never fetches the feeds again. Loading another range does. */
 export class SyncPreviewModal extends Modal {
 	private applying = false;
 	private consumed = false;
+	private loading = false;
+	private closed = false;
+	private oneOff = false;
+	private message?: string;
 	private view: "list" | "calendar" = "list";
 	private calendar: CalendarState;
+	private draft: RangeDraft;
 	private switcher?: HTMLElement;
 	private body?: HTMLElement;
+	/** `reload` is called with no range to return to the settings range. */
 	constructor(app: App, private preview: SyncPreview,
-		private apply?: () => Promise<void>, private done?: () => void) {
+		private apply?: () => Promise<void>, private done?: () => void,
+		private reload?: (range?: SyncRange) => Promise<LoadedPreview>) {
 		super(app);
 		this.calendar = initialCalendarState(preview);
+		this.draft = draftOf(preview.window);
 	}
 
 	onOpen() {
 		this.modalEl?.classList?.add("graft-preview-modal");
 		this.setTitle("Graft sync preview");
+		this.render();
+	}
+
+	private render() {
 		this.contentEl.empty();
 		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
 		this.switcher = root.createEl("div", { cls: "graft-preview-views" });
 		const head = root.createEl("div", { cls: "graft-preview-head" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
-		head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
+		if (!this.loading) head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
+		if (this.message) head.createEl("p", { text: this.message, cls: this.loading ? "graft-muted graft-window graft-loading" : "graft-note graft-note-warning", attr: { role: "status" } });
 		this.body = root.createEl("div", { cls: "graft-preview-body" });
 		this.renderView();
 		const { newMeetings, personStubs, seriesStubs, updates } = this.preview;
+		if (this.loading) {
+			// The old plan is not shown or applied while the new range is read.
+			const actions = root.createEl("div", { cls: "graft-actions" });
+			actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
+			return;
+		}
 		const hasWrites = newMeetings.length > 0 || personStubs.length > 0 || seriesStubs.length > 0 || updates.some((update) => update.changes.length > 0);
 		const actions = root.createEl("div", { cls: "graft-actions" });
 		if (this.apply && hasWrites) {
+			const range = `${buildRangeText(this.preview.window)}${this.oneOff ? ", a one-off range that is not saved to settings" : ""}`;
+			actions.createEl("p", { text: `Apply writes the notes for ${range}.`, cls: "graft-muted graft-blocked graft-apply-range" });
 			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
 			button.addEventListener("click", () => { void this.runApply(button); });
 		} else if (this.apply) actions.createEl("p", { text: "Nothing to apply. No notes would be created or changed.", cls: "graft-muted graft-blocked" });
@@ -47,13 +75,47 @@ export class SyncPreviewModal extends Modal {
 		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 	}
 
+	/** The old plan is dropped first so Apply cannot run on a range that is no longer shown. */
+	private async loadRange(range?: SyncRange) {
+		if (!this.reload || this.loading || this.applying || this.consumed) return;
+		const previous = { preview: this.preview, apply: this.apply };
+		this.loading = true;
+		this.message = "Reading calendars for the new range.";
+		this.apply = undefined;
+		this.render();
+		try {
+			const loaded = await this.reload(range);
+			if (this.closed) return;
+			this.preview = loaded.preview;
+			this.apply = loaded.apply;
+			this.oneOff = range !== undefined;
+			this.message = undefined;
+			this.calendar = { ...initialCalendarState(loaded.preview), span: this.calendar.span };
+			this.draft = draftOf(loaded.preview.window);
+		} catch {
+			if (this.closed) return;
+			// The plan before the request still matches the range its label shows, so it stays usable.
+			this.preview = previous.preview;
+			this.apply = previous.apply;
+			this.message = "That range could not be loaded. The previous preview is shown again.";
+		} finally {
+			this.loading = false;
+		}
+		if (!this.closed) this.render();
+	}
+
 	private renderView() {
 		this.switcher!.empty();
 		addSegmented(this.switcher!, "Preview view", [["list", "List"], ["calendar", "Calendar"]], this.view, (view) => { this.view = view; this.renderView(); });
 		const body = this.body!;
 		body.empty();
+		if (this.loading) return;
 		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
-		if (this.view === "calendar") renderCalendar(body.createEl("div", { cls: "graft-cal" }), this.preview, this.calendar, () => this.renderView());
+		if (this.view === "calendar") {
+			const container = body.createEl("div", { cls: "graft-cal" });
+			if (this.reload) addRangeControl(container, this.draft, this.oneOff, (range) => { void this.loadRange(range); });
+			renderCalendar(container, this.preview, this.calendar, () => this.renderView());
+		}
 		else this.renderList(body);
 	}
 
@@ -122,7 +184,7 @@ export class SyncPreviewModal extends Modal {
 	}
 
 	private async runApply(button: HTMLButtonElement) {
-		if (this.applying || this.consumed) return;
+		if (this.applying || this.consumed || this.loading) return;
 		this.consumed = true;
 		this.applying = true;
 		button.disabled = true;
@@ -132,6 +194,7 @@ export class SyncPreviewModal extends Modal {
 
 	onClose() {
 		this.consumed = true;
+		this.closed = true;
 		this.contentEl.empty();
 		if (!this.applying) this.done?.();
 	}

@@ -24,6 +24,7 @@ class Element {
 	}
 	addEventListener(name: string, callback: any) { this.listeners[name] = callback; }
 	empty() { this.children = []; }
+	setText(text: string) { this.text = text; }
 }
 class Modal {
 	[key: string]: any;
@@ -427,4 +428,104 @@ test("the calendar opens on today when today is in the window, and outlines it",
 	renderCalendar(root, preview, state, () => {}, now);
 	const days = allElements(root).filter((element) => String(element.cls).startsWith("graft-cal-day"));
 	assert.equal(days.filter((element) => element.cls === "graft-cal-day is-today").length, 1);
+});
+
+function rangePreview(daysBack: number, daysAhead: number): any {
+	const source = calendarSource();
+	const day = (offset: number) => new Date(Date.UTC(2020, 2, 9 + offset));
+	source.window = { start: day(-daysBack), end: day(daysAhead + 1), daysBack, daysAhead, timezone: "UTC" };
+	source.plan.errors = [];
+	source.warnings = [];
+	return buildSyncPreview(source);
+}
+const field = (modal: any, label: string) => allElements(modal.contentEl).find((element) => element.tag === "label" && element.children[0].text === label).children[1];
+const type = (modal: any, label: string, value: string) => { const input = field(modal, label); input.value = value; input.listeners.input(); };
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+const buttonOf = (modal: any, text: string) => allElements(modal.contentEl).find((element) => element.tag === "button" && element.text === text);
+const rangeNote = (modal: any) => allElements(modal.contentEl).find((element) => element.cls === "graft-muted graft-range-note").text;
+
+test("the range control appears in the calendar only when a range can be loaded", () => {
+	const plain = new SyncPreviewModal({}, rangePreview(1, 1));
+	plain.onOpen();
+	click(plain, "Calendar");
+	assert.equal(allElements(plain.contentEl).some((element) => element.cls === "graft-range"), false);
+	const modal = new SyncPreviewModal({}, rangePreview(1, 1), undefined, undefined, async () => ({ preview: rangePreview(1, 1) }));
+	modal.onOpen();
+	assert.equal(allElements(modal.contentEl).some((element) => element.cls === "graft-range"), false, "list view stays as it was");
+	click(modal, "Calendar");
+	assert.equal(field(modal, "Days back").value, "1");
+	assert.equal(field(modal, "Days ahead").value, "1");
+});
+
+test("Load range is disabled for a range over 30 days or a bad number, and says why", () => {
+	const modal = new SyncPreviewModal({}, rangePreview(7, 12), undefined, undefined, async () => ({ preview: rangePreview(1, 1) }));
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.equal(buttonOf(modal, "Load range").disabled, false);
+	assert.match(rangeNote(modal), /^20 of 30 days\./);
+	type(modal, "Days ahead", "23");
+	assert.equal(buttonOf(modal, "Load range").disabled, true);
+	assert.match(rangeNote(modal), /at most 30 days/);
+	type(modal, "Days ahead", "22");
+	assert.equal(buttonOf(modal, "Load range").disabled, false);
+	type(modal, "Days ahead", "");
+	assert.equal(buttonOf(modal, "Load range").disabled, true);
+	assert.match(rangeNote(modal), /whole numbers/);
+});
+
+test("loading a range drops the old plan, then shows the new range and states it before Apply", async () => {
+	let finish!: (value: any) => void;
+	const requests: any[] = [];
+	const applied: string[] = [];
+	const reload = (range: any) => { requests.push(range); return new Promise<any>((resolve) => { finish = resolve; }); };
+	const modal = new SyncPreviewModal({}, rangePreview(1, 1), async () => { applied.push("old"); }, undefined, reload);
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.ok(texts(modal).includes("Apply writes the notes for 8 Mar to 10 Mar 2020."));
+	type(modal, "Days back", "5");
+	type(modal, "Days ahead", "9");
+	click(modal, "Load range");
+	assert.deepEqual(clean(requests), [{ daysBack: 5, daysAhead: 9 }]);
+	assert.equal(texts(modal).includes("Apply"), false, "no Apply while the range loads");
+	assert.equal(texts(modal).some((text) => text.startsWith("Covers ")), false, "the old range is not shown as current");
+	assert.ok(texts(modal).includes("Reading calendars for the new range."));
+	finish({ preview: rangePreview(5, 9), apply: async () => { applied.push("new"); } });
+	await settle();
+	assert.ok(texts(modal).includes("Covers 4 Mar to 18 Mar 2020 (5 days back, 9 ahead)."));
+	assert.ok(texts(modal).includes("Apply writes the notes for 4 Mar to 18 Mar 2020, a one-off range that is not saved to settings."));
+	await click(modal, "Apply");
+	await settle();
+	assert.deepEqual(applied, ["new"]);
+});
+
+test("a plan for a blocked range offers no Apply, and the settings range can be restored", async () => {
+	const requests: any[] = [];
+	const reload = async (range: any) => { requests.push(range); return range ? { preview: rangePreview(0, 3) } : { preview: rangePreview(1, 1), apply: async () => {} }; };
+	const modal = new SyncPreviewModal({}, rangePreview(1, 1), async () => {}, undefined, reload);
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.equal(buttonOf(modal, "Use settings range"), undefined);
+	click(modal, "Load range");
+	await settle();
+	assert.equal(texts(modal).includes("Apply"), false);
+	assert.ok(texts(modal).includes("Apply is unavailable for this incomplete or ambiguous plan."));
+	click(modal, "Use settings range");
+	await settle();
+	assert.deepEqual(clean(requests), [{ daysBack: 1, daysAhead: 1 }, null]);
+	assert.ok(texts(modal).includes("Apply writes the notes for 8 Mar to 10 Mar 2020."));
+	assert.equal(buttonOf(modal, "Use settings range"), undefined);
+});
+
+test("a range that fails to load brings back the previous plan and its range", async () => {
+	const applied: string[] = [];
+	const modal = new SyncPreviewModal({}, rangePreview(1, 1), async () => { applied.push("old"); }, undefined, async () => { throw new Error("synthetic"); });
+	modal.onOpen();
+	click(modal, "Calendar");
+	click(modal, "Load range");
+	await settle();
+	assert.ok(texts(modal).includes("That range could not be loaded. The previous preview is shown again."));
+	assert.ok(texts(modal).includes("Covers 8 Mar to 10 Mar 2020 (1 day back, 1 ahead)."));
+	await click(modal, "Apply");
+	await settle();
+	assert.deepEqual(applied, ["old"]);
 });
