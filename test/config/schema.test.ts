@@ -179,3 +179,9 @@ test("the agenda placeholder accepts one line, keeps a trailing space, and falls
 		assert.equal(isAgendaPlaceholder(bad), false);
 	}
 });
+
+test("the original preset copies the invited list into participants instead of writing an empty extra", () => {
+	assert.equal(ORIGINAL_SCHEMA.meeting.participants, "participants");
+	assert.equal(ORIGINAL_SCHEMA.meetingExtras.some((field) => field.key === "participants"), false);
+	assert.equal(schemaConflict(ORIGINAL_SCHEMA), undefined);
+});
