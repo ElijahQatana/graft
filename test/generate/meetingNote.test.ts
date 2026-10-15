@@ -146,6 +146,16 @@ test("an all-day event's date comes from the plain calendar date, not a timezone
 	assert.equal(note.frontmatter.date, "2026-09-10");
 });
 
+test("Invite Agenda drops join text and falls back to the placeholder when nothing else is left", () => {
+	const joinOnly = "Join Zoom Meeting\nhttps://example.zoom.us/j/12345678901\n\nMeeting ID: 123 4567 8901";
+	const empty = buildMeetingNote(baseInput({ event: makeEvent({ description: joinOnly }) }));
+	assert.match(empty.body, /## Invite Agenda\n\nNo agenda provided/);
+
+	const mixed = buildMeetingNote(baseInput({ event: makeEvent({ description: `Discuss Q3 numbers\n\n${joinOnly}` }) }));
+	assert.match(mixed.body, /## Invite Agenda\n\nDiscuss Q3 numbers\n/);
+	assert.doesNotMatch(mixed.body, /zoom\.us|Meeting ID/);
+});
+
 test("writes a participants copy of the invited list only when the property is named", () => {
 	const invited = [{ filename: "Sam Example", companyLinks: [] }, { filename: "Kim Example", companyLinks: [] }];
 	const off = buildMeetingNote(baseInput({ invited, schema: MINIMAL_SCHEMA }));
