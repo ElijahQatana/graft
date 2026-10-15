@@ -63,6 +63,18 @@ test("only optional Meeting properties may be blank", () => {
 	assert.equal(loaded.meeting.title, "title");
 });
 
+test("participants is off by default, can be named, and conflicts with a clashing name", () => {
+	assert.equal(MINIMAL_SCHEMA.meeting.participants, "");
+	const named = loadSchema({ meeting: { participants: "attendees" } }, MINIMAL_SCHEMA);
+	assert.equal(named.meeting.participants, "attendees");
+	const clash = cloneSchema(MINIMAL_SCHEMA);
+	clash.meeting.participants = "invited";
+	assert.match(schemaConflict(clash) ?? "", /share a name/);
+	assert.equal(loadSchema({ meeting: { participants: "invited" } }, MINIMAL_SCHEMA).meeting.participants, "");
+	clash.meeting.participants = "";
+	assert.equal(schemaConflict(clash), undefined);
+});
+
 test("duplicate property names within a note type revert the whole schema", () => {
 	const clash = cloneSchema(MINIMAL_SCHEMA);
 	clash.meeting.title = "date";

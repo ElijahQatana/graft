@@ -57,6 +57,10 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 
 Two or more Person notes share an email or alias with an attendee. Fix the duplicate and preview again. Apply stays unavailable until you do.
 
+### Possible duplicate Person
+
+A new Person stub would be created, but an existing Person note has the same name (compared by full name or note name, ignoring case). This usually means the person has a second email address. If they are the same person, add the new address to the existing note's email aliases and preview again. The warning does not block Apply, and Graft never merges notes for you. If they are different people, ignore it.
+
 ## Ignore list format
 
 The ignore list is an optional JSON file in your vault, chosen in the filters settings. You edit it by hand. Deleting a note does not add it to the list.

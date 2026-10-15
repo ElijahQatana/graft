@@ -36,6 +36,8 @@ export interface GraftSettings {
 	templates: { meeting: string; person: string; series: string };
 	ignoreListPath: string;
 	titleMatchRules: TitleMatchRule[];
+	/** Leading text removed from event titles, ignoring case, such as "FW:". */
+	titlePrefixesToStrip: string[];
 	personFilenameRules: FilenameConventionRule[];
 	meetingFilenamePattern: string;
 	timezone: string;
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	templates: { meeting: "", person: "", series: "" },
 	ignoreListPath: "",
 	titleMatchRules: [],
+	titlePrefixesToStrip: ["FW:", "Fwd:", "RE:"],
 	personFilenameRules: [],
 	meetingFilenamePattern: "{{title}} {{date}}",
 	timezone: "UTC",
@@ -153,6 +156,9 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	if (typeof input.ignoreListPath === "string" && isVaultPath(input.ignoreListPath)) result.ignoreListPath = input.ignoreListPath;
 	if (Array.isArray(input.titleMatchRules) && input.titleMatchRules.every(isTitleRule)) {
 		result.titleMatchRules = input.titleMatchRules.map((rule) => ({ mode: rule.mode, value: rule.value, caseSensitive: rule.caseSensitive ?? false }));
+	}
+	if (Array.isArray(input.titlePrefixesToStrip) && input.titlePrefixesToStrip.every((prefix) => typeof prefix === "string")) {
+		result.titlePrefixesToStrip = input.titlePrefixesToStrip.map((prefix: string) => prefix.trim()).filter(Boolean);
 	}
 	if (Array.isArray(input.personFilenameRules) && input.personFilenameRules.every(isFilenameRule)) {
 		result.personFilenameRules = input.personFilenameRules.map((rule) => ({ domain: rule.domain.toLowerCase(), style: rule.style }));

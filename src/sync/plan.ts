@@ -2,6 +2,7 @@ import type { CalendarEvent, SyncWindow } from "../types.ts";
 import { parseIcs } from "../ics/parse.ts";
 import { filterByTitle, type TitleMatchRule } from "../filters/titleMatch.ts";
 import { filterByRsvp } from "../filters/rsvp.ts";
+import { stripTitlePrefixes } from "../util/titlePrefixes.ts";
 import { filterByIgnoreList, type IgnoreListEntry } from "../filters/ignoreList.ts";
 
 export interface FeedConfig {
@@ -22,6 +23,9 @@ export interface SyncPlan {
 export type FeedFetcher = (url: string) => Promise<string>;
 
 /** Fetches, parses, and filters events without reading or writing the vault.
+ * Prefixes in `stripPrefixes` are removed from titles before any rule runs, so title rules,
+ * filenames, Series names and the title property all see the cleaned title. Events are still
+ * identified by UID, so the title change never creates or renames a note by itself.
  * Failed feeds are reported separately; other feeds can still produce events. */
 export async function buildSyncPlan(
 	feeds: FeedConfig[],
@@ -30,6 +34,7 @@ export async function buildSyncPlan(
 	ignoreListEntries: IgnoreListEntry[],
 	fetchFeed: FeedFetcher,
 	acceptedOnly = false,
+	stripPrefixes: string[] = [],
 ): Promise<SyncPlan> {
 	const allEvents: CalendarEvent[] = [];
 	const errors: SyncPlan["errors"] = [];
@@ -39,6 +44,7 @@ export async function buildSyncPlan(
 			const icsText = await fetchFeed(feed.url);
 			const events = parseIcs(icsText, window).map((event) => ({
 				...event,
+				summary: stripTitlePrefixes(event.summary, stripPrefixes),
 				source: feed.name,
 			}));
 			allEvents.push(...events);

@@ -13,8 +13,8 @@ export interface FieldChange {
 }
 
 export interface PreviewWarning {
-	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading";
-	/** A note path or event title for local display. */
+	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading" | "possible-duplicate-person";
+	/** A note path or event title for local display. A possible duplicate names the new stub and the existing note. */
 	subject: string;
 }
 
