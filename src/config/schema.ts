@@ -91,10 +91,12 @@ const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 export function isFieldName(value: unknown): value is string {
 	return typeof value === "string" && value.length > 0 && value.length <= 100 && value === value.trim()
+		// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
 		&& !/[\x00-\x1f:]/.test(value) && !UNSAFE_KEYS.has(value);
 }
 
 export function isTypeValue(value: unknown): value is string {
+	// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
 	return typeof value === "string" && value.length > 0 && value === value.trim() && !/[\x00-\x1f]/.test(value);
 }
 
@@ -157,7 +159,7 @@ export function loadSchema(saved: unknown, base: NoteSchema): NoteSchema {
 		for (const key of Object.keys(target)) {
 			const value = source[key];
 			const optional = name === "meeting" && OPTIONAL_MEETING_FIELDS.includes(key as MeetingFieldKey);
-			if (isFieldName(value) || (optional && value === "")) (target as Record<string, string>)[key] = value as string;
+			if (isFieldName(value) || (optional && value === "")) (target as Record<string, string>)[key] = value;
 		}
 	}
 	const headings = record(input.headings);

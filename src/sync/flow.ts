@@ -1,3 +1,4 @@
+import type { IgnoreListEntry } from "../filters/ignoreList.ts";
 import { TFile, parseYaml, stringifyYaml, type App } from "obsidian";
 import { DateTime } from "luxon";
 import { isVaultPath, type GraftSettings } from "../config/settings.ts";
@@ -250,7 +251,7 @@ async function readIgnoreList(app: App, path: string, templates: PreparedSync["t
 	if (!(file instanceof TFile)) return [];
 	const text = await app.vault.read(file);
 	templates.push({ file, text });
-	let value;
+	let value: { ignored?: unknown } | null;
 	try {
 		value = text.trim() ? JSON.parse(text) : { ignored: [] };
 	} catch {
@@ -259,7 +260,7 @@ async function readIgnoreList(app: App, path: string, templates: PreparedSync["t
 	if (!value || !Array.isArray(value.ignored) || !value.ignored.every(isIgnoreEntry)) {
 		throw new UserFacingError("The ignore list is not valid. Each ignored entry needs a uid and a recurrenceId, and may have a note.");
 	}
-	return value.ignored;
+	return value.ignored as IgnoreListEntry[];
 }
 
 async function readSnapshots(app: App, folders: string[]): Promise<NoteSnapshot[]> {

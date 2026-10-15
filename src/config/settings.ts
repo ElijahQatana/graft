@@ -97,7 +97,8 @@ export function sameCalendarName(left: string, right: string): boolean {
 
 export function isVaultPath(value: string, allowEmpty = true): boolean {
 	if (!value) return allowEmpty;
-	return value === value.trim() && !/^[\/\\]|[\\\x00-\x1f]|:/.test(value)
+	// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected
+	return value === value.trim() && !/^[/\\]|[\\\x00-\x1f]|:/.test(value)
 		&& value.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 }
 

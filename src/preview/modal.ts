@@ -20,10 +20,10 @@ export class SyncPreviewModal extends Modal {
 
 	onOpen() {
 		this.modalEl?.classList?.add("graft-preview-modal");
+		this.setTitle("Graft sync preview");
 		this.contentEl.empty();
 		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
 		const head = root.createEl("div", { cls: "graft-preview-head" });
-		head.createEl("h2", { text: "Graft sync preview" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
@@ -95,17 +95,19 @@ export class SyncPreviewModal extends Modal {
 		const actions = root.createEl("div", { cls: "graft-actions" });
 		if (this.apply && hasWrites) {
 			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
-			button.addEventListener("click", async () => {
-				if (this.applying || this.consumed) return;
-				this.consumed = true;
-				this.applying = true;
-				button.disabled = true;
-				try { await this.apply!(); }
-				finally { this.applying = false; this.close(); }
-			});
+			button.addEventListener("click", () => { void this.runApply(button); });
 		} else if (this.apply) actions.createEl("p", { text: "Nothing to apply. No notes would be created or changed.", cls: "graft-muted graft-blocked" });
 		else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
 		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
+	}
+
+	private async runApply(button: HTMLButtonElement) {
+		if (this.applying || this.consumed) return;
+		this.consumed = true;
+		this.applying = true;
+		button.disabled = true;
+		try { await this.apply!(); }
+		finally { this.applying = false; this.close(); }
 	}
 
 	onClose() {

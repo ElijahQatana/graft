@@ -6,7 +6,7 @@ const MAX_ITERATIONS_PER_SERIES = 20000;
 
 /** Expands events within the sync window and applies recurrence exceptions. */
 export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
-	const component = new ICAL.Component(ICAL.parse(icsText));
+	const component = new ICAL.Component(ICAL.parse(icsText) as unknown[]);
 	const vevents = component.getAllSubcomponents("vevent");
 
 	// Group exceptions with their master so they do not become duplicate events.
