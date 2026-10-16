@@ -226,7 +226,10 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	const setup = () => {
 		const f = fixture();
 		f.settings.cancelVanishedSeries = true;
-		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-05"));
+		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/Gone 2.md", meeting("gone@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
+		f.put("Meetings/Single.md", meeting("single@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/OneOff.md", meeting("oneoff@example.com", "2026-10-05"));
 		f.put("Meetings/Today.md", meeting("today@example.com", "2026-10-04"));
 		f.put("Meetings/Partial.md", meeting("here@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
 		f.put("Meetings/Far.md", meeting("far@example.com", "2026-10-20"));
@@ -236,10 +239,11 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	const f = setup();
 	const prepared = await prepareSync(f.app, f.settings, feed, now);
 	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.path === "Meetings/Gone.md")), [{ path: "Meetings/Gone.md", changes: [{ field: "occurrence_status", before: "Scheduled", after: "Cancelled" }] }]);
-	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/Partial.md", "Meetings/Today.md"]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/OneOff.md", "Meetings/Partial.md", "Meetings/Single.md", "Meetings/Today.md"]);
 	await applySync(f.app, prepared);
 	assert.equal(fields(f.texts.get("Meetings/Gone.md")).occurrence_status, "Cancelled");
-	for (const path of ["Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
+	assert.equal(fields(f.texts.get("Meetings/Gone 2.md")).occurrence_status, "Cancelled");
+	for (const path of ["Meetings/Single.md", "Meetings/OneOff.md", "Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
 	assert.ok(f.files.has("Meetings/Gone.md"));
 	const off = setup();
 	off.settings.cancelVanishedSeries = false;
@@ -306,7 +310,8 @@ test("a narrower or wider range never cancels a series with an occurrence in ran
 		const f = fixture();
 		f.settings.cancelVanishedSeries = true;
 		f.put("Meetings/Series Later.md", meeting("series@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
-		f.put("Meetings/Gone.md", meeting("gone@example.com", "2026-10-06"));
+		f.put("Meetings/Gone 5.md", meeting("gone@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z" }));
+		f.put("Meetings/Gone 6.md", meeting("gone@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
 		return f;
 	};
 	// The feed has this series on 4 and 5 Oct only; the note for 6 Oct is a later date the feed no longer lists.
@@ -321,9 +326,13 @@ test("a narrower or wider range never cancels a series with an occurrence in ran
 	// 6 Oct is one day past the range: nothing is said about it.
 	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Series Later.md"), { cancelled: false, warned: false });
 	assert.deepEqual(await status({ daysBack: 0, daysAhead: 29 }, "Meetings/Series Later.md"), { cancelled: false, warned: true });
-	// A series with nothing left in the range is cancelled only when its date is inside the range.
-	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone.md"), { cancelled: true, warned: false });
-	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Gone.md"), { cancelled: false, warned: false });
+	// A series with nothing left is cancelled only when two of its dates are inside the range.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone 6.md"), { cancelled: true, warned: false });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone 5.md"), { cancelled: true, warned: false });
+	// One day shorter, only one date is inside, so it is a warning and nothing is cancelled.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Gone 5.md"), { cancelled: false, warned: true });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Gone 6.md"), { cancelled: false, warned: false });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 0 }, "Meetings/Gone 5.md"), { cancelled: false, warned: false });
 });
 
 test("a failed feed or an ambiguous person still blocks Apply on a one-off range", async () => {

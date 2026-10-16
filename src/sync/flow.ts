@@ -177,19 +177,26 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		const firstDate = day.minus({ days: daysBack }).toISODate()!;
 		const today = day.toISODate()!;
 		const lastDate = day.plus({ days: daysAhead }).toISODate()!;
+		const candidates: Array<{ uid: string; path: string; field: string; before: unknown }> = [];
 		for (const meeting of meetings) {
 			const date = stringValue(meeting.note.frontmatter[schema.meeting.date]);
 			const configuredIdentity = settings.calendars.some((calendar) => calendar.invitedAs === meeting.note.frontmatter[schema.meeting.invitedAs]);
 			const inWindow = date !== undefined && date >= firstDate && date <= lastDate;
 			if (!date || !configuredIdentity || !meeting.icsUid || !inWindow) continue;
 			if (!seen.some((event) => matchMeeting(event.uid, event.recurrenceId, [meeting]))) {
-				// Cancel only when no occurrence of the series is left in the window, never for one missing date.
 				const field = schema.meeting.occurrenceStatus;
 				const before = meeting.note.frontmatter[field];
-				if (settings.cancelVanishedSeries && field && date > today && !seen.some((event) => event.uid === meeting.icsUid) && before !== schema.statusValues.cancelled) {
-					(input.vanishedCancellations ??= []).push({ path: meeting.path, field, before, after: schema.statusValues.cancelled });
-				} else input.warnings.push({ kind: "vanished-event", subject: meeting.path });
+				const eligible = settings.cancelVanishedSeries && field && date > today && meeting.icsRecurrenceId
+					&& !seen.some((event) => event.uid === meeting.icsUid) && before !== schema.statusValues.cancelled;
+				if (eligible) candidates.push({ uid: meeting.icsUid, path: meeting.path, field, before });
+				else input.warnings.push({ kind: "vanished-event", subject: meeting.path });
 			}
+		}
+		// A series counts as gone only when several of its future dates are missing, never one date or a one-off.
+		for (const candidate of candidates) {
+			if (candidates.filter((other) => other.uid === candidate.uid).length >= 2) {
+				(input.vanishedCancellations ??= []).push({ path: candidate.path, field: candidate.field, before: candidate.before, after: schema.statusValues.cancelled });
+			} else input.warnings.push({ kind: "vanished-event", subject: candidate.path });
 		}
 	}
 	const preview = buildSyncPreview(input);
