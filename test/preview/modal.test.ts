@@ -573,3 +573,22 @@ test("the calendar draws a time grid with side by side events and a current time
 	assert.deepEqual(row.children.map((child: any) => child.children.map((part: any) => part.text)), [["Holiday"]]);
 	assert.equal(elements.filter((element) => element.cls === "graft-cal-now").length, 1);
 });
+
+test("a preview opened before its plan shows a spinner, then the plan; closing it first drops the plan", () => {
+	const modal = new SyncPreviewModal({}, undefined, undefined, undefined, undefined);
+	modal.onOpen();
+	assert.ok(texts(modal).includes("Reading calendars and building the plan."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"));
+	assert.equal(texts(modal).includes("Apply"), false);
+	assert.deepEqual(allElements(modal.contentEl).filter((e) => e.tag === "button").map((e) => e.text), ["List", "Calendar", "Close"]);
+	modal.ready(rangePreview(1, 1), async () => {});
+	assert.equal(allElements(modal.contentEl).some((element) => element.cls?.includes("graft-spinner")), false);
+	assert.ok(texts(modal).includes("Apply"));
+	const early = new SyncPreviewModal({}, undefined);
+	early.onOpen();
+	early.close();
+	early.ready(rangePreview(1, 1));
+	assert.equal(early.isClosed, true);
+	assert.equal(texts(early).includes("Apply"), false);
+});
