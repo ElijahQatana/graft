@@ -66,7 +66,7 @@ export default class GraftPlugin extends Plugin {
 		this.browseCache.clear();
 	}
 
-	/** Shows the calendar view, reusing an open one. */
+	/** Shows the calendar view, reusing an open one and expanding the right sidebar if it is collapsed. */
 	async openCalendar() {
 		const { workspace } = this.app;
 		let leaf = workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)[0];
@@ -74,6 +74,7 @@ export default class GraftPlugin extends Plugin {
 			leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
 			await leaf.setViewState({ type: CALENDAR_VIEW_TYPE, active: true });
 		}
+		if (leaf.getRoot() === workspace.rightSplit) workspace.rightSplit.expand();
 		workspace.setActiveLeaf(leaf, { focus: true });
 	}
 
