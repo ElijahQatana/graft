@@ -784,6 +784,12 @@
 	}
 }
 
+.graft-loading {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-3);
+}
+
 .graft-status-ready {
 	cursor: pointer;
 }

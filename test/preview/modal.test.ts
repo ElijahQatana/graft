@@ -490,6 +490,8 @@ test("loading a range drops the old plan, then shows the new range and states it
 	assert.equal(texts(modal).includes("Apply"), false, "no Apply while the range loads");
 	assert.equal(texts(modal).some((text) => text.startsWith("Covers ")), false, "the old range is not shown as current");
 	assert.ok(texts(modal).includes("Reading calendars for the new range."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"), "a spinner shows while the range loads");
 	finish({ preview: rangePreview(5, 9), apply: async () => { applied.push("new"); } });
 	await settle();
 	assert.ok(texts(modal).includes("Covers 4 Mar to 18 Mar 2020 (5 days back, 9 ahead)."));
@@ -570,4 +572,23 @@ test("the calendar draws a time grid with side by side events and a current time
 	const row = elements.filter((element) => element.cls === "graft-cal-allday")[1];
 	assert.deepEqual(row.children.map((child: any) => child.children.map((part: any) => part.text)), [["Holiday"]]);
 	assert.equal(elements.filter((element) => element.cls === "graft-cal-now").length, 1);
+});
+
+test("a preview opened before its plan shows a spinner, then the plan; closing it first drops the plan", () => {
+	const modal = new SyncPreviewModal({}, undefined, undefined, undefined, undefined);
+	modal.onOpen();
+	assert.ok(texts(modal).includes("Reading calendars and building the plan."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"));
+	assert.equal(texts(modal).includes("Apply"), false);
+	assert.deepEqual(allElements(modal.contentEl).filter((e) => e.tag === "button").map((e) => e.text), ["List", "Calendar", "Close"]);
+	modal.ready(rangePreview(1, 1), async () => {});
+	assert.equal(allElements(modal.contentEl).some((element) => element.cls?.includes("graft-spinner")), false);
+	assert.ok(texts(modal).includes("Apply"));
+	const early = new SyncPreviewModal({}, undefined);
+	early.onOpen();
+	early.close();
+	early.ready(rangePreview(1, 1));
+	assert.equal(early.isClosed, true);
+	assert.equal(texts(early).includes("Apply"), false);
 });
