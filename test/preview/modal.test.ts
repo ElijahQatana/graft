@@ -71,7 +71,7 @@ test("modal displays each section as literal text and never shows raw feed error
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "This occurrence is missing from the feed and may have been cancelled", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.deepEqual(elements.filter((element) => element.tag === "button").map((element) => element.text), ["List", "Calendar", "Close"]);
 	modal.onOpen();
