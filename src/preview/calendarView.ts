@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
+import { eventDetails } from "./eventDetails.ts";
 import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
 export type CalendarSpan = 3 | 7;
@@ -13,6 +14,8 @@ export interface CalendarState {
 	selected?: string;
 	/** Unset until the user scrolls. The grid then opens near now or the first event. */
 	scrollTop?: number;
+	/** Set by a click so the redraw puts keyboard focus back on the chosen event. */
+	refocus?: boolean;
 }
 
 interface CalendarItem {
@@ -129,11 +132,24 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 		key.createEl("span", { text: kindLabel[kind] });
 	}
 	const selected = items.find((item) => item.id === state.selected);
-	const detail = container.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-cal-detail graft-muted" });
+	const detail = container.createEl("div", { cls: "graft-cal-detail", attr: { role: "region", "aria-label": "Event details", "aria-live": "polite" } });
+	detail.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-muted" });
+	if (selected) {
+		const facts = detail.createEl("dl", { cls: "graft-cal-facts" });
+		for (const { label, lines } of eventDetails(selected, preview.warnings, zone)) {
+			facts.createEl("dt", { text: label });
+			const value = facts.createEl("dd", { cls: label === "Warnings" ? "graft-cal-fact-warning" : "" });
+			for (const line of lines) value.createEl("div", { text: line });
+		}
+	}
 	if (selected?.planned && selected.kind !== "new" && options.openNote) {
 		const path = selected.planned.path;
 		const open = detail.createEl("button", { text: "Open note", cls: "graft-cal-open", attr: { type: "button" } });
 		open.addEventListener("click", () => options.openNote!(path));
+	}
+	if (state.refocus) {
+		state.refocus = false;
+		container.querySelector?.<HTMLElement>(".graft-cal-event.is-selected")?.focus?.({ preventScroll: true });
 	}
 }
 
@@ -156,7 +172,7 @@ function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>
 	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}`, ...(position ? { style: position } : {}) } });
 	if (!entry.allDay) chip.createEl("span", { text: time, cls: "graft-cal-time" });
 	chip.createEl("span", { text: title, cls: "graft-cal-title" });
-	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; update(); });
+	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; state.refocus = true; update(); });
 }
 
 function describe({ event, kind, planned, reason }: CalendarItem): string {

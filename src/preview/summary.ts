@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import type { PreviewWindow, SyncPreview } from "./plan.ts";
+import type { PreviewWarning, PreviewWindow, SyncPreview } from "./plan.ts";
 
 /** Picks the singular form for exactly one, the plural otherwise (zero included). */
 export function count(n: number, singular: string, plural = `${singular}s`): string {
@@ -31,3 +31,12 @@ export function buildRangeText({ start, end, timezone }: PreviewWindow): string 
 	const from = first.year === last.year ? first.toFormat("d MMM") : first.toFormat("d MMM yyyy");
 	return `${from} to ${last.toFormat("d MMM yyyy")}`;
 }
+
+/** What each warning means, shown in the warnings section and on a selected event. */
+export const warningText: Record<PreviewWarning["kind"], string> = {
+	"unresolved-company": "Unresolved Company link. The link will be omitted.",
+	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
+	"possible-duplicate-person": "Possible duplicate Person. If they are the same person, add the new address as an alias on the existing note and preview again.",
+	"vanished-event": "Event missing from the feed. This does not mark it cancelled.",
+	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
+};
