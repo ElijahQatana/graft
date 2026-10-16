@@ -1,6 +1,7 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
 import { buildSummary, buildWindowLabel, count } from "./summary.ts";
+import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
 
 const warningText = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
@@ -14,9 +15,14 @@ const warningText = {
 export class SyncPreviewModal extends Modal {
 	private applying = false;
 	private consumed = false;
+	private view: "list" | "calendar" = "list";
+	private calendar: CalendarState;
+	private switcher?: HTMLElement;
+	private body?: HTMLElement;
 	constructor(app: App, private preview: SyncPreview,
 		private apply?: () => Promise<void>, private done?: () => void) {
 		super(app);
+		this.calendar = initialCalendarState(preview);
 	}
 
 	onOpen() {
@@ -24,13 +30,35 @@ export class SyncPreviewModal extends Modal {
 		this.setTitle("Graft sync preview");
 		this.contentEl.empty();
 		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
+		this.switcher = root.createEl("div", { cls: "graft-preview-views" });
 		const head = root.createEl("div", { cls: "graft-preview-head" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
-		const body = root.createEl("div", { cls: "graft-preview-body" });
-		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
-		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
+		this.body = root.createEl("div", { cls: "graft-preview-body" });
+		this.renderView();
+		const { newMeetings, personStubs, seriesStubs, updates } = this.preview;
 		const hasWrites = newMeetings.length > 0 || personStubs.length > 0 || seriesStubs.length > 0 || updates.some((update) => update.changes.length > 0);
+		const actions = root.createEl("div", { cls: "graft-actions" });
+		if (this.apply && hasWrites) {
+			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
+			button.addEventListener("click", () => { void this.runApply(button); });
+		} else if (this.apply) actions.createEl("p", { text: "Nothing to apply. No notes would be created or changed.", cls: "graft-muted graft-blocked" });
+		else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
+		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
+	}
+
+	private renderView() {
+		this.switcher!.empty();
+		addSegmented(this.switcher!, "Preview view", [["list", "List"], ["calendar", "Calendar"]], this.view, (view) => { this.view = view; this.renderView(); });
+		const body = this.body!;
+		body.empty();
+		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });
+		if (this.view === "calendar") renderCalendar(body.createEl("div", { cls: "graft-cal" }), this.preview, this.calendar, () => this.renderView());
+		else this.renderList(body);
+	}
+
+	private renderList(body: HTMLElement) {
+		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
 		if (!newMeetings.length && !updates.length && !personStubs.length && !seriesStubs.length) {
 			body.createEl("p", { text: "No note changes planned.", cls: "graft-empty" });
 		}
@@ -91,13 +119,6 @@ export class SyncPreviewModal extends Modal {
 			section.createEl("p", { text: "Some calendars could not be read. This preview is incomplete.", cls: "graft-note graft-note-error" });
 			for (const error of errors) section.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		}
-		const actions = root.createEl("div", { cls: "graft-actions" });
-		if (this.apply && hasWrites) {
-			const button = actions.createEl("button", { text: "Apply", attr: { type: "button" }, cls: "mod-cta" });
-			button.addEventListener("click", () => { void this.runApply(button); });
-		} else if (this.apply) actions.createEl("p", { text: "Nothing to apply. No notes would be created or changed.", cls: "graft-muted graft-blocked" });
-		else actions.createEl("p", { text: "Apply is unavailable for this incomplete or ambiguous plan.", cls: "graft-muted graft-blocked" });
-		actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 	}
 
 	private async runApply(button: HTMLButtonElement) {

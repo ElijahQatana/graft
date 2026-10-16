@@ -1,5 +1,5 @@
 import type { SyncPlan } from "../sync/plan.ts";
-import type { SyncWindow } from "../types.ts";
+import type { CalendarEvent, SyncWindow } from "../types.ts";
 import { buildMeetingNote, type MeetingNote, type MeetingNoteInput } from "../generate/meetingNote.ts";
 import { buildMeetingFrontmatterUpdate, buildMeetingBodyUpdate } from "../generate/meetingUpdate.ts";
 import type { PersonStub } from "../generate/personStub.ts";
@@ -57,8 +57,18 @@ export interface PreviewInput {
 	features: PreviewFeatures;
 }
 
+/** A kept event with what the sync will do to its Meeting note. */
+export interface PlannedEvent {
+	event: CalendarEvent;
+	path: string;
+	state: "new" | "changed" | "unchanged";
+	changes: FieldChange[];
+}
+
 export interface SyncPreview {
 	window: PreviewWindow;
+	/** Kept events in plan order. */
+	events: PlannedEvent[];
 	newMeetings: Array<{ path: string; note: MeetingNote }>;
 	updates: Array<{ path: string; changes: FieldChange[] }>;
 	personStubs: PreviewInput["personStubs"];
@@ -76,7 +86,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 		throw new Error("Preview needs a resolved input for each planned event.");
 	}
 	const preview: SyncPreview = {
-		window: { ...source.window },
+		window: { ...source.window }, events: [],
 		newMeetings: [], updates: [], personStubs: source.personStubs,
 		seriesStubs: source.seriesStubs, skipped: source.plan.skipped,
 		errors: source.plan.errors, warnings: [...source.warnings], features: { ...source.features },
@@ -88,7 +98,9 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 		}
 		if (!existing) {
 			const note = buildMeetingNote(input, source.filenamePattern, { companies: source.companies, strictCompanyLinks: source.strictCompanyLinks !== false });
-			preview.newMeetings.push({ path: `${source.meetingFolder}/${note.filename}.md`, note });
+			const path = `${source.meetingFolder}/${note.filename}.md`;
+			preview.newMeetings.push({ path, note });
+			preview.events.push({ event: input.event, path, state: "new", changes: [] });
 			continue;
 		}
 		const next = buildMeetingFrontmatterUpdate(input, source.companies, source.strictCompanyLinks);
@@ -108,6 +120,7 @@ export function buildSyncPreview(source: PreviewInput): SyncPreview {
 			changes.push({ field: "Invite Agenda", before, after });
 		}
 		preview.updates.push({ path: existing.path, changes });
+		preview.events.push({ event: input.event, path: existing.path, state: changes.length ? "changed" : "unchanged", changes });
 	}
 	for (const { path, field, before, after } of source.vanishedCancellations ?? []) {
 		preview.updates.push({ path, changes: [{ field, before, after }] });

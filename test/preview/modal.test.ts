@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import { buildSyncPreview } from "../../src/preview/plan.ts";
 import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
+import { initialCalendarState, renderCalendar } from "../../src/preview/calendarView.ts";
 import { extractSection } from "../../src/util/markdownSections.ts";
 
 class Element {
@@ -70,11 +71,11 @@ test("modal displays each section as literal text and never shows raw feed error
 	const text = elements.map((element) => element.text).join("\n");
 	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
-	assert.equal(elements.filter((element) => element.tag === "button").length, 1);
+	assert.deepEqual(elements.filter((element) => element.tag === "button").map((element) => element.text), ["List", "Calendar", "Close"]);
 	modal.onOpen();
 	assert.equal(modal.title, "Graft sync preview");
 	assert.equal(allElements(modal.contentEl).filter((element) => element.text === "Graft sync preview").length, 0);
-	allElements(modal.contentEl).find((element) => element.tag === "button").listeners.click();
+	allElements(modal.contentEl).find((element) => element.text === "Close").listeners.click();
 	assert.equal(modal.closed, true);
 	assert.deepEqual(modal.contentEl.children, []);
 });
@@ -103,7 +104,7 @@ const openWithApply = (preview: any, apply = async () => {}) => {
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	return {
-		buttons: elements.filter((element) => element.tag === "button").map((element) => element.text),
+		buttons: elements.filter((element) => element.tag === "button" && !String(element.cls).includes("graft-segment")).map((element) => element.text),
 		texts: elements.map((element) => element.text),
 	};
 };
@@ -137,7 +138,7 @@ test("a blocked plan still shows the incomplete or ambiguous message", () => {
 		const texts = allElements(modal.contentEl).map((element) => element.text);
 		assert.ok(texts.includes(BLOCKED));
 		assert.equal(texts.includes(NOTHING), false);
-		assert.equal(allElements(modal.contentEl).filter((element) => element.tag === "button").length, 1);
+		assert.equal(allElements(modal.contentEl).filter((element) => element.tag === "button" && !String(element.cls).includes("graft-segment")).length, 1);
 	}
 });
 
@@ -354,4 +355,76 @@ test("the head shows the sync window above the summary", () => {
 	modal.onOpen();
 	const head = allElements(modal.contentEl).find((element) => element.cls === "graft-preview-head");
 	assert.deepEqual(head.children.map((child: any) => child.text), ["Dry run. No notes have been written.", "Covers 8 Oct to 14 Nov 2026 (7 days back, 30 ahead)."]);
+});
+
+function calendarSource(): any {
+	// A window long past, so the view opens at its first day whatever today is.
+	const source = fixture();
+	source.window = { start: new Date("2020-03-02T00:00:00Z"), end: new Date("2020-04-01T00:00:00Z"), daysBack: 7, daysAhead: 22, timezone: "UTC" };
+	source.plan.toProcess = [makeEvent({ summary: "Kept sync", start: "2020-03-04T14:00:00.000Z", end: "2020-03-04T14:30:00.000Z" })];
+	source.meetings[0].input.event = source.plan.toProcess[0];
+	source.plan.skipped = [{ event: makeEvent({ summary: "Dropped sync", start: "2020-03-04T16:00:00.000Z", end: "2020-03-04T17:00:00.000Z" }), reason: "Ignored by title rule" }];
+	return source;
+}
+const click = (modal: any, text: string) => allElements(modal.contentEl).find((element) => element.text === text).listeners.click();
+const texts = (modal: any) => allElements(modal.contentEl).map((element) => element.text);
+const label = (modal: any) => allElements(modal.contentEl).find((element) => element.cls === "graft-cal-range").text;
+
+test("list stays the default view and calendar adds nothing to it", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	modal.onOpen();
+	const elements = allElements(modal.contentEl);
+	assert.ok(elements.some((element) => element.text.startsWith("New Meeting notes")));
+	assert.equal(elements.some((element) => String(element.cls).includes("graft-cal")), false);
+});
+
+test("calendar view shows kept and skipped events, ranges, and detail lines", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	modal.onOpen();
+	click(modal, "Calendar");
+	assert.equal(texts(modal).some((text) => text.startsWith("New Meeting notes")), false);
+	assert.ok(texts(modal).some((text) => text.startsWith("Covers ")), "window label stays");
+	assert.ok(texts(modal).some((text) => text.startsWith("1 new Meeting")), "summary stays");
+	assert.equal(label(modal), "Mon 2 to Wed 4 Mar 2020");
+	click(modal, "Week");
+	assert.equal(label(modal), "Mon 2 to Sun 8 Mar 2020");
+	const elements = allElements(modal.contentEl);
+	const kept = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
+	const skipped = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-skipped"));
+	assert.deepEqual(kept.children.map((child: any) => child.text), ["14:00", "Kept sync"]);
+	assert.deepEqual(skipped.children.map((child: any) => child.text), ["16:00", "Dropped sync"]);
+	assert.ok(texts(modal).includes("Select an event to see its note and what will change."));
+	kept.listeners.click();
+	assert.ok(texts(modal).some((text) => text.startsWith("Kept sync: new note at Meetings/")));
+	allElements(modal.contentEl).find((element) => String(element.cls).includes("graft-cal-event graft-cal-skipped")).listeners.click();
+	assert.ok(texts(modal).includes("Dropped sync: skipped. Ignored by title rule"));
+	click(modal, "Next");
+	assert.equal(label(modal), "Mon 9 to Sun 15 Mar 2020");
+	click(modal, "List");
+	assert.ok(texts(modal).some((text) => text.startsWith("New Meeting notes")));
+});
+
+test("calendar paging stops at the edges of the window", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	modal.onOpen();
+	click(modal, "Calendar");
+	const step = (name: string) => allElements(modal.contentEl).find((element) => element.text === name);
+	assert.equal(step("Previous").disabled, true);
+	assert.equal(step("Next").disabled, undefined);
+	click(modal, "Week");
+	for (let page = 0; page < 4; page++) click(modal, "Next");
+	assert.equal(label(modal), "Mon 30 Mar to Sun 5 Apr 2020");
+	assert.equal(step("Next").disabled, true);
+});
+
+test("the calendar opens on today when today is in the window, and outlines it", () => {
+	const preview = buildSyncPreview(calendarSource());
+	const now = new Date("2020-03-10T12:00:00Z");
+	const state = initialCalendarState(preview, now);
+	assert.deepEqual([state.span, state.anchor], [3, "2020-03-10"]);
+	assert.equal(initialCalendarState(preview, new Date("2021-01-01T00:00:00Z")).anchor, "2020-03-02");
+	const root = new Element();
+	renderCalendar(root, preview, state, () => {}, now);
+	const days = allElements(root).filter((element) => String(element.cls).startsWith("graft-cal-day"));
+	assert.equal(days.filter((element) => element.cls === "graft-cal-day is-today").length, 1);
 });

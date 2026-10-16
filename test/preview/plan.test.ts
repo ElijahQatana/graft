@@ -156,3 +156,16 @@ test("the window label follows custom settings, the time zone and a year change"
 	const window = { start: new Date("2026-12-29T08:00:00Z"), end: new Date("2027-01-06T08:00:00Z"), daysBack: 1, daysAhead: 6, timezone: "America/Los_Angeles" };
 	assert.equal(buildWindowLabel(window), "Covers 29 Dec 2026 to 5 Jan 2027 (1 day back, 6 ahead).");
 });
+
+test("each kept event is listed with its note path and state", () => {
+	const source = fixture();
+	const created = buildSyncPreview(source).events;
+	assert.deepEqual(created.map(({ event, path, state, changes }) => [event, path, state, changes]), [[source.plan.toProcess[0], "Meetings/Synthetic sync 2026-09-01.md", "new", []]]);
+	const input = source.meetings[0].input;
+	const synced = { ...buildMeetingFrontmatterUpdate(input, []) };
+	source.meetings[0].existing = { path: "Meetings/Existing.md", frontmatter: synced, body: "## Invite Agenda\n\nNew agenda" };
+	assert.deepEqual(buildSyncPreview(source).events.map(({ path, state }) => [path, state]), [["Meetings/Existing.md", "unchanged"]]);
+	source.meetings[0].existing = { path: "Meetings/Existing.md", frontmatter: { ...synced, title: "Old title" }, body: "## Invite Agenda\n\nNew agenda" };
+	const changed = buildSyncPreview(source).events;
+	assert.deepEqual(changed.map(({ state, changes }) => [state, changes.map((change) => change.field)]), [["changed", ["title"]]]);
+});
