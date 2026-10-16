@@ -574,6 +574,18 @@ test("the calendar draws a time grid with side by side events and a current time
 	assert.equal(elements.filter((element) => element.cls === "graft-cal-now").length, 1);
 });
 
+test("selecting a calendar event lists its details", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	modal.onOpen();
+	click(modal, "Calendar");
+	const kept = allElements(modal.contentEl).find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
+	kept.listeners.click();
+	const shown = texts(modal);
+	for (const text of ["Title", "When", "Status", "Note", "Kept sync"]) assert.ok(shown.includes(text), text);
+	assert.ok(shown.some((text) => text.startsWith("New note")));
+	assert.equal(allElements(modal.contentEl).some((element) => element.text === "Open note"), false, "the modal stays read-only");
+});
+
 test("a preview opened before its plan shows a spinner, then the plan; closing it first drops the plan", () => {
 	const modal = new SyncPreviewModal({}, undefined, undefined, undefined, undefined);
 	modal.onOpen();

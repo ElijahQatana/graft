@@ -552,10 +552,32 @@
 }
 
 .graft-cal-detail {
-	margin: 0;
 	min-height: 1.5em;
 	font-size: var(--font-ui-small);
 	overflow-wrap: anywhere;
+}
+
+.graft-cal-detail p {
+	margin: 0;
+}
+
+.graft-cal-facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--size-4-1) var(--size-4-3);
+	margin: var(--size-4-2) 0 0;
+}
+
+.graft-cal-facts dt {
+	color: var(--text-muted);
+}
+
+.graft-cal-facts dd {
+	margin: 0;
+}
+
+.graft-cal-fact-warning {
+	color: var(--text-warning);
 }
 
 /* Settings tab */
