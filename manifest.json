@@ -1,7 +1,7 @@
 {
   "id": "graft",
   "name": "Graft",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "minAppVersion": "1.4.10",
   "description": "Read-only sync of any number of Google or Outlook/Microsoft 365 calendar feeds into your existing meeting-note schema.",
   "author": "Elijah Qatana",
