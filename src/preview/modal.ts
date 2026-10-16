@@ -1,6 +1,6 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
-import { buildSummary, count } from "./summary.ts";
+import { buildSummary, buildWindowLabel, count } from "./summary.ts";
 
 const warningText = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
@@ -26,6 +26,7 @@ export class SyncPreviewModal extends Modal {
 		const root = this.contentEl.createEl("div", { cls: "graft-preview" });
 		const head = root.createEl("div", { cls: "graft-preview-head" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
+		head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
 		const body = root.createEl("div", { cls: "graft-preview-body" });
 		const { newMeetings, updates, personStubs, seriesStubs, skipped, errors, warnings } = this.preview;
 		body.createEl("p", { text: buildSummary(this.preview), cls: "graft-summary" });

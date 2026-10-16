@@ -55,7 +55,7 @@ function fixture(): any {
 		meetings: [{ input: { event, invited: [], invitedAs: "one@example.com", schema: ORIGINAL_SCHEMA, timezone: "UTC", organizer: { filename: "Alex Example", companyLinks: ["[[Missing]]"] } } }],
 		personStubs: [{ path: "People/Alex Example.md", stub: { filename: "Alex Example", frontmatter: { full_name: "Alex Example", email: "alex@example.com", company: [] } } }],
 		seriesStubs: [{ path: "Series/Example.md", stub: { filename: "Example", frontmatter: { series_title: "Example", google_recurring_event_id: "series@example.com" } } }],
-		companies: [], meetingFolder: "Meetings", features: { personStubs: true, seriesStubs: true, skipped: true }, warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }, { kind: "possible-duplicate-person", subject: "People/Pat Example 2.md and People/Pat Example.md" }],
+		companies: [], window: { start: new Date("2026-10-08T00:00:00Z"), end: new Date("2026-11-15T00:00:00Z"), daysBack: 7, daysAhead: 30, timezone: "UTC" }, meetingFolder: "Meetings", features: { personStubs: true, seriesStubs: true, skipped: true }, warnings: [{ kind: "ambiguous-person", subject: "Alex Example" }, { kind: "vanished-event", subject: "Meetings/Missing.md" }, { kind: "possible-duplicate-person", subject: "People/Pat Example 2.md and People/Pat Example.md" }],
 	};
 }
 
@@ -80,7 +80,7 @@ test("modal displays each section as literal text and never shows raw feed error
 });
 
 test("empty previews and unchanged meetings are explicit", () => {
-	const modal = new SyncPreviewModal({}, { newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } });
+	const modal = new SyncPreviewModal({}, { window: { start: new Date("2026-10-08T00:00:00Z"), end: new Date("2026-11-15T00:00:00Z"), daysBack: 7, daysAhead: 30, timezone: "UTC" }, newMeetings: [], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } });
 	modal.onOpen();
 	assert.ok(allElements(modal.contentEl).some((element) => element.text === "No note changes planned."));
 	modal.preview.updates.push({ path: "Meetings/Existing.md", changes: [] });
@@ -94,6 +94,7 @@ const emptyPreview = (features: any, counts: any = {}): any => ({
 	personStubs: Array.from({ length: counts.personStubs ?? 0 }, (_: unknown, i: number) => ({ path: `People/P${i}.md`, stub: { frontmatter: {} } })),
 	seriesStubs: Array.from({ length: counts.seriesStubs ?? 0 }, (_: unknown, i: number) => ({ path: `Series/S${i}.md`, stub: { frontmatter: {} } })),
 	skipped: Array.from({ length: counts.skipped ?? 0 }, (_: unknown, i: number) => ({ event: makeEvent({ summary: `Skip ${i}` }), reason: "Ignored" })),
+	window: { start: new Date(0), end: new Date(86400000), daysBack: 7, daysAhead: 30, timezone: "UTC" },
 	errors: [], warnings: [], features,
 });
 const features = { personStubs: true, seriesStubs: true, skipped: true };
@@ -234,7 +235,7 @@ test("preview diffs match updateMeetingNote writes and preserve handwritten cont
 // Drives GraftPlugin.runSync with a Modal that tracks how many are open.
 async function loadPlugin(canApply = true) {
 	const stubs = {
-		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { newMeetings: [{ path: 'Meetings/New.md', note: { frontmatter: {}, body: '' } }], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } } });
+		"./sync/flow.ts": `export const prepareSync = async () => ({ canApply: ${canApply}, preview: { window: { start: new Date(0), end: new Date(86400000), daysBack: 7, daysAhead: 30, timezone: 'UTC' }, newMeetings: [{ path: 'Meetings/New.md', note: { frontmatter: {}, body: '' } }], updates: [], personStubs: [], seriesStubs: [], skipped: [], errors: [], warnings: [], features: { personStubs: true, seriesStubs: true, skipped: true } } });
 			export const applySync = async () => globalThis.__applySync();`,
 		"./ics/fetch.ts": "export const fetchIcs = async () => '';",
 	};
@@ -345,4 +346,12 @@ test("a section with nothing in it is not shown", () => {
 	modal.onOpen();
 	const titles = allElements(modal.contentEl).filter((element) => element.cls === "graft-section").map((section) => section.children[0].text);
 	assert.deepEqual(titles, ["New Meeting notes (1)"]);
+});
+
+test("the head shows the sync window above the summary", () => {
+	const modal = new SyncPreviewModal({}, emptyPreview(features));
+	modal.preview.window = { start: new Date("2026-10-08T00:00:00Z"), end: new Date("2026-11-15T00:00:00Z"), daysBack: 7, daysAhead: 30, timezone: "UTC" };
+	modal.onOpen();
+	const head = allElements(modal.contentEl).find((element) => element.cls === "graft-preview-head");
+	assert.deepEqual(head.children.map((child: any) => child.text), ["Dry run. No notes have been written.", "Covers 8 Oct to 14 Nov 2026 (7 days back, 30 ahead)."]);
 });
