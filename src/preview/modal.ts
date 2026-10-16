@@ -53,7 +53,11 @@ export class SyncPreviewModal extends Modal {
 		const head = root.createEl("div", { cls: "graft-preview-head" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		if (!this.loading) head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
-		if (this.message) head.createEl("p", { text: this.message, cls: this.loading ? "graft-muted graft-window graft-loading" : "graft-note graft-note-warning", attr: { role: "status" } });
+		if (this.message && this.loading) {
+			const status = head.createEl("p", { cls: "graft-muted graft-window graft-loading", attr: { role: "status" } });
+			status.createEl("span", { cls: "graft-spinner", attr: { "aria-hidden": "true" } });
+			status.createEl("span", { text: this.message });
+		} else if (this.message) head.createEl("p", { text: this.message, cls: "graft-note graft-note-warning", attr: { role: "status" } });
 		this.body = root.createEl("div", { cls: "graft-preview-body" });
 		this.renderView();
 		const { newMeetings, personStubs, seriesStubs, updates } = this.preview;

@@ -490,6 +490,8 @@ test("loading a range drops the old plan, then shows the new range and states it
 	assert.equal(texts(modal).includes("Apply"), false, "no Apply while the range loads");
 	assert.equal(texts(modal).some((text) => text.startsWith("Covers ")), false, "the old range is not shown as current");
 	assert.ok(texts(modal).includes("Reading calendars for the new range."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"), "a spinner shows while the range loads");
 	finish({ preview: rangePreview(5, 9), apply: async () => { applied.push("new"); } });
 	await settle();
 	assert.ok(texts(modal).includes("Covers 4 Mar to 18 Mar 2020 (5 days back, 9 ahead)."));
