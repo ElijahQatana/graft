@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from "obsidian";
+import { Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal, type LoadedPreview } from "./preview/modal.ts";
@@ -11,6 +11,9 @@ import { isLoggable, isInsideNoteFolders, logEntryFromPreview } from "./sync/log
 import { writeSyncLog } from "./sync/logFile.ts";
 import { countPlannedChanges, FAILURES_BEFORE_WARNING, planFingerprint } from "./sync/scheduled.ts";
 import { DateTime } from "luxon";
+import { BrowseCache } from "./calendar/cache.ts";
+import { browseSettings } from "./calendar/browse.ts";
+import { CALENDAR_VIEW_TYPE, CalendarView } from "./calendar/view.ts";
 
 /** Loads settings and connects the sync commands. */
 export default class GraftPlugin extends Plugin {
@@ -31,12 +34,24 @@ export default class GraftPlugin extends Plugin {
 	private lastAnnounced = "";
 	/** The status bar item that says changes are ready or the last check failed. */
 	private readyItem?: HTMLElement;
+	/** Feed results for the dockable calendar, kept until Refresh or a settings change. */
+	private browseCache = new BrowseCache(
+		async () => (await prepareSync(this.app, browseSettings(this.settings), fetchIcs)).preview,
+		(error) => errorMessage(error, "Graft could not read the calendars. Check the calendar settings."),
+	);
 
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new GraftSettingTab(this.app, this));
 		this.addCommand({ id: "preview-sync", name: "Preview sync", callback: () => { void this.runSync(true); } });
 		this.addCommand({ id: "sync-now", name: "Sync now", callback: () => { void this.runSync(false); } });
+		this.registerView(CALENDAR_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CalendarView(leaf, {
+			cache: this.browseCache,
+			timezone: () => this.settings.timezone,
+			openNote: (path) => { void this.openNote(path); },
+		}));
+		this.addRibbonIcon("calendar-days", "Open Graft calendar", () => { void this.openCalendar(); });
+		this.addCommand({ id: "open-calendar", name: "Open calendar", callback: () => { void this.openCalendar(); } });
 		this.app.workspace.onLayoutReady(() => {
 			if (this.settings.autoRunOnStartup) void this.runSync(false);
 		});
@@ -48,6 +63,24 @@ export default class GraftPlugin extends Plugin {
 		this.clearBusy?.();
 		this.clearReady();
 		this.previewModal?.close();
+		this.browseCache.clear();
+	}
+
+	/** Shows the calendar view, reusing an open one. */
+	async openCalendar() {
+		const { workspace } = this.app;
+		let leaf = workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)[0];
+		if (!leaf) {
+			leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
+			await leaf.setViewState({ type: CALENDAR_VIEW_TYPE, active: true });
+		}
+		workspace.setActiveLeaf(leaf, { focus: true });
+	}
+
+	private async openNote(path: string) {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
+		else new Notice("That Meeting note is not in the vault.");
 	}
 
 	async runSync(previewOnly: boolean) {
@@ -266,6 +299,7 @@ export default class GraftPlugin extends Plugin {
 		});
 		try {
 			await this.settingsSave;
+			this.browseCache.clear();
 			this.scheduleChecks();
 		} catch {
 			new Notice("Graft could not save settings. Try editing the setting again.");
