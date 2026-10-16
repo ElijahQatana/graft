@@ -822,3 +822,22 @@
 	margin: 0;
 	font-size: var(--font-ui-small);
 }
+
+/* Calendar view */
+
+.graft-calendar-view {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+}
+
+.graft-cal-source {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+}
+
+.graft-cal-open {
+	margin-left: var(--size-4-2);
+}

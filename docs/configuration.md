@@ -10,6 +10,8 @@ For a first-run walk-through, see [Getting started](getting-started.md).
 
 Use **Graft: Preview sync** to review changes. **Graft: Sync now** follows the preview toggle; with preview off, it writes immediately. While Graft reads your calendars or writes notes, a spinner with a short label shows in the status bar on desktop, and as a notice on mobile, until the run ends.
 
+**Graft: Open calendar**, or the calendar icon in the ribbon, opens the calendar as a view you can dock in a sidebar or a tab. It shows the 14 days before today and the 30 days after, regardless of the sync window, with 3-day and week layouts. Calendars are read once and kept in memory; press **Refresh** to read them again. A feed that fails shows an error in the view, and the others still show. The view never writes notes. Select an event and use **Open note** to open its Meeting note when one exists.
+
 - **Calendars:** the list of calendars to sync, empty on a new install. Use **Add calendar** to add one. A saved calendar shows as one line with its type, Invited as value and whether its address is on this device; use **Edit** to change its fields, then **Save** (or **Cancel**), and **Up**, **Down** and **Remove** on the line. Each calendar has:
   - a **name**, which is required and must be unique (case is ignored). Previews use it to say which calendar had a problem.
   - a **type**, Google or Outlook / Microsoft 365.

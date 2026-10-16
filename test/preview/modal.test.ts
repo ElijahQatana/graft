@@ -254,12 +254,12 @@ async function loadPlugin(canApply = true) {
 		open() { state.open.add(this); state.maxOpen = Math.max(state.maxOpen, state.open.size); this.onOpen(); }
 		close() { state.open.delete(this); super.close(); }
 	}
-	class Plugin { app: any; constructor() { this.app = { workspace: { onLayoutReady() {} } }; } addCommand() {} addSettingTab() {} addStatusBarItem() { return { addClass() {}, setAttribute() {}, createSpan() { return {}; }, remove() {} }; } async loadData() { return { previewBeforeApply: true }; } }
+	class Plugin { app: any; constructor() { this.app = { workspace: { onLayoutReady() {} } }; } addCommand() {} registerView() {} addRibbonIcon() {} addSettingTab() {} addStatusBarItem() { return { addClass() {}, setAttribute() {}, createSpan() { return {}; }, remove() {} }; } async loadData() { return { previewBeforeApply: true }; } }
 	class Notice { constructor(message: string) { state.notices.push(message); } }
 	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, {
 		module, exports: module.exports, Promise, JSON, structuredClone, globalThis: { __applySync: () => state.applySync() },
-		require: () => ({ Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
+		require: () => ({ ItemView: class {}, Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
 	});
 	const plugin = new module.exports.default();
 	await plugin.loadSettings();

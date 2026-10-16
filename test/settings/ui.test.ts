@@ -72,9 +72,12 @@ class Plugin {
 	[key: string]: any;
 	addSettingTab(tab: any) { this.tab = tab; }
 	addCommand(command: any) { (this.commands ??= []).push(command); }
+	registerView() {}
+	addRibbonIcon() {}
 }
 class Modal {}
-const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal };
+class ItemView {}
+const obsidian = { PluginSettingTab, Setting, TFile, Notice, Plugin, Modal, ItemView };
 
 async function loadModule(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });

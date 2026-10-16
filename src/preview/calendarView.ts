@@ -55,8 +55,13 @@ export function addSegmented<T extends string | number>(parent: HTMLElement, lab
 	}
 }
 
+export interface CalendarOptions {
+	/** Shown for a selected event whose note exists. */
+	openNote?: (path: string) => void;
+}
+
 /** Draws from the plan the preview already holds and fetches nothing. */
-export function renderCalendar(container: HTMLElement, preview: SyncPreview, state: CalendarState, update: () => void, now = new Date()) {
+export function renderCalendar(container: HTMLElement, preview: SyncPreview, state: CalendarState, update: () => void, now = new Date(), options: CalendarOptions = {}) {
 	const zone = preview.window.timezone;
 	const items: CalendarItem[] = [
 		...preview.events.map((planned, index): CalendarItem => ({ id: `kept-${index}`, event: planned.event, kind: planned.state, planned })),
@@ -124,7 +129,12 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 		key.createEl("span", { text: kindLabel[kind] });
 	}
 	const selected = items.find((item) => item.id === state.selected);
-	container.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-cal-detail graft-muted" });
+	const detail = container.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-cal-detail graft-muted" });
+	if (selected?.planned && selected.kind !== "new" && options.openNote) {
+		const path = selected.planned.path;
+		const open = detail.createEl("button", { text: "Open note", cls: "graft-cal-open", attr: { type: "button" } });
+		open.addEventListener("click", () => options.openNote!(path));
+	}
 }
 
 /** Restores the scroll position, or on first show brings now or the first event into view. */
