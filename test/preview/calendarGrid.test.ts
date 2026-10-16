@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import { readFile } from "node:fs/promises";
 import { parseIcs } from "../../src/ics/parse.ts";
 import { assignColumns, bucketByDay, dayRange, layoutDay, minuteOnDate, visibleHours } from "../../src/preview/calendar.ts";
+import { blockFit, rangeLabel, stepAnchor, visibleDates } from "../../src/preview/calendarView.ts";
 import { makeEvent } from "../helpers.ts";
 
 const zone = "America/New_York";
@@ -101,4 +102,20 @@ test("a recurring event and its moved occurrence each show once on the right day
 	// The occurrence after the exception is back at 09:00 on the wall clock, though the UTC offset changed.
 	const [later] = await feedDays("2026-11-12", 1);
 	assert.deepEqual(later.entries.map((entry) => [entry.item.event.summary, entry.startTime, entry.item.event.start]), [["Synthetic weekly", "09:00", "2026-11-12T14:00:00.000Z"]]);
+});
+
+test("a one day view shows one date and steps by a day", () => {
+	const state = { span: 1 as const, anchor: "2026-10-15" };
+	assert.deepEqual(visibleDates(state), ["2026-10-15"]);
+	assert.equal(rangeLabel(visibleDates(state)), "Thu 15 Oct 2026");
+	assert.equal(stepAnchor(state, 1), "2026-10-16");
+	assert.equal(stepAnchor(state, -1), "2026-10-14");
+	assert.equal(stepAnchor({ span: 3, anchor: "2026-10-15" }, 1), "2026-10-18");
+	assert.equal(stepAnchor({ span: 7, anchor: "2026-10-15" }, -1), "2026-10-05");
+});
+
+test("a block shows its time only when a second line fits", () => {
+	assert.deepEqual(blockFit(30), { titleLines: 1, showTime: false });
+	assert.deepEqual(blockFit(60), { titleLines: 1, showTime: true });
+	assert.deepEqual(blockFit(120), { titleLines: 5, showTime: true });
 });
