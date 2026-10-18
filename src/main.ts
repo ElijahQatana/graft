@@ -66,7 +66,7 @@ export default class GraftPlugin extends Plugin {
 		this.browseCache.clear();
 	}
 
-	/** Shows the calendar view, reusing an open one. */
+	/** Shows the calendar view, reusing an open one and expanding the right sidebar if it is collapsed. */
 	async openCalendar() {
 		const { workspace } = this.app;
 		let leaf = workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)[0];
@@ -74,6 +74,7 @@ export default class GraftPlugin extends Plugin {
 			leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
 			await leaf.setViewState({ type: CALENDAR_VIEW_TYPE, active: true });
 		}
+		if (leaf.getRoot() === workspace.rightSplit) workspace.rightSplit.expand();
 		workspace.setActiveLeaf(leaf, { focus: true });
 	}
 
@@ -92,12 +93,30 @@ export default class GraftPlugin extends Plugin {
 		this.clearReady();
 		try {
 			const settings: GraftSettings = structuredClone(this.settings);
-			const prepared = await this.whileBusy(previewOnly ? "Graft: checking calendars" : "Graft: syncing", () => prepareSync(this.app, settings, fetchIcs));
+			// A preview opens at once and shows that it is working. Sync now waits for the plan first.
+			const early = previewOnly || settings.previewBeforeApply ? this.openPreview(settings) : undefined;
+			let preparing = true;
+			void early?.closed.then(() => { if (preparing) this.clearBusy?.(); });
+			let prepared: PreparedSync;
+			try {
+				prepared = await this.whileBusy(previewOnly ? "Graft: checking calendars" : "Graft: syncing", () => prepareSync(this.app, settings, fetchIcs));
+			} catch (error) {
+				early?.modal.close();
+				throw error;
+			} finally {
+				preparing = false;
+			}
 			if (this.unloaded) return;
 			const direct = !previewOnly && !settings.previewBeforeApply && prepared.canApply;
 			const apply = () => this.applyPrepared(prepared, direct ? "Sync now" : "Apply from preview");
-			if (previewOnly || settings.previewBeforeApply || !prepared.canApply) {
-				await this.showPreview(prepared, apply, settings);
+			if (early) {
+				// Closing the preview while it loads cancels the run, and the plan is dropped.
+				if (early.modal.isClosed) return;
+				early.modal.ready(prepared.preview, prepared.canApply ? apply : undefined);
+				await early.closed;
+			} else if (!prepared.canApply) {
+				const late = this.openPreview(settings, prepared, undefined);
+				await late.closed;
 			} else {
 				await apply();
 			}
@@ -260,8 +279,8 @@ export default class GraftPlugin extends Plugin {
 		}
 	}
 
-	/** Resolves when the preview closes. Apply is offered only when the plan can be applied. */
-	private async showPreview(prepared: PreparedSync, apply: () => Promise<void>, settings: GraftSettings) {
+	/** Opens the preview, with the plan if there is one yet. `closed` resolves when it closes. */
+	private openPreview(settings: GraftSettings, prepared?: PreparedSync, apply?: () => Promise<void>) {
 		// Plans the chosen range against the loaded settings. Nothing is saved.
 		const reload = async (range?: SyncRange): Promise<LoadedPreview> => {
 			try {
@@ -272,11 +291,12 @@ export default class GraftPlugin extends Plugin {
 				throw error;
 			}
 		};
-		await new Promise<void>((resolve) => {
-			this.previewModal = new SyncPreviewModal(this.app, prepared.preview, prepared.canApply ? apply : undefined, resolve, reload);
-			this.previewModal.open();
-		});
-		this.previewModal = undefined;
+		let resolve!: () => void;
+		const closed = new Promise<void>((done) => { resolve = done; }).then(() => { this.previewModal = undefined; });
+		const modal = new SyncPreviewModal(this.app, prepared?.preview, prepared?.canApply ? apply : undefined, resolve, reload);
+		this.previewModal = modal;
+		modal.open();
+		return { modal, closed };
 	}
 
 	async loadSettings() {

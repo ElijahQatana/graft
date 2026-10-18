@@ -1,9 +1,10 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
+import { eventDetails } from "./eventDetails.ts";
 import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
-export type CalendarSpan = 3 | 7;
+export type CalendarSpan = 1 | 3 | 7;
 
 /** Held by the modal so a redraw keeps the position. */
 export interface CalendarState {
@@ -13,6 +14,8 @@ export interface CalendarState {
 	selected?: string;
 	/** Unset until the user scrolls. The grid then opens near now or the first event. */
 	scrollTop?: number;
+	/** Set by a click so the redraw puts keyboard focus back on the chosen event. */
+	refocus?: boolean;
 }
 
 interface CalendarItem {
@@ -38,12 +41,31 @@ export function visibleDates({ span, anchor }: CalendarState): string[] {
 	return dayRange(span === 7 ? weekStart(anchor) : anchor, span);
 }
 
-/** "Thu 15 to Sat 17 Oct 2026". Month and year appear on the first date only when the range crosses them. */
+/** "Thu 15 Oct 2026" for one day, else "Thu 15 to Sat 17 Oct 2026". Month and year appear on the first date only when the range crosses them. */
 export function rangeLabel(dates: string[]): string {
+	if (dates.length === 1) return DateTime.fromISO(dates[0], { zone: "utc" }).toFormat("ccc d MMM yyyy");
 	const first = DateTime.fromISO(dates[0], { zone: "utc" });
 	const last = DateTime.fromISO(dates[dates.length - 1], { zone: "utc" });
 	const from = first.year !== last.year ? first.toFormat("ccc d MMM yyyy") : first.month !== last.month ? first.toFormat("ccc d MMM") : first.toFormat("ccc d");
 	return `${from} to ${last.toFormat("ccc d MMM yyyy")}`;
+}
+
+/** Where the anchor goes when stepping back (negative) or forward. Weeks step from their Monday. */
+export function stepAnchor({ span, anchor }: CalendarState, direction: 1 | -1): string {
+	return addDays(span === 7 ? weekStart(anchor) : anchor, direction * span);
+}
+
+const stepName = { 1: "day", 3: "3 days", 7: "week" } as const;
+
+/** Rough pixel metrics for a timed block: an hour is 3rem and a line of small text about 15px. */
+const HOUR_PX = 48;
+const LINE_PX = 15;
+const BLOCK_PAD_PX = 4;
+
+/** How much of a block's text fits. The title comes first, and the time shows only when a second line is free. */
+export function blockFit(durationMin: number): { titleLines: number; showTime: boolean } {
+	const lines = Math.max(1, Math.floor(((durationMin / 60) * HOUR_PX - BLOCK_PAD_PX) / LINE_PX));
+	return lines >= 2 ? { titleLines: lines - 1, showTime: true } : { titleLines: 1, showTime: false };
 }
 
 export function addSegmented<T extends string | number>(parent: HTMLElement, label: string, options: Array<[T, string]>, active: T, pick: (value: T) => void) {
@@ -71,18 +93,19 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 	const first = localDate(preview.window.start, zone);
 	const last = localDate(new Date(preview.window.end.getTime() - 1), zone);
 	const today = localDate(now, zone);
-	const shift = (days: number) => { state.anchor = addDays(state.span === 7 ? dates[0] : state.anchor, days); update(); };
+	const shift = (direction: 1 | -1) => { state.anchor = stepAnchor(state, direction); update(); };
 
 	const bar = container.createEl("div", { cls: "graft-cal-bar" });
 	const nav = bar.createEl("div", { cls: "graft-cal-nav" });
-	const previous = nav.createEl("button", { text: "Previous", cls: "graft-cal-step", attr: { type: "button", "aria-label": `Previous ${state.span} days` } });
-	const next = nav.createEl("button", { text: "Next", cls: "graft-cal-step", attr: { type: "button", "aria-label": `Next ${state.span} days` } });
+	const previous = nav.createEl("button", { text: "Previous", cls: "graft-cal-step", attr: { type: "button", "aria-label": `Previous ${stepName[state.span]}` } });
+	const next = nav.createEl("button", { text: "Next", cls: "graft-cal-step", attr: { type: "button", "aria-label": `Next ${stepName[state.span]}` } });
 	if (dates[0] <= first) previous.disabled = true;
-	else previous.addEventListener("click", () => shift(-state.span));
+	else previous.addEventListener("click", () => shift(-1));
 	if (dates[dates.length - 1] >= last) next.disabled = true;
-	else next.addEventListener("click", () => shift(state.span));
+	else next.addEventListener("click", () => shift(1));
 	bar.createEl("span", { text: rangeLabel(dates), cls: "graft-cal-range" });
-	addSegmented<CalendarSpan>(bar, "Days shown", [[3, "3 days"], [7, "Week"]], state.span, (span) => { state.span = span; update(); });
+	addSegmented<CalendarSpan>(bar, "Days shown", [[1, "1 day"], [3, "3 days"], [7, "Week"]], state.span, (span) => { state.span = span; update(); });
+	bar.createEl("span", { text: `Times in ${zone}`, cls: "graft-muted graft-cal-zone-note" });
 
 	const days = bucketByDay(items, dates, zone).map(({ date, entries }) => ({ date, allDay: entries.filter((entry) => entry.allDay), blocks: layoutDay(entries) }));
 	const hours = visibleHours(days.flatMap((day) => day.blocks));
@@ -91,10 +114,10 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 	const marks = days.map(({ date }) => (date === today ? minuteOnDate(now, date, zone) : undefined));
 	const scroll = container.createEl("div", { cls: "graft-cal-scroll" });
 	scroll.addEventListener("scroll", () => { state.scrollTop = scroll.scrollTop; });
-	const grid = scroll.createEl("div", { cls: `graft-cal-grid graft-cal-days-${dates.length}`, attr: { style: `--graft-cal-hours:${hours.end - hours.start}` } });
+	const grid = scroll.createEl("div", { cls: `graft-cal-grid graft-cal-days-${dates.length}`, attr: { style: `--graft-cal-hours:${hours.end - hours.start};--graft-cal-days:${dates.length}` } });
 
 	const gutter = grid.createEl("div", { cls: "graft-cal-gutter" });
-	gutter.createEl("div", { text: zone, cls: "graft-cal-day-head graft-cal-zone" });
+	gutter.createEl("div", { text: DateTime.now().setZone(zone).offsetNameShort ?? zone, cls: "graft-cal-day-head graft-cal-zone", attr: { title: zone } });
 	gutter.createEl("div", { cls: "graft-cal-allday" });
 	const gutterBody = gutter.createEl("div", { cls: "graft-cal-gutter-body" });
 	for (let hour = hours.start; hour < hours.end; hour++) {
@@ -112,7 +135,7 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 		const body = column.createEl("div", { cls: "graft-cal-day-body" });
 		for (const { entry, startMin, endMin, column: slot, columns } of blocks) {
 			const position = `top:${percent(startMin)};height:${(((endMin - startMin) / span) * 100).toFixed(3)}%;left:${((slot / columns) * 100).toFixed(3)}%;width:${(100 / columns).toFixed(3)}%`;
-			addChip(body, entry.item, entry, state, update, position);
+			addChip(body, entry.item, entry, state, update, position, endMin - startMin);
 		}
 		const mark = marks[index];
 		if (mark !== undefined && mark >= hours.start * 60 && mark <= hours.end * 60) {
@@ -129,11 +152,24 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 		key.createEl("span", { text: kindLabel[kind] });
 	}
 	const selected = items.find((item) => item.id === state.selected);
-	const detail = container.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-cal-detail graft-muted" });
+	const detail = container.createEl("div", { cls: "graft-cal-detail", attr: { role: "region", "aria-label": "Event details", "aria-live": "polite" } });
+	detail.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-muted" });
+	if (selected) {
+		const facts = detail.createEl("dl", { cls: "graft-cal-facts" });
+		for (const { label, lines } of eventDetails(selected, preview.warnings, zone)) {
+			facts.createEl("dt", { text: label });
+			const value = facts.createEl("dd", { cls: label === "Warnings" ? "graft-cal-fact-warning" : "" });
+			for (const line of lines) value.createEl("div", { text: line });
+		}
+	}
 	if (selected?.planned && selected.kind !== "new" && options.openNote) {
 		const path = selected.planned.path;
 		const open = detail.createEl("button", { text: "Open note", cls: "graft-cal-open", attr: { type: "button" } });
 		open.addEventListener("click", () => options.openNote!(path));
+	}
+	if (state.refocus) {
+		state.refocus = false;
+		container.querySelector?.<HTMLElement>(".graft-cal-event.is-selected")?.focus?.({ preventScroll: true });
 	}
 }
 
@@ -145,7 +181,7 @@ function scrollToState(scroll: HTMLElement, grid: HTMLElement, state: CalendarSt
 	scroll.scrollTop = Math.max(0, body.offsetTop + fraction * body.offsetHeight - scroll.clientHeight / 4);
 }
 
-function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>, state: CalendarState, update: () => void, position?: string) {
+function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>, state: CalendarState, update: () => void, position?: string, duration = 0) {
 	const time = entry.allDay ? "All day" : entry.continuesFromPrevious ? `Until ${entry.endTime}` : entry.startTime;
 	const title = item.event.summary || "(No title)";
 	const classes = ["graft-cal-event", `graft-cal-${item.kind}`];
@@ -154,9 +190,10 @@ function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>
 	if (entry.continuesFromPrevious) classes.push("is-continued");
 	if (entry.continuesToNext) classes.push("is-continuing");
 	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}`, ...(position ? { style: position } : {}) } });
-	if (!entry.allDay) chip.createEl("span", { text: time, cls: "graft-cal-time" });
-	chip.createEl("span", { text: title, cls: "graft-cal-title" });
-	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; update(); });
+	const fit = position ? blockFit(duration) : undefined;
+	chip.createEl("span", { text: title, cls: "graft-cal-title", ...(fit ? { attr: { style: `-webkit-line-clamp:${fit.titleLines}` } } : {}) });
+	if (!entry.allDay && (!fit || fit.showTime)) chip.createEl("span", { text: time, cls: "graft-cal-time" });
+	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; state.refocus = true; update(); });
 }
 
 function describe({ event, kind, planned, reason }: CalendarItem): string {

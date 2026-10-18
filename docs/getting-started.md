@@ -64,7 +64,7 @@ The top line counts what Graft plans, for example `3 new Meetings, 1 existing Me
 | Section | What it shows |
 | --- | --- |
 | New Meeting notes | Notes Graft will create. Select one to see its properties and body. Check the filename, date and invited people. |
-| Existing Meeting notes with changes, Unchanged Meeting notes | Notes that already match an event, found by its UID (and recurrence ID for a single occurrence). Each shows its changes with the old and new value of every field. A rescheduled or retitled event edits the existing note rather than making a second one. |
+| Existing Meeting notes with changes, Unchanged Meeting notes | Notes that already match an event, found by its UID (and recurrence ID for a single occurrence). Each shows its changes with the old and new value of every field. A rescheduled or retitled event edits the existing note rather than making a second one. If nothing changed it says so. |
 | New Person stubs, New Series stubs | Minimal notes for attendees and recurring events with no match. You can turn these off in the sync behavior settings. |
 | Skipped events | Events Graft will not write, each with a reason: a title rule, the ignore list, or a duplicate. When the same event is in two calendars, the copy from the lower calendar is listed as `Same event as one in` followed by the winning calendar. Duplicates are skipped even when you have no filters. |
 | Warnings | Things to look at that do not block Apply. See below. |
@@ -73,7 +73,7 @@ The top line counts what Graft plans, for example `3 new Meetings, 1 existing Me
 Warnings include:
 
 - a Company link that could not be resolved,
-- an event that is in a note but missing from the feed (this does not mean it was cancelled),
+- an occurrence that is in a note but missing from the feed (it may have been cancelled, but the series is not affected and the note is not changed),
 - an existing note that lacks the invite agenda heading, so its agenda is not updated,
 - an ambiguous Person match, which is the one warning that also blocks Apply.
 

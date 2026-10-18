@@ -71,7 +71,7 @@ test("modal displays each section as literal text and never shows raw feed error
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "Event missing from the feed", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "This occurrence is missing from the feed and may have been cancelled", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.deepEqual(elements.filter((element) => element.tag === "button").map((element) => element.text), ["List", "Calendar", "Close"]);
 	modal.onOpen();
@@ -393,8 +393,8 @@ test("calendar view shows kept and skipped events, ranges, and detail lines", ()
 	const elements = allElements(modal.contentEl);
 	const kept = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
 	const skipped = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-skipped"));
-	assert.deepEqual(kept.children.map((child: any) => child.text), ["14:00", "Kept sync"]);
-	assert.deepEqual(skipped.children.map((child: any) => child.text), ["16:00", "Dropped sync"]);
+	assert.deepEqual(kept.children.map((child: any) => child.text), ["Kept sync"]);
+	assert.deepEqual(skipped.children.map((child: any) => child.text), ["Dropped sync", "16:00"]);
 	assert.ok(texts(modal).includes("Select an event to see its note and what will change."));
 	kept.listeners.click();
 	assert.ok(texts(modal).some((text) => text.startsWith("Kept sync: new note at Meetings/")));
@@ -490,6 +490,8 @@ test("loading a range drops the old plan, then shows the new range and states it
 	assert.equal(texts(modal).includes("Apply"), false, "no Apply while the range loads");
 	assert.equal(texts(modal).some((text) => text.startsWith("Covers ")), false, "the old range is not shown as current");
 	assert.ok(texts(modal).includes("Reading calendars for the new range."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"), "a spinner shows while the range loads");
 	finish({ preview: rangePreview(5, 9), apply: async () => { applied.push("new"); } });
 	await settle();
 	assert.ok(texts(modal).includes("Covers 4 Mar to 18 Mar 2020 (5 days back, 9 ahead)."));
@@ -570,4 +572,35 @@ test("the calendar draws a time grid with side by side events and a current time
 	const row = elements.filter((element) => element.cls === "graft-cal-allday")[1];
 	assert.deepEqual(row.children.map((child: any) => child.children.map((part: any) => part.text)), [["Holiday"]]);
 	assert.equal(elements.filter((element) => element.cls === "graft-cal-now").length, 1);
+});
+
+test("selecting a calendar event lists its details", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	modal.onOpen();
+	click(modal, "Calendar");
+	const kept = allElements(modal.contentEl).find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
+	kept.listeners.click();
+	const shown = texts(modal);
+	for (const text of ["Title", "When", "Status", "Note", "Kept sync"]) assert.ok(shown.includes(text), text);
+	assert.ok(shown.some((text) => text.startsWith("New note")));
+	assert.equal(allElements(modal.contentEl).some((element) => element.text === "Open note"), false, "the modal stays read-only");
+});
+
+test("a preview opened before its plan shows a spinner, then the plan; closing it first drops the plan", () => {
+	const modal = new SyncPreviewModal({}, undefined, undefined, undefined, undefined);
+	modal.onOpen();
+	assert.ok(texts(modal).includes("Reading calendars and building the plan."));
+	const status = allElements(modal.contentEl).find((element) => element.attr?.role === "status");
+	assert.ok(status.children.some((child: any) => child.cls === "graft-spinner"));
+	assert.equal(texts(modal).includes("Apply"), false);
+	assert.deepEqual(allElements(modal.contentEl).filter((e) => e.tag === "button").map((e) => e.text), ["List", "Calendar", "Close"]);
+	modal.ready(rangePreview(1, 1), async () => {});
+	assert.equal(allElements(modal.contentEl).some((element) => element.cls?.includes("graft-spinner")), false);
+	assert.ok(texts(modal).includes("Apply"));
+	const early = new SyncPreviewModal({}, undefined);
+	early.onOpen();
+	early.close();
+	early.ready(rangePreview(1, 1));
+	assert.equal(early.isClosed, true);
+	assert.equal(texts(early).includes("Apply"), false);
 });

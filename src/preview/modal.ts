@@ -1,17 +1,9 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
-import { buildRangeText, buildSummary, buildWindowLabel, count } from "./summary.ts";
+import { buildRangeText, buildSummary, buildWindowLabel, count, warningText } from "./summary.ts";
 import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
 import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
-
-const warningText = {
-	"unresolved-company": "Unresolved Company link. The link will be omitted.",
-	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
-	"possible-duplicate-person": "Possible duplicate Person. If they are the same person, add the new address as an alias on the existing note and preview again.",
-	"vanished-event": "Event missing from the feed. This does not mark it cancelled.",
-	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
-};
 
 export interface LoadedPreview {
 	preview: SyncPreview;
@@ -27,17 +19,40 @@ export class SyncPreviewModal extends Modal {
 	private oneOff = false;
 	private message?: string;
 	private view: "list" | "calendar" = "list";
-	private calendar: CalendarState;
-	private draft: RangeDraft;
+	private preview!: SyncPreview;
+	private calendar!: CalendarState;
+	private draft!: RangeDraft;
 	private switcher?: HTMLElement;
 	private body?: HTMLElement;
 	/** `reload` is called with no range to return to the settings range. */
-	constructor(app: App, private preview: SyncPreview,
+	constructor(app: App, preview: SyncPreview | undefined,
 		private apply?: () => Promise<void>, private done?: () => void,
 		private reload?: (range?: SyncRange) => Promise<LoadedPreview>) {
 		super(app);
+		if (preview) this.show(preview);
+		else {
+			// Opened before the plan exists. `ready` supplies it.
+			this.loading = true;
+			this.message = "Reading calendars and building the plan.";
+		}
+	}
+
+	get isClosed() { return this.closed; }
+
+	private show(preview: SyncPreview) {
+		this.preview = preview;
 		this.calendar = initialCalendarState(preview);
 		this.draft = draftOf(preview.window);
+	}
+
+	/** Fills in the plan for a preview that was opened while it was still being built. */
+	ready(preview: SyncPreview, apply?: () => Promise<void>) {
+		if (this.closed) return;
+		this.show(preview);
+		this.apply = apply;
+		this.loading = false;
+		this.message = undefined;
+		this.render();
 	}
 
 	onOpen() {
@@ -53,16 +68,20 @@ export class SyncPreviewModal extends Modal {
 		const head = root.createEl("div", { cls: "graft-preview-head" });
 		head.createEl("p", { text: "Dry run. No notes have been written.", cls: "graft-muted" });
 		if (!this.loading) head.createEl("p", { text: buildWindowLabel(this.preview.window), cls: "graft-muted graft-window" });
-		if (this.message) head.createEl("p", { text: this.message, cls: this.loading ? "graft-muted graft-window graft-loading" : "graft-note graft-note-warning", attr: { role: "status" } });
+		if (this.message && this.loading) {
+			const status = head.createEl("p", { cls: "graft-muted graft-window graft-loading", attr: { role: "status" } });
+			status.createEl("span", { cls: "graft-spinner", attr: { "aria-hidden": "true" } });
+			status.createEl("span", { text: this.message });
+		} else if (this.message) head.createEl("p", { text: this.message, cls: "graft-note graft-note-warning", attr: { role: "status" } });
 		this.body = root.createEl("div", { cls: "graft-preview-body" });
 		this.renderView();
-		const { newMeetings, personStubs, seriesStubs, updates } = this.preview;
 		if (this.loading) {
 			// The old plan is not shown or applied while the new range is read.
 			const actions = root.createEl("div", { cls: "graft-actions" });
 			actions.createEl("button", { text: "Close", attr: { type: "button" } }).addEventListener("click", () => { if (!this.applying) this.close(); });
 			return;
 		}
+		const { newMeetings, personStubs, seriesStubs, updates } = this.preview;
 		const hasWrites = newMeetings.length > 0 || personStubs.length > 0 || seriesStubs.length > 0 || updates.some((update) => update.changes.length > 0);
 		const actions = root.createEl("div", { cls: "graft-actions" });
 		if (this.apply && hasWrites) {
