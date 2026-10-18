@@ -37,7 +37,11 @@ The full walk-through is in [Getting started](docs/getting-started.md).
 
 ## Install
 
-Graft needs Obsidian 1.4.10 or later, for the path suggestions in its settings. Keeping feed addresses in secret storage needs 1.11.4; on older versions Graft still works and keeps them in the plugin's data file.
+| Obsidian version | Support |
+| --- | --- |
+| 1.11.4 and later | Full support. Feed addresses are kept in secret storage. |
+| 1.4.10 to 1.11.3 | Works, but feed addresses stay in the plugin's data file. |
+| Earlier than 1.4.10 | Not supported. |
 
 ### From a release
 
@@ -55,25 +59,27 @@ Pre-releases are marked as such on the release page. To try one, install the BRA
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md): a step-by-step first sync.
-- [Settings](docs/configuration.md): every setting.
-- [Custom templates](docs/templates.md): placeholders for Meeting, Person and Series templates.
-- [Troubleshooting](docs/troubleshooting.md): notices, what they mean, and privacy of feed addresses.
-- [Code layout](docs/technical/architecture.md)
-- [Contributing](CONTRIBUTING.md)
+| Page | Covers |
+| --- | --- |
+| [Getting started](docs/getting-started.md) | A step-by-step first sync. |
+| [Settings](docs/configuration.md) | Every setting. |
+| [Custom templates](docs/templates.md) | Placeholders for Meeting, Person and Series templates. |
+| [Troubleshooting](docs/troubleshooting.md) | Notices, what they mean, and privacy of feed addresses. |
+| [Code layout](docs/technical/architecture.md) | How the sync pipeline is split up. |
+| [Contributing](CONTRIBUTING.md) | How to send a change. |
 
 ## Development
 
 You need Node.js and npm.
 
-```sh
-npm ci
-npm test
-npm run build
-npm run dev
-```
+| Command | Does |
+| --- | --- |
+| `npm ci` | Installs dependencies. |
+| `npm test` | Runs the tests. |
+| `npm run build` | Type-checks and writes a production `main.js` in the project root. |
+| `npm run dev` | Rebuilds `main.js` as you edit. |
 
-`npm run build` type-checks and writes a production `main.js` in the project root. `npm run dev` rebuilds it as you edit. To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/graft/` in a test vault and enable Graft. Use a test vault with made-up calendar data, not your real one.
+To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/graft/` in a test vault and enable Graft. Use a test vault with made-up calendar data, not your real one.
 
 ## License
 
