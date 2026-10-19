@@ -25,6 +25,15 @@ Graft is still in development. The settings tab, Preview sync, Sync now and Appl
 - It does not delete notes. If an event disappears from a feed, the preview shows a warning and the note stays.
 - It does not filter by RSVP status unless you turn on **Only events I have accepted**, which is off by default. See [Configuration](docs/configuration.md).
 
+## Network use and privacy
+
+Graft makes one kind of network request: it downloads each calendar's ICS feed from the address you enter, using Obsidian's `requestUrl`. The request goes only to that address, which is your Google or Microsoft calendar host, and only when Graft reads your calendars: a preview, a sync, the calendar view, or a startup or scheduled check if you turned those on.
+
+- No account is needed and nothing is paid for.
+- No telemetry, analytics or ads. Graft sends nothing about you or your vault anywhere.
+- It does not read files outside your vault.
+- The feed address works like a password for the calendar. See [Troubleshooting](docs/troubleshooting.md#privacy-and-feed-urls) for where it is stored.
+
 ## Quick start
 
 1. Install Graft (see below) and turn it on under Settings, Community plugins.
@@ -45,7 +54,7 @@ The full walk-through is in [Getting started](docs/getting-started.md).
 
 ### From a release
 
-No release is published yet. When one is, download `main.js`, `manifest.json` and `styles.css` from the release page and copy them as described in the next section.
+Download `main.js`, `manifest.json` and `styles.css` from the [releases page](https://github.com/ElijahQatana/graft/releases) and copy them as described under Manually below.
 
 ### A pre-release with BRAT
 
