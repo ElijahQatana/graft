@@ -38,9 +38,17 @@ export const warningText: Record<PreviewWarning["kind"], string> = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
 	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
 	"possible-duplicate-person": "Possible duplicate Person. If they are the same person, add the new address as an alias on the existing note and preview again.",
-	"vanished-event": "This occurrence is missing from the feed and may have been cancelled. The series is not affected, and nothing is written to the note.",
+	"vanished-event": "No longer in the calendar feed. It may have been cancelled. The note is left as it is.",
 	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
+
+/** From this many notes missing from the feed, the preview shows one grouped warning instead of one per note. */
+export const GROUPED_VANISHED_MIN = 6;
+
+/** The grouped form of the vanished-event warning. */
+export function groupedVanishedText(total: number): string {
+	return `${total} notes are no longer in the calendar feed. They may have been cancelled. The notes are left as they are.`;
+}
 
 /** A warning subject is a note path, an event title, or two note paths joined by " and ". Paths are shortened to their note titles. */
 export function warningSubjectTitle(subject: string): string {

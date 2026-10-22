@@ -1,6 +1,6 @@
 import { Modal, type App } from "obsidian";
-import type { SyncPreview } from "./plan.ts";
-import { buildRangeText, buildSummary, buildWindowLabel, count, warningSubjectTitle, warningText } from "./summary.ts";
+import type { PreviewWarning, SyncPreview } from "./plan.ts";
+import { buildRangeText, buildSummary, buildWindowLabel, count, GROUPED_VANISHED_MIN, groupedVanishedText, warningSubjectTitle, warningText } from "./summary.ts";
 import { noteTitle } from "../util/vaultPath.ts";
 import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
@@ -197,15 +197,31 @@ export class SyncPreviewModal extends Modal {
 		}
 		if (warnings.length) {
 			const section = addSection(body, "Warnings", warnings.length, true);
-			for (const warning of warnings) {
+			const vanished = warnings.filter((warning) => warning.kind === "vanished-event");
+			const grouped = vanished.length >= GROUPED_VANISHED_MIN;
+			const addWarning = (parent: HTMLElement, warning: PreviewWarning, text: string) => {
 				const short = warningSubjectTitle(warning.subject);
-				const note = section.createEl("p", { cls: "graft-note graft-note-warning" });
-				if (short === warning.subject) note.setText(`${warning.subject}: ${warningText[warning.kind]}`);
+				const note = parent.createEl("p", { cls: "graft-note graft-note-warning" });
+				if (short === warning.subject) note.setText(`${warning.subject}: ${text}`);
 				else {
 					note.createEl("span", { text: short, attr: { title: warning.subject } });
 					note.createEl("span", { text: ` (${warning.subject})`, cls: "graft-sr-only" });
-					note.createEl("span", { text: `: ${warningText[warning.kind]}` });
+					note.createEl("span", { text: `: ${text}` });
 				}
+			};
+			if (grouped) {
+				const group = section.createEl("details", { cls: "graft-note graft-note-warning" });
+				group.createEl("summary", { text: groupedVanishedText(vanished.length) });
+				for (const warning of vanished) {
+					const short = warningSubjectTitle(warning.subject);
+					const line = group.createEl("p");
+					line.createEl("span", { text: short, attr: { title: warning.subject } });
+					line.createEl("span", { text: ` (${warning.subject})`, cls: "graft-sr-only" });
+				}
+			}
+			for (const warning of warnings) {
+				if (grouped && warning.kind === "vanished-event") continue;
+				addWarning(section, warning, warningText[warning.kind]);
 			}
 		}
 		if (errors.length) {
