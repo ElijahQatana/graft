@@ -4,6 +4,7 @@ import { buildRangeText, buildSummary, buildWindowLabel, count, GROUPED_VANISHED
 import { noteTitle } from "../util/vaultPath.ts";
 import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
+import type { WeekDay } from "../util/weekStart.ts";
 import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
 
 export interface LoadedPreview {
@@ -28,7 +29,7 @@ export class SyncPreviewModal extends Modal {
 	/** `reload` is called with no range to return to the settings range. */
 	constructor(app: App, preview: SyncPreview | undefined,
 		private apply?: () => Promise<void>, private done?: () => void,
-		private reload?: (range?: SyncRange) => Promise<LoadedPreview>) {
+		private reload?: (range?: SyncRange) => Promise<LoadedPreview>, private weekStart: WeekDay = 0) {
 		super(app);
 		if (preview) this.show(preview);
 		else {
@@ -42,7 +43,7 @@ export class SyncPreviewModal extends Modal {
 
 	private show(preview: SyncPreview) {
 		this.preview = preview;
-		this.calendar = initialCalendarState(preview);
+		this.calendar = initialCalendarState(preview, new Date(), this.weekStart);
 		this.draft = draftOf(preview.window);
 	}
 
@@ -110,7 +111,7 @@ export class SyncPreviewModal extends Modal {
 			this.apply = loaded.apply;
 			this.oneOff = range !== undefined;
 			this.message = undefined;
-			this.calendar = { ...initialCalendarState(loaded.preview), span: this.calendar.span };
+			this.calendar = { ...initialCalendarState(loaded.preview, new Date(), this.weekStart), span: this.calendar.span };
 			this.draft = draftOf(loaded.preview.window);
 		} catch {
 			if (this.closed) return;

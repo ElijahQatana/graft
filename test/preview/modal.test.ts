@@ -272,7 +272,7 @@ async function loadPlugin(canApply = true) {
 	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, {
 		module, exports: module.exports, Promise, JSON, structuredClone, globalThis: { __applySync: () => state.applySync() },
-		require: () => ({ addIcon() {}, ItemView: class {}, Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
+		require: () => ({ addIcon() {}, moment: { localeData: () => ({ firstDayOfWeek: () => 1 }) }, ItemView: class {}, Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
 	});
 	const plugin = new module.exports.default();
 	await plugin.loadSettings();
@@ -394,7 +394,7 @@ test("list stays the default view and calendar adds nothing to it", () => {
 });
 
 test("calendar view shows kept and skipped events, ranges, and detail lines", () => {
-	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()), undefined, undefined, undefined, 1);
 	modal.onOpen();
 	click(modal, "Calendar");
 	assert.equal(texts(modal).some((text) => text.startsWith("New Meeting notes")), false);
@@ -420,7 +420,7 @@ test("calendar view shows kept and skipped events, ranges, and detail lines", ()
 });
 
 test("calendar paging stops at the edges of the window", () => {
-	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()));
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()), undefined, undefined, undefined, 1);
 	modal.onOpen();
 	click(modal, "Calendar");
 	const step = (name: string) => allElements(modal.contentEl).find((element) => element.text === name);
@@ -430,6 +430,18 @@ test("calendar paging stops at the edges of the window", () => {
 	for (let page = 0; page < 4; page++) click(modal, "Next");
 	assert.equal(label(modal), "Mon 30 Mar to Sun 5 Apr 2020");
 	assert.equal(step("Next").disabled, true);
+});
+
+test("the week layout starts on Sunday when asked, and paging stays on whole weeks", () => {
+	const modal = new SyncPreviewModal({}, buildSyncPreview(calendarSource()), undefined, undefined, undefined, 0);
+	modal.onOpen();
+	click(modal, "Calendar");
+	click(modal, "Week");
+	assert.equal(label(modal), "Sun 1 to Sat 7 Mar 2020");
+	click(modal, "Next");
+	assert.equal(label(modal), "Sun 8 to Sat 14 Mar 2020");
+	const heads = allElements(modal.contentEl).filter((element) => element.cls === "graft-cal-day-name").map((element) => element.text);
+	assert.deepEqual(heads, ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
 });
 
 test("the calendar opens on today when today is in the window, and outlines it", () => {

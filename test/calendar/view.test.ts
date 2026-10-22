@@ -74,7 +74,7 @@ test("renderCalendar offers Open note only for an existing note, and only when a
 });
 
 function open(cache: BrowseCache) {
-	const view = new CalendarView({}, { cache, timezone: () => "UTC", now: () => new Date("2026-10-15T08:00:00Z"), openNote: () => {} });
+	const view = new CalendarView({}, { cache, timezone: () => "UTC", weekStart: () => 1 as const, now: () => new Date("2026-10-15T08:00:00Z"), openNote: () => {} });
 	return view;
 }
 

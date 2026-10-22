@@ -105,13 +105,61 @@ test("a recurring event and its moved occurrence each show once on the right day
 });
 
 test("a one day view shows one date and steps by a day", () => {
-	const state = { span: 1 as const, anchor: "2026-10-15" };
+	const state = { span: 1 as const, anchor: "2026-10-15", weekStart: 1 as const };
 	assert.deepEqual(visibleDates(state), ["2026-10-15"]);
 	assert.equal(rangeLabel(visibleDates(state)), "Thu 15 Oct 2026");
 	assert.equal(stepAnchor(state, 1), "2026-10-16");
 	assert.equal(stepAnchor(state, -1), "2026-10-14");
-	assert.equal(stepAnchor({ span: 3, anchor: "2026-10-15" }, 1), "2026-10-18");
-	assert.equal(stepAnchor({ span: 7, anchor: "2026-10-15" }, -1), "2026-10-05");
+	assert.equal(stepAnchor({ span: 3, anchor: "2026-10-15", weekStart: 1 }, 1), "2026-10-18");
+	assert.equal(stepAnchor({ span: 7, anchor: "2026-10-15", weekStart: 1 }, -1), "2026-10-05");
+});
+
+test("the week view runs from the chosen first day and the label shows its true ends", () => {
+	const week = (anchor: string, weekStart: 0 | 1 | 6) => visibleDates({ span: 7, anchor, weekStart });
+	assert.deepEqual(week("2026-10-22", 0), ["2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24"]);
+	assert.equal(rangeLabel(week("2026-10-22", 0)), "Sun 18 to Sat 24 Oct 2026");
+	assert.equal(rangeLabel(week("2026-10-22", 1)), "Mon 19 to Sun 25 Oct 2026");
+	assert.equal(rangeLabel(week("2026-10-22", 6)), "Sat 17 to Fri 23 Oct 2026");
+	// Every day of a week gives the same week, so the focused day can sit anywhere in it.
+	for (const day of week("2026-10-22", 0)) assert.deepEqual(week(day, 0), week("2026-10-22", 0));
+	assert.deepEqual(week("2026-10-25", 0).slice(0, 1), ["2026-10-25"]);
+});
+
+test("the day and three day views do not depend on the first day of the week", () => {
+	for (const weekStart of [0, 1, 6] as const) {
+		assert.deepEqual(visibleDates({ span: 3, anchor: "2026-10-22", weekStart }), ["2026-10-22", "2026-10-23", "2026-10-24"]);
+		assert.deepEqual(visibleDates({ span: 1, anchor: "2026-10-22", weekStart }), ["2026-10-22"]);
+	}
+});
+
+test("the week steps back and forward by exactly seven days from its first day", () => {
+	const state = { span: 7 as const, anchor: "2026-10-22", weekStart: 0 as const };
+	assert.equal(stepAnchor(state, 1), "2026-10-25");
+	assert.equal(stepAnchor(state, -1), "2026-10-11");
+	let anchor = "2026-10-22";
+	const firsts: string[] = [];
+	for (let page = 0; page < 3; page++) { anchor = stepAnchor({ ...state, anchor }, 1); firsts.push(visibleDates({ ...state, anchor })[0]); }
+	assert.deepEqual(firsts, ["2026-10-25", "2026-11-01", "2026-11-08"]);
+});
+
+test("a week that holds a clock change still has seven days, with the short or long day in place", () => {
+	const fall = visibleDates({ span: 7, anchor: "2026-11-03", weekStart: 0 });
+	assert.deepEqual([fall[0], fall[6]], ["2026-11-01", "2026-11-07"]);
+	assert.equal(new Set(fall).size, 7);
+	const spring = visibleDates({ span: 7, anchor: "2026-03-08", weekStart: 0 });
+	assert.deepEqual([spring[0], spring[6]], ["2026-03-08", "2026-03-14"]);
+	// 04:00Z is midnight on Sunday 1 Nov, and the clock goes back at 06:00Z, so that Sunday has 25 hours.
+	const at = (summary: string, start: string, end: string) => ({ event: makeEvent({ summary, start, end }) });
+	const items = [
+		at("Saturday night", "2026-11-01T03:30:00.000Z", "2026-11-01T03:45:00.000Z"),
+		at("Sunday first hour", "2026-11-01T04:30:00.000Z", "2026-11-01T04:45:00.000Z"),
+		at("Sunday repeated hour", "2026-11-01T06:30:00.000Z", "2026-11-01T06:45:00.000Z"),
+		at("Monday", "2026-11-02T05:30:00.000Z", "2026-11-02T05:45:00.000Z"),
+	];
+	const days = bucketByDay(items, fall, zone);
+	assert.deepEqual(days.map((day) => day.entries.map((entry) => entry.item.event.summary)), [["Sunday first hour", "Sunday repeated hour"], ["Monday"], [], [], [], [], []]);
+	assert.deepEqual(days.slice(0, 2).map((day) => day.entries.map((entry) => entry.startTime)), [["00:30", "01:30"], ["00:30"]]);
+	assert.deepEqual(bucketByDay(items, ["2026-10-31"], zone)[0].entries.map((entry) => entry.item.event.summary), ["Saturday night"]);
 });
 
 test("a short block keeps its time and title on one line and a tall one stacks them", () => {

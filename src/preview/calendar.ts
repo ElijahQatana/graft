@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
+import type { WeekDay } from "../util/weekStart.ts";
 
 /** A timed event that crosses midnight gets an entry on each day it touches. */
 export interface DayEntry<T> {
@@ -29,9 +30,10 @@ export function dayRange(start: string, count: number): string[] {
 	return Array.from({ length: count }, (_, index) => addDays(start, index));
 }
 
-/** Weeks start on Monday. */
-export function weekStart(date: string): string {
-	return addDays(date, 1 - DateTime.fromISO(date, { zone: "utc" }).weekday);
+/** The first day of the week holding `date`. `firstDay` is 0 for Sunday through 6 for Saturday. */
+export function weekStart(date: string, firstDay: WeekDay): string {
+	const weekday = DateTime.fromISO(date, { zone: "utc" }).weekday % 7;
+	return addDays(date, -((weekday - firstDay + 7) % 7));
 }
 
 export function localDate(instant: Date, zone: string): string {

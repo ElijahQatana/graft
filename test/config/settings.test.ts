@@ -153,3 +153,10 @@ test("scheduled sync settings default to off and every hour, and invalid values 
 	assert.equal(loadGraftSettings({ automaticMaxNotes: 100 }).automaticMaxNotes, 100);
 	for (const bad of [0, 501, 2.5, "25"]) assert.equal(loadGraftSettings({ automaticMaxNotes: bad }).automaticMaxNotes, 25);
 });
+
+test("the week start defaults to the locale, loads a valid day and ignores anything else", () => {
+	assert.equal(DEFAULT_SETTINGS.weekStart, "auto");
+	assert.equal(loadGraftSettings({}).weekStart, "auto");
+	for (const value of ["auto", 0, 1, 6]) assert.equal(loadGraftSettings({ weekStart: value }).weekStart, value);
+	for (const value of [7, -1, 1.5, "1", "sunday", null, true]) assert.equal(loadGraftSettings({ weekStart: value }).weekStart, "auto", String(value));
+});

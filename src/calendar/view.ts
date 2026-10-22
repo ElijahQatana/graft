@@ -1,5 +1,6 @@
 import { ItemView, type WorkspaceLeaf } from "obsidian";
 import { initialCalendarState, renderCalendar, type CalendarState } from "../preview/calendarView.ts";
+import type { WeekDay } from "../util/weekStart.ts";
 import { GRAFT_ICON_ID } from "../icon.ts";
 import { updatedLabel, type BrowseCache } from "./cache.ts";
 
@@ -8,6 +9,8 @@ export const CALENDAR_VIEW_TYPE = "graft-calendar";
 export interface CalendarHost {
 	cache: BrowseCache;
 	timezone(): string;
+	/** First column of the week view. */
+	weekStart(): WeekDay;
 	now?(): Date;
 	openNote(path: string): void;
 }
@@ -63,7 +66,8 @@ export class CalendarView extends ItemView {
 		const preview = result.preview!;
 		for (const error of preview.errors) root.createEl("p", { text: `${error.feed}: Calendar feed could not be fetched or parsed.`, cls: "graft-note graft-note-error" });
 		const now = this.host.now?.() ?? new Date();
-		this.state ??= initialCalendarState(preview, now);
+		this.state ??= initialCalendarState(preview, now, this.host.weekStart());
+		this.state.weekStart = this.host.weekStart();
 		renderCalendar(root.createEl("div", { cls: "graft-cal" }), preview, this.state, () => this.draw(result, false), now, { openNote: (path) => this.host.openNote(path) });
 	}
 }
