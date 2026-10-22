@@ -533,6 +533,13 @@
 	background: var(--color-red);
 }
 
+.graft-cal-event,
+.graft-cal-swatch {
+	--graft-cal-fill: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 22%, var(--background-primary));
+	--graft-cal-fill-strong: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 34%, var(--background-primary));
+	--graft-cal-edge: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 65%, var(--background-primary));
+}
+
 .graft-cal-event {
 	display: flex;
 	flex-direction: column;
@@ -544,10 +551,10 @@
 	padding: var(--size-4-1) var(--size-4-2) var(--size-4-1) calc(var(--size-4-2) + 3px);
 	border: 1px solid transparent;
 	border-radius: var(--radius-s);
-	/* The transparent border leaves a gap between neighbours, and the inset shadow is the accent bar. */
-	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 18%, var(--background-primary));
+	/* The transparent border leaves a gap between neighbours. The inset shadows draw the visible edge and the accent bar inside it. */
+	background-color: var(--graft-cal-fill);
 	background-clip: padding-box;
-	box-shadow: inset 3px 0 0 var(--graft-cal-color, var(--text-muted));
+	box-shadow: inset 3px 0 0 var(--graft-cal-color, var(--text-muted)), inset 0 0 0 1px var(--graft-cal-edge);
 	color: var(--text-normal);
 	font-size: var(--font-ui-smaller);
 	text-align: left;
@@ -555,7 +562,7 @@
 }
 
 .graft-cal-event:hover {
-	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 28%, var(--background-primary));
+	background-color: var(--graft-cal-fill-strong);
 }
 
 .graft-cal-event.is-timed {
@@ -616,7 +623,7 @@
 	z-index: 1;
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: -1px;
-	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 30%, var(--background-primary));
+	background-color: var(--graft-cal-fill-strong);
 }
 
 .graft-cal-event:focus-visible {
@@ -643,7 +650,7 @@
 }
 
 .graft-cal-unchanged {
-	--graft-cal-color: var(--text-muted);
+	--graft-cal-color: var(--color-blue);
 }
 
 .graft-cal-skipped {
@@ -652,15 +659,14 @@
 
 .graft-cal-event.graft-cal-skipped {
 	border-style: dashed;
-	border-color: var(--background-modifier-border-hover);
-	background-color: transparent;
+	border-color: var(--text-faint);
+	background-color: color-mix(in srgb, var(--text-faint) 10%, var(--background-primary));
+	box-shadow: none;
 	color: var(--text-muted);
-	opacity: 0.75;
 }
 
 .graft-cal-event.graft-cal-skipped.is-selected {
 	border-color: transparent;
-	opacity: 1;
 }
 
 .graft-cal-legend {
@@ -682,12 +688,14 @@
 	width: 0.75em;
 	height: 0.75em;
 	border-radius: 2px;
-	background: var(--graft-cal-color);
+	background: var(--graft-cal-fill);
+	box-shadow: inset 2px 0 0 var(--graft-cal-color), inset 0 0 0 1px var(--graft-cal-edge);
 }
 
 .graft-cal-swatch.graft-cal-skipped {
 	border: 1px dashed var(--text-faint);
-	background: transparent;
+	background: color-mix(in srgb, var(--text-faint) 10%, var(--background-primary));
+	box-shadow: none;
 }
 
 .graft-cal-detail {
