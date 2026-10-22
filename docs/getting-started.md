@@ -73,7 +73,7 @@ The top line counts what Graft plans, for example `3 new Meetings, 1 existing Me
 Warnings include:
 
 - a Company link that could not be resolved,
-- an occurrence that is in a note but missing from the feed (it may have been cancelled, but the series is not affected and the note is not changed),
+- a note whose event is no longer in the calendar feed (it may have been cancelled, only that occurrence is affected and the note is left as it is; six or more are grouped into one warning with the list of titles),
 - an existing note that lacks the invite agenda heading, so its agenda is not updated,
 - an ambiguous Person match, which is the one warning that also blocks Apply.
 

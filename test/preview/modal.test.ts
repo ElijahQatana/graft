@@ -62,6 +62,17 @@ function fixture(): any {
 	};
 }
 
+test("many notes missing from the feed are grouped into one warning", () => {
+	const source = fixture();
+	source.warnings = Array.from({ length: 6 }, (_, index) => ({ kind: "vanished-event" as const, subject: `Meetings/Gone ${index}.md` }));
+	const modal = new SyncPreviewModal({}, buildSyncPreview(source));
+	modal.onOpen();
+	const text = allElements(modal.contentEl).map((element) => element.text).join("\n");
+	assert.ok(text.includes("6 notes are no longer in the calendar feed. They may have been cancelled. The notes are left as they are."));
+	assert.ok(text.includes("Gone 5") && text.includes("Meetings/Gone 5.md"));
+	assert.equal(text.includes("Gone 0: No longer"), false);
+});
+
 test("modal displays each section as literal text and never shows raw feed errors or writes", () => {
 	const source = fixture();
 	const preview = buildSyncPreview(source);
@@ -71,7 +82,7 @@ test("modal displays each section as literal text and never shows raw feed error
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "This occurrence is missing from the feed and may have been cancelled", "Pat Example 2 and Pat Example", "People/Pat Example 2.md and People/Pat Example.md", "Existing", "Meetings/Existing.md", "No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "No longer in the calendar feed. It may have been cancelled", "Pat Example 2 and Pat Example", "People/Pat Example 2.md and People/Pat Example.md", "Existing", "Meetings/Existing.md", "No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.deepEqual(elements.filter((element) => element.tag === "button").map((element) => element.text), ["List", "Calendar", "Close"]);
 	modal.onOpen();
