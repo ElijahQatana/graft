@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
 import { eventDetails } from "./eventDetails.ts";
+import { noteTitle } from "../util/vaultPath.ts";
 import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
 export type CalendarSpan = 1 | 3 | 7;
@@ -199,7 +200,8 @@ function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>
 function describe({ event, kind, planned, reason }: CalendarItem): string {
 	const title = event.summary || "(No title)";
 	if (kind === "skipped" || !planned) return `${title}: skipped. ${reason ?? "No reason given."}`;
-	if (kind === "new") return `${title}: new note at ${planned.path}.`;
-	if (kind === "unchanged") return `${title}: no changes to ${planned.path}.`;
-	return `${title}: changes to ${planned.path}: ${planned.changes.map((change) => change.field).join(", ")}.`;
+	const note = noteTitle(planned.path);
+	if (kind === "new") return `${title}: new note ${note}.`;
+	if (kind === "unchanged") return `${title}: no changes to ${note}.`;
+	return `${title}: changes to ${note}: ${planned.changes.map((change) => change.field).join(", ")}.`;
 }
