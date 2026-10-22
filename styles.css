@@ -672,7 +672,8 @@ button.graft-cal-step:disabled {
 .graft-cal-legend {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 2px var(--size-4-3);
+	gap: var(--size-4-1) var(--size-4-4);
+	margin-top: var(--size-4-1);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
@@ -680,13 +681,13 @@ button.graft-cal-step:disabled {
 .graft-cal-key {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--size-4-1);
+	gap: var(--size-4-2);
 	white-space: nowrap;
 }
 
 .graft-cal-swatch {
-	width: 0.75em;
-	height: 0.75em;
+	width: 0.85em;
+	height: 0.85em;
 	border-radius: 2px;
 	background: var(--graft-cal-fill);
 	box-shadow: inset 2px 0 0 var(--graft-cal-color), inset 0 0 0 1px var(--graft-cal-edge);
@@ -708,11 +709,62 @@ button.graft-cal-step:disabled {
 	margin: 0;
 }
 
+.graft-cal-detail.has-event {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-3) var(--size-4-4);
+	border: 1px solid var(--background-modifier-border);
+	border-left: 3px solid var(--graft-cal-color);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.graft-cal-detail-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1) var(--size-4-2);
+}
+
+.graft-cal-detail-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-weight: var(--font-medium);
+	font-size: var(--font-ui-medium);
+	line-height: var(--line-height-tight);
+}
+
+.graft-cal-pill {
+	flex: none;
+	padding: 1px var(--size-4-2);
+	border-radius: var(--radius-l);
+	background: color-mix(in srgb, var(--graft-cal-color) 18%, transparent);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	line-height: var(--line-height-normal);
+}
+
+.graft-cal-detail-when {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-cal-sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 .graft-cal-facts {
 	display: grid;
-	grid-template-columns: max-content 1fr;
+	grid-template-columns: 5.5em minmax(0, 1fr);
 	gap: var(--size-4-1) var(--size-4-3);
-	margin: var(--size-4-2) 0 0;
+	margin: var(--size-4-1) 0 0;
+	font-size: var(--font-ui-smaller);
 }
 
 .graft-cal-facts dt {
@@ -721,10 +773,27 @@ button.graft-cal-step:disabled {
 
 .graft-cal-facts dd {
 	margin: 0;
+	color: var(--text-normal);
+	overflow-wrap: anywhere;
+}
+
+.graft-cal-change {
+	margin-bottom: var(--size-4-1);
+	padding: 1px var(--size-4-2);
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
 }
 
 .graft-cal-fact-warning {
 	color: var(--text-warning);
+}
+
+.graft-cal button.graft-cal-open {
+	align-self: flex-end;
+	height: auto;
+	margin: 0;
+	padding: var(--size-4-1) var(--size-4-3);
+	font-size: var(--font-ui-small);
 }
 
 /* Settings tab */

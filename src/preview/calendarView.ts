@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
-import { eventDetails } from "./eventDetails.ts";
+import { eventDetails, formatWhen } from "./eventDetails.ts";
 import { noteTitle } from "../util/vaultPath.ts";
 import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
@@ -159,14 +159,20 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 		key.createEl("span", { text: kindLabel[kind] });
 	}
 	const selected = items.find((item) => item.id === state.selected);
-	const detail = container.createEl("div", { cls: "graft-cal-detail", attr: { role: "region", "aria-label": "Event details", "aria-live": "polite" } });
-	detail.createEl("p", { text: selected ? describe(selected) : "Select an event to see its note and what will change.", cls: "graft-muted" });
+	const detail = container.createEl("div", { cls: selected ? `graft-cal-detail has-event graft-cal-${selected.kind}` : "graft-cal-detail", attr: { role: "region", "aria-label": "Event details", "aria-live": "polite" } });
+	if (!selected) detail.createEl("p", { text: "Select an event to see its note and what will change.", cls: "graft-muted" });
 	if (selected) {
+		const head = detail.createEl("div", { cls: "graft-cal-detail-head" });
+		head.createEl("span", { text: selected.event.summary || "(No title)", cls: "graft-cal-detail-title" });
+		head.createEl("span", { text: kindLabel[selected.kind], cls: "graft-cal-pill", attr: { "aria-hidden": "true" } });
+		detail.createEl("div", { text: formatWhen(selected.event, zone), cls: "graft-cal-detail-when" });
+		detail.createEl("p", { text: describe(selected), cls: "graft-cal-sr" });
 		const facts = detail.createEl("dl", { cls: "graft-cal-facts" });
 		for (const { label, lines } of eventDetails(selected, preview.warnings, zone)) {
+			if (label === "Title" || label === "When") continue;
 			facts.createEl("dt", { text: label });
 			const value = facts.createEl("dd", { cls: label === "Warnings" ? "graft-cal-fact-warning" : "" });
-			for (const line of lines) value.createEl("div", { text: line });
+			for (const line of lines) value.createEl("div", { text: line, cls: label === "Changes" ? "graft-cal-change" : "" });
 		}
 	}
 	if (selected?.planned && selected.kind !== "new" && options.openNote) {
