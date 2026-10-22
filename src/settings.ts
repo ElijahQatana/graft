@@ -107,6 +107,12 @@ export class GraftSettingTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 				this.refreshMetas();
 			}));
+		this.row("Merge duplicates across calendars", "When calendars hold the same meeting under different IDs, such as copies made by a calendar-mirroring tool, keep one. Copies match when the start, end and title are the same, ignoring case. The calendar higher in the Calendars list wins; if that does not decide it, the copy with a description or guests does. The other copies are listed under Skipped events. Meetings within one calendar are never merged, and notes already written for a dropped copy are left alone.", "merge duplicate mirror copies")
+			.addToggle((toggle) => toggle.setValue(settings.mergeDuplicates).onChange(async (value) => {
+				settings.mergeDuplicates = value;
+				await this.plugin.saveSettings();
+				this.refreshMetas();
+			}));
 		this.filenameRules();
 
 		this.group("window", "Sync window");
@@ -259,6 +265,7 @@ export class GraftSettingTab extends PluginSettingTab {
 					settings.titleMatchRules.length ? count(settings.titleMatchRules.length, "title rule") : "",
 					settings.ignoreListPath ? "ignore list" : "",
 					settings.acceptedOnly ? "accepted only" : "",
+					settings.mergeDuplicates ? "merge duplicates" : "",
 				].filter(Boolean);
 				return parts.length ? parts.join(", ") : "No filters";
 			};

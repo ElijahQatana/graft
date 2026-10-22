@@ -50,8 +50,18 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 
 - The sync window only covers the days set in Days back and Days ahead, in the chosen timezone.
 - The event may be skipped by a title rule or the ignore list. Skipped events are listed.
-- The same event in an earlier calendar takes priority. The other copy is listed as skipped.
+- The same event in an earlier calendar takes priority. The other copy is listed as skipped, and so is a copy dropped by **Merge duplicates across calendars**.
 - Unless **Only events I have accepted** is on, an event you declined or have tentatively accepted is still included. With it on, such events are listed as skipped with the reason.
+
+### Duplicates from calendar mirroring
+
+If a tool copies events between your calendars, one meeting can reach Graft several times with different IDs: as plain `Busy` blocks and as copies with full details. That gives Meeting notes titled Busy and two notes for one meeting. To clean it up:
+
+1. Add a title skip rule of type **exact** with the value `Busy`. Add another for any other placeholder title.
+2. Turn on **Merge duplicates across calendars** and put the calendar whose details you prefer first in the Calendars list.
+3. If the copies in one calendar show as declined, turn on **Only events I have accepted** and set that calendar's Invited as value.
+
+Check the preview: the dropped events are under **Skipped events** with their reasons. Notes written before you changed these settings are not removed, so delete any leftover Busy notes by hand. See [Filters](configuration.md#filters).
 
 ### A note stays cancelled
 

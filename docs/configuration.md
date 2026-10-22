@@ -105,6 +105,7 @@ The note title and properties keep the original text. If two names become the sa
 | Title skip rules | none | Ordered. Types are exact, prefix, suffix and contains, with optional case sensitivity. The first match wins. |
 | Title prefixes to strip | `FW:`, `Fwd:`, `RE:` | See below. |
 | Only events I have accepted | off | See below. |
+| Merge duplicates across calendars | off | See below. |
 
 **Title prefixes to strip.** Comma-separated text removed from the start of event titles, ignoring case. Repeated prefixes are all removed. Stripping happens as events are read, before title skip rules run, so those rules, Meeting filenames, Series names and the title property all use the cleaned title. Notes are still matched by event UID, so a forwarded invite does not create a duplicate. Existing note names are not changed. Clear the field to keep titles as they arrive.
 
@@ -113,6 +114,17 @@ The note title and properties keep the original text. If two names become the sa
 - Your entry in the guest list is found by comparing its email address, ignoring case, with the **Invited as** value of the calendar the event came from. Put your email address there. Without one, the filter has nothing to match and skips nothing.
 - Events with no entry for you (you are the organizer, or there are no guests) are kept, and so are entries with no response recorded.
 - Google feeds include responses. Outlook and Microsoft 365 published feeds may leave them out, in which case every event is kept. This has not been tested against real Outlook feeds yet.
+
+**Busy blocks.** A calendar-mirroring tool may copy events between your calendars as placeholders titled `Busy`. There is no separate setting for them: a title skip rule already does the job. Add a rule of type **exact** with the value `Busy`. Exact rules ignore case unless you turn on case sensitivity, and they compare the whole title after the prefixes are stripped, so `Busy`, `busy` and `BUSY` are skipped but `Busy lunch` is not. Add one rule for each other placeholder title you see. Skipped Busy blocks are listed under **Skipped events** with the reason `title matched exact "Busy"`.
+
+**Merge duplicates across calendars.** The same tool can also copy a meeting with its details, so one real meeting arrives from two calendars under different IDs. When this is on, Graft treats events from different calendars as one meeting if they have the same start, the same end (or the same all-day date) and the same title, ignoring case and outer spaces. Times are compared as moments, so calendars in different time zones still match.
+
+- The copy from the calendar higher in the **Calendars** list is kept. If that does not decide it, the copy with a description or guests is kept. The kept event is not changed, so its note is matched by its event ID as before, and a reschedule updates the existing note.
+- The other copies are listed under **Skipped events** with the reason `Duplicate of <title> from <calendar name>`.
+- Events in the same calendar are never merged, and neither are events whose titles differ in any way other than case.
+- Recurring events are compared one occurrence at a time, each by its own start and end.
+- The check runs after the title rules, the ignore list and **Only events I have accepted**. A skipped Busy block or a declined copy therefore never takes the place of a full-detail copy.
+- A note Graft already wrote for a copy that is now skipped is left as it is. Graft does not edit or delete it; remove it yourself if you do not want it.
 
 The ignore list format is described in [Troubleshooting](troubleshooting.md#ignore-list-format).
 

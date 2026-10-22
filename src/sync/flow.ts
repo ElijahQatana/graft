@@ -52,7 +52,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	const window = { start: day.minus({ days: daysBack }).toJSDate(), end: day.plus({ days: daysAhead + 1 }).toJSDate() };
 	const templates: PreparedSync["templates"] = [];
 	const ignored = await readIgnoreList(app, settings.ignoreListPath, templates);
-	const plan = await buildSyncPlan(feeds, window, settings.titleMatchRules, ignored, fetchFeed, settings.acceptedOnly, settings.titlePrefixesToStrip);
+	const plan = await buildSyncPlan(feeds, window, settings.titleMatchRules, ignored, fetchFeed, settings.acceptedOnly, settings.titlePrefixesToStrip, settings.mergeDuplicates);
 	const folders = [...new Set(Object.values(settings.folders))];
 	const snapshots = await readSnapshots(app, folders);
 	const bodies = await readTemplateBodies(app, settings, templates);
@@ -98,7 +98,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 		features: {
 			personStubs: settings.createPersonStubs,
 			seriesStubs: settings.createSeriesStubs,
-			skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "" || settings.acceptedOnly,
+			skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "" || settings.acceptedOnly || settings.mergeDuplicates,
 		},
 	};
 	const newPeople = new Map<string, ResolvedAttendee>();
