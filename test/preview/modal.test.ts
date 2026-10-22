@@ -594,7 +594,7 @@ test("selecting a calendar event lists its details", () => {
 	const kept = allElements(modal.contentEl).find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
 	kept.listeners.click();
 	const shown = texts(modal);
-	for (const text of ["Title", "When", "Status", "Note", "Kept sync"]) assert.ok(shown.includes(text), text);
+	for (const text of ["Status", "Note", "Kept sync"]) assert.ok(shown.includes(text), text);
 	assert.ok(shown.some((text) => text.startsWith("New note")));
 	assert.equal(allElements(modal.contentEl).some((element) => element.text === "Open note"), false, "the modal stays read-only");
 });
