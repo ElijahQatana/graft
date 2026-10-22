@@ -62,10 +62,16 @@ const HOUR_PX = 48;
 const LINE_PX = 15;
 const BLOCK_PAD_PX = 4;
 
-/** How much of a block's text fits. The title comes first, and the time shows only when a second line is free. */
-export function blockFit(durationMin: number): { titleLines: number; showTime: boolean } {
+/** How a block lays out its text. A short block puts the time and the title on one line. A taller one gives the time its own line and wraps the title below it. */
+export function blockFit(durationMin: number): { titleLines: number; stacked: boolean } {
 	const lines = Math.max(1, Math.floor(((durationMin / 60) * HOUR_PX - BLOCK_PAD_PX) / LINE_PX));
-	return lines >= 2 ? { titleLines: lines - 1, showTime: true } : { titleLines: 1, showTime: false };
+	return lines >= 2 ? { titleLines: lines - 1, stacked: true } : { titleLines: 1, stacked: false };
+}
+
+/** A short zone label for the gutter, such as "UTC-4". The full name is kept for the tooltip. */
+export function zoneLabel(zone: string, now = new Date()): string {
+	const at = DateTime.fromJSDate(now, { zone });
+	return at.isValid ? at.toFormat("'UTC'Z") : zone;
 }
 
 export function addSegmented<T extends string | number>(parent: HTMLElement, label: string, options: Array<[T, string]>, active: T, pick: (value: T) => void) {
@@ -117,7 +123,7 @@ export function renderCalendar(container: HTMLElement, preview: SyncPreview, sta
 	const grid = scroll.createEl("div", { cls: `graft-cal-grid graft-cal-days-${dates.length}`, attr: { style: `--graft-cal-hours:${hours.end - hours.start};--graft-cal-days:${dates.length}` } });
 
 	const gutter = grid.createEl("div", { cls: "graft-cal-gutter" });
-	gutter.createEl("div", { text: DateTime.now().setZone(zone).offsetNameShort ?? zone, cls: "graft-cal-day-head graft-cal-zone", attr: { title: zone } });
+	gutter.createEl("div", { text: zoneLabel(zone, now), cls: "graft-cal-day-head graft-cal-zone", attr: { title: zone } });
 	gutter.createEl("div", { cls: "graft-cal-allday" });
 	const gutterBody = gutter.createEl("div", { cls: "graft-cal-gutter-body" });
 	for (let hour = hours.start; hour < hours.end; hour++) {
@@ -185,14 +191,14 @@ function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>
 	const time = entry.allDay ? "All day" : entry.continuesFromPrevious ? `Until ${entry.endTime}` : entry.startTime;
 	const title = item.event.summary || "(No title)";
 	const classes = ["graft-cal-event", `graft-cal-${item.kind}`];
-	if (position) classes.push("is-timed");
+	const fit = position ? blockFit(duration) : undefined;
+	if (position) classes.push("is-timed", fit!.stacked ? "is-stacked" : "is-inline");
 	if (item.id === state.selected) classes.push("is-selected");
 	if (entry.continuesFromPrevious) classes.push("is-continued");
 	if (entry.continuesToNext) classes.push("is-continuing");
 	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}`, ...(position ? { style: position } : {}) } });
-	const fit = position ? blockFit(duration) : undefined;
-	chip.createEl("span", { text: title, cls: "graft-cal-title", ...(fit ? { attr: { style: `-webkit-line-clamp:${fit.titleLines}` } } : {}) });
-	if (!entry.allDay && (!fit || fit.showTime)) chip.createEl("span", { text: time, cls: "graft-cal-time" });
+	if (fit && !entry.allDay) chip.createEl("span", { text: time, cls: "graft-cal-time" });
+	chip.createEl("span", { text: title, cls: "graft-cal-title", ...(fit?.stacked ? { attr: { style: `-webkit-line-clamp:${fit.titleLines}` } } : {}) });
 	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; state.refocus = true; update(); });
 }
 

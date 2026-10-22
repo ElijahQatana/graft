@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 import { readFile } from "node:fs/promises";
 import { parseIcs } from "../../src/ics/parse.ts";
 import { assignColumns, bucketByDay, dayRange, layoutDay, minuteOnDate, visibleHours } from "../../src/preview/calendar.ts";
-import { blockFit, rangeLabel, stepAnchor, visibleDates } from "../../src/preview/calendarView.ts";
+import { blockFit, rangeLabel, stepAnchor, visibleDates, zoneLabel } from "../../src/preview/calendarView.ts";
 import { makeEvent } from "../helpers.ts";
 
 const zone = "America/New_York";
@@ -114,8 +114,14 @@ test("a one day view shows one date and steps by a day", () => {
 	assert.equal(stepAnchor({ span: 7, anchor: "2026-10-15" }, -1), "2026-10-05");
 });
 
-test("a block shows its time only when a second line fits", () => {
-	assert.deepEqual(blockFit(30), { titleLines: 1, showTime: false });
-	assert.deepEqual(blockFit(60), { titleLines: 1, showTime: true });
-	assert.deepEqual(blockFit(120), { titleLines: 5, showTime: true });
+test("a short block keeps its time and title on one line and a tall one stacks them", () => {
+	assert.deepEqual(blockFit(30), { titleLines: 1, stacked: false });
+	assert.deepEqual(blockFit(60), { titleLines: 1, stacked: true });
+	assert.deepEqual(blockFit(120), { titleLines: 5, stacked: true });
+});
+
+test("the gutter label is a compact UTC offset", () => {
+	assert.equal(zoneLabel("America/New_York", new Date("2026-10-22T12:00:00Z")), "UTC-4");
+	assert.equal(zoneLabel("Asia/Kolkata", new Date("2026-10-22T12:00:00Z")), "UTC+5:30");
+	assert.equal(zoneLabel("Not/AZone"), "Not/AZone");
 });
