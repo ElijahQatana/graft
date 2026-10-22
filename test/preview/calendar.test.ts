@@ -3,7 +3,29 @@ import { strict as assert } from "node:assert";
 import { readFile } from "node:fs/promises";
 import { parseIcs } from "../../src/ics/parse.ts";
 import { addDays, bucketByDay, dayRange, localDate, weekStart } from "../../src/preview/calendar.ts";
+import type { WeekDay } from "../../src/util/weekStart.ts";
 import { makeEvent } from "../helpers.ts";
+
+test("the week starts on each of the seven days", () => {
+	// Thu 22 Oct 2026. Each start day maps to the most recent such day on or before it.
+	const expected = ["2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-16", "2026-10-17"];
+	expected.forEach((start, firstDay) => assert.equal(weekStart("2026-10-22", firstDay as WeekDay), start, `start day ${firstDay}`));
+});
+
+test("a date that is the first day of its week stays put, and the last day belongs to the same week", () => {
+	assert.equal(weekStart("2026-10-18", 0), "2026-10-18");
+	assert.equal(weekStart("2026-10-24", 0), "2026-10-18");
+	assert.equal(weekStart("2026-10-25", 0), "2026-10-25");
+	assert.equal(weekStart("2026-10-12", 1), "2026-10-12");
+	assert.equal(weekStart("2026-10-18", 1), "2026-10-12");
+	assert.equal(weekStart("2026-10-24", 6), "2026-10-24");
+	assert.equal(weekStart("2026-10-23", 6), "2026-10-17");
+});
+
+test("week starts cross month and year ends", () => {
+	assert.equal(weekStart("2027-01-01", 0), "2026-12-27");
+	assert.equal(weekStart("2026-03-01", 1), "2026-02-23");
+});
 
 const window = { start: new Date("2026-10-01T00:00:00Z"), end: new Date("2026-11-30T00:00:00Z") };
 const wrap = (events: ReturnType<typeof makeEvent>[]) => events.map((event) => ({ event }));
@@ -12,9 +34,6 @@ const titles = (bucket: { entries: Array<{ item: { event: { summary: string } } 
 test("date helpers work on plain dates", () => {
 	assert.equal(addDays("2026-10-31", 1), "2026-11-01");
 	assert.deepEqual(dayRange("2026-10-30", 3), ["2026-10-30", "2026-10-31", "2026-11-01"]);
-	assert.equal(weekStart("2026-10-15"), "2026-10-12");
-	assert.equal(weekStart("2026-10-18"), "2026-10-12");
-	assert.equal(weekStart("2026-10-12"), "2026-10-12");
 	assert.equal(localDate(new Date("2026-10-15T02:00:00Z"), "America/New_York"), "2026-10-14");
 });
 

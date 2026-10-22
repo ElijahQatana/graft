@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { PlannedEvent, SyncPreview } from "./plan.ts";
 import { eventDetails, formatWhen } from "./eventDetails.ts";
+import type { WeekDay } from "../util/weekStart.ts";
 import { noteTitle } from "../util/vaultPath.ts";
 import { addDays, bucketByDay, dayRange, layoutDay, localDate, minuteOnDate, visibleHours, weekStart, type DayEntry } from "./calendar.ts";
 
@@ -10,8 +11,10 @@ export type CalendarSpan = 1 | 3 | 7;
 /** Held by the modal so a redraw keeps the position. */
 export interface CalendarState {
 	span: CalendarSpan;
-	/** YYYY-MM-DD. The week view starts on the Monday on or before it. */
+	/** YYYY-MM-DD. The week view starts on the first day of the week that holds it. */
 	anchor: string;
+	/** First column of the week view, 0 for Sunday through 6 for Saturday. */
+	weekStart: WeekDay;
 	selected?: string;
 	/** Unset until the user scrolls. The grid then opens near now or the first event. */
 	scrollTop?: number;
@@ -30,16 +33,16 @@ interface CalendarItem {
 const kindLabel = { new: "New note", changed: "Note changes", unchanged: "Unchanged", skipped: "Skipped" } as const;
 
 /** Starts at today when today is inside the window, else at the window's first day. */
-export function initialCalendarState(preview: SyncPreview, now = new Date()): CalendarState {
+export function initialCalendarState(preview: SyncPreview, now = new Date(), weekStart: WeekDay = 0): CalendarState {
 	const { window } = preview;
 	const first = localDate(window.start, window.timezone);
 	const last = localDate(new Date(window.end.getTime() - 1), window.timezone);
 	const today = localDate(now, window.timezone);
-	return { span: 3, anchor: today >= first && today <= last ? today : first };
+	return { span: 3, anchor: today >= first && today <= last ? today : first, weekStart };
 }
 
-export function visibleDates({ span, anchor }: CalendarState): string[] {
-	return dayRange(span === 7 ? weekStart(anchor) : anchor, span);
+export function visibleDates({ span, anchor, weekStart: firstDay }: CalendarState): string[] {
+	return dayRange(span === 7 ? weekStart(anchor, firstDay) : anchor, span);
 }
 
 /** "Thu 15 Oct 2026" for one day, else "Thu 15 to Sat 17 Oct 2026". Month and year appear on the first date only when the range crosses them. */
@@ -51,9 +54,9 @@ export function rangeLabel(dates: string[]): string {
 	return `${from} to ${last.toFormat("ccc d MMM yyyy")}`;
 }
 
-/** Where the anchor goes when stepping back (negative) or forward. Weeks step from their Monday. */
-export function stepAnchor({ span, anchor }: CalendarState, direction: 1 | -1): string {
-	return addDays(span === 7 ? weekStart(anchor) : anchor, direction * span);
+/** Where the anchor goes when stepping back (negative) or forward. Weeks step from their first day. */
+export function stepAnchor({ span, anchor, weekStart: firstDay }: CalendarState, direction: 1 | -1): string {
+	return addDays(span === 7 ? weekStart(anchor, firstDay) : anchor, direction * span);
 }
 
 const stepName = { 1: "day", 3: "3 days", 7: "week" } as const;

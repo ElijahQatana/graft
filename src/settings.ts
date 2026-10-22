@@ -1,5 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
+import { WEEK_DAY_NAMES, isWeekStartSetting } from "./util/weekStart.ts";
 import {
 	isCalendarType, isCalendarUrl, isDayCount, isAutomaticLimit, isIntervalMinutes, isScheduledMode, MAX_AUTOMATIC_NOTES, MAX_INTERVAL_MINUTES, MIN_AUTOMATIC_NOTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
 	type CalendarSettings,
@@ -121,6 +122,16 @@ export class GraftSettingTab extends PluginSettingTab {
 			(value) => isTimezone(value) ? undefined : "Enter a valid timezone.");
 		this.days("Days back", "daysBack");
 		this.days("Days ahead", "daysAhead");
+		this.row("Week starts on", "First column of the Week layout in the calendar view and the preview calendar. Follow Obsidian's language uses the first day of the week for the language Obsidian is set to.", "week start first day sunday monday saturday calendar")
+			.addDropdown((dropdown) => dropdown
+				.addOptions({ auto: "Follow Obsidian's language", ...Object.fromEntries(WEEK_DAY_NAMES.map((name, day) => [String(day), name])) })
+				.setValue(String(settings.weekStart))
+				.onChange(async (value) => {
+					const day = value === "auto" ? value : Number(value);
+					if (!isWeekStartSetting(day)) return;
+					settings.weekStart = day;
+					await this.plugin.saveSettings();
+				}));
 
 		this.group("behavior", "Sync behavior");
 		for (const [key, name, desc] of [

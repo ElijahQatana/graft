@@ -38,7 +38,7 @@ While Graft reads calendars or writes notes, a spinner with a short label shows 
 
 ### Calendar view
 
-The view can be docked in a sidebar or a tab. It shows the 14 days before today and the 30 days after, whatever the sync window is, with 3-day and week layouts.
+The view can be docked in a sidebar or a tab. It shows the 14 days before today and the 30 days after, whatever the sync window is, with 1-day, 3-day and week layouts. The week layout starts on the day set under **Week starts on** in the sync window settings.
 
 - Calendars are read once and kept in memory. Press **Refresh** to read them again.
 - A feed that fails shows an error in the view, and the others still show.
@@ -135,6 +135,7 @@ The ignore list format is described in [Troubleshooting](troubleshooting.md#igno
 | Days back | 7 | Whole days, zero allowed. |
 | Days ahead | 30 | Whole days, zero allowed. |
 | Timezone | UTC | |
+| Week starts on | Follow Obsidian's language | The first column of the Week layout in the calendar view and the preview calendar. Choose Sunday to Saturday, or follow the first day of the week for the language Obsidian is set to, which is Sunday for English (US) and Monday for English (UK). Settings saved before this existed use the language default. |
 
 ## Sync behavior
 

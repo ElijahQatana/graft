@@ -1,3 +1,4 @@
+import { isWeekStartSetting, type WeekStartSetting } from "../util/weekStart.ts";
 import type { TitleMatchRule } from "../filters/titleMatch.ts";
 import type { FilenameConventionRule } from "../generate/personStub.ts";
 import { MINIMAL_SCHEMA, cloneSchema, loadSchema, type NoteSchema } from "./schema.ts";
@@ -66,6 +67,8 @@ export interface GraftSettings {
 	timezone: string;
 	daysBack: number;
 	daysAhead: number;
+	/** First column of the calendar week view. Auto follows the Obsidian language. */
+	weekStart: WeekStartSetting;
 	createPersonStubs: boolean;
 	createSeriesStubs: boolean;
 	/** Company matching, links and validation. Off on a new install; on for settings saved before it existed. */
@@ -104,6 +107,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	timezone: "UTC",
 	daysBack: 7,
 	daysAhead: 30,
+	weekStart: "auto",
 	createPersonStubs: true,
 	createSeriesStubs: true,
 	companyLinking: false,
@@ -205,6 +209,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	}
 	if (typeof input.meetingFilenamePattern === "string" && input.meetingFilenamePattern.trim()) result.meetingFilenamePattern = input.meetingFilenamePattern;
 	if (typeof input.timezone === "string" && isTimezone(input.timezone)) result.timezone = input.timezone;
+	if (isWeekStartSetting(input.weekStart)) result.weekStart = input.weekStart;
 	if (isScheduledMode(input.scheduledSync)) result.scheduledSync = input.scheduledSync;
 	if (isIntervalMinutes(input.syncIntervalMinutes)) result.syncIntervalMinutes = input.syncIntervalMinutes;
 	if (isAutomaticLimit(input.automaticMaxNotes)) result.automaticMaxNotes = input.automaticMaxNotes;

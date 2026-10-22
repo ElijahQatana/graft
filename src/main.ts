@@ -1,4 +1,4 @@
-import { addIcon, Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from "obsidian";
+import { addIcon, moment, Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal, type LoadedPreview } from "./preview/modal.ts";
@@ -6,6 +6,7 @@ import type { SyncRange } from "./sync/range.ts";
 import { prepareSync, applySync, type PreparedSync } from "./sync/flow.ts";
 import { UserFacingError, VaultChangedError } from "./sync/userFacingError.ts";
 import { hydrateSecrets, prepareForSave, secretStoreOf } from "./config/secrets.ts";
+import { resolveWeekStart, type WeekDay } from "./util/weekStart.ts";
 import { fetchIcs } from "./ics/fetch.ts";
 import { isLoggable, isInsideNoteFolders, logEntryFromPreview } from "./sync/log.ts";
 import { writeSyncLog } from "./sync/logFile.ts";
@@ -50,6 +51,7 @@ export default class GraftPlugin extends Plugin {
 		this.registerView(CALENDAR_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CalendarView(leaf, {
 			cache: this.browseCache,
 			timezone: () => this.settings.timezone,
+			weekStart: () => this.weekStart(),
 			openNote: (path) => { void this.openNote(path); },
 		}));
 		this.addRibbonIcon(GRAFT_ICON_ID, "Open Graft calendar", () => { void this.openCalendar(); });
@@ -295,10 +297,15 @@ export default class GraftPlugin extends Plugin {
 		};
 		let resolve!: () => void;
 		const closed = new Promise<void>((done) => { resolve = done; }).then(() => { this.previewModal = undefined; });
-		const modal = new SyncPreviewModal(this.app, prepared?.preview, prepared?.canApply ? apply : undefined, resolve, reload);
+		const modal = new SyncPreviewModal(this.app, prepared?.preview, prepared?.canApply ? apply : undefined, resolve, reload, this.weekStart());
 		this.previewModal = modal;
 		modal.open();
 		return { modal, closed };
+	}
+
+	/** The configured first day of the week, or the one Obsidian's language uses. */
+	private weekStart(): WeekDay {
+		return resolveWeekStart(this.settings.weekStart, moment.localeData().firstDayOfWeek());
 	}
 
 	async loadSettings() {
