@@ -177,3 +177,90 @@ test("leaves titles alone when no prefixes are configured", async () => {
 	const plan = await buildSyncPlan(feeds, WINDOW, [], [], async () => icsWith(vevent("a@example.com", "FW: Budget review")));
 	assert.equal(plan.toProcess[0].summary, "FW: Budget review");
 });
+
+function timedEvent(uid: string, summary: string, start: string, end: string, extra = ""): string {
+	return `BEGIN:VEVENT
+UID:${uid}
+DTSTAMP:20260101T000000Z
+DTSTART:${start}
+DTEND:${end}
+SUMMARY:${summary}
+${extra}END:VEVENT
+`;
+}
+
+const MIRROR_FEEDS: FeedConfig[] = [
+	{ name: "Work", url: "https://work.example/feed.ics" },
+	{ name: "Home", url: "https://home.example/feed.ics" },
+];
+
+function mirrorFetch(work: string, home: string) {
+	return async (url: string) => (url.includes("work") ? work : home);
+}
+
+test("merging duplicates is off by default and changes nothing", async () => {
+	const fetchFeed = mirrorFetch(
+		icsWith(vevent("w-1@example.com", "Budget review")),
+		icsWith(vevent("h-1@example.com", "Budget review")),
+	);
+	const plan = await buildSyncPlan(MIRROR_FEEDS, WINDOW, [], [], fetchFeed);
+	assert.deepEqual(plan.toProcess.map((e) => e.uid), ["w-1@example.com", "h-1@example.com"]);
+	assert.equal(plan.skipped.length, 0);
+});
+
+test("merging keeps the earlier calendar's event and lists the other copy as skipped", async () => {
+	const fetchFeed = mirrorFetch(
+		icsWith(vevent("w-1@example.com", "Budget review")),
+		icsWith(vevent("h-1@example.com", "Budget review")),
+	);
+	const plan = await buildSyncPlan(MIRROR_FEEDS, WINDOW, [], [], fetchFeed, false, [], true);
+	assert.deepEqual(plan.toProcess.map((e) => [e.uid, e.source]), [["w-1@example.com", "Work"]]);
+	assert.deepEqual(plan.skipped.map((s) => [s.event.uid, s.reason]), [["h-1@example.com", "Duplicate of Budget review from Work"]]);
+});
+
+test("merging compares times as instants across time zones", async () => {
+	const fetchFeed = mirrorFetch(
+		icsWith(timedEvent("w-1@example.com", "Budget review", "20260901T140000Z", "20260901T143000Z")),
+		icsWith(timedEvent("h-1@example.com", "Budget review", "TZID=America/New_York:20260901T100000", "TZID=America/New_York:20260901T103000")),
+	);
+	const plan = await buildSyncPlan(MIRROR_FEEDS, WINDOW, [], [], fetchFeed, false, [], true);
+	assert.deepEqual(plan.toProcess.map((e) => e.uid), ["w-1@example.com"]);
+});
+
+test("merging matches recurring occurrences one at a time", async () => {
+	const weekly = "RRULE:FREQ=WEEKLY;COUNT=3\n";
+	const home = timedEvent("h-1@example.com", "Weekly sync", "20260901T140000Z", "20260901T143000Z", weekly)
+		+ timedEvent("h-1@example.com", "Weekly sync moved", "20260909T150000Z", "20260909T153000Z", "RECURRENCE-ID:20260908T140000Z\n");
+	const fetchFeed = mirrorFetch(
+		icsWith(timedEvent("w-1@example.com", "Weekly sync", "20260901T140000Z", "20260901T143000Z", weekly)),
+		icsWith(home),
+	);
+	const plan = await buildSyncPlan(MIRROR_FEEDS, WINDOW, [], [], fetchFeed, false, [], true);
+	assert.deepEqual(plan.toProcess.filter((e) => e.source === "Work").length, 3);
+	assert.deepEqual(plan.toProcess.filter((e) => e.source === "Home").map((e) => e.summary), ["Weekly sync moved"]);
+	assert.equal(plan.skipped.length, 2);
+});
+
+test("a Busy block skipped by a title rule never wins over the full-detail copy", async () => {
+	const fetchFeed = mirrorFetch(
+		icsWith(vevent("w-1@example.com", "Busy")),
+		icsWith(vevent("h-1@example.com", "Budget review")),
+	);
+	const plan = await buildSyncPlan(MIRROR_FEEDS, WINDOW, [{ mode: "exact", value: "busy" }], [], fetchFeed, false, [], true);
+	assert.deepEqual(plan.toProcess.map((e) => e.uid), ["h-1@example.com"]);
+	assert.deepEqual(plan.skipped.map((s) => s.reason), ['title matched exact "busy"']);
+});
+
+test("a declined copy is dropped by accepted-only before merging, so it cannot win", async () => {
+	const feeds: FeedConfig[] = [
+		{ name: "Work", url: "https://work.example/feed.ics", invitedAs: "alex.tester@example.com" },
+		{ name: "Home", url: "https://home.example/feed.ics" },
+	];
+	const declined = "ATTENDEE;PARTSTAT=DECLINED:mailto:alex.tester@example.com\n";
+	const fetchFeed = mirrorFetch(
+		icsWith(timedEvent("w-1@example.com", "Budget review", "20260901T140000Z", "20260901T143000Z", declined)),
+		icsWith(vevent("h-1@example.com", "Budget review")),
+	);
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], fetchFeed, true, [], true);
+	assert.deepEqual(plan.toProcess.map((e) => e.uid), ["h-1@example.com"]);
+});

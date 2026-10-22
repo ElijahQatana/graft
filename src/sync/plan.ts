@@ -3,6 +3,7 @@ import { parseIcs } from "../ics/parse.ts";
 import { filterByTitle, type TitleMatchRule } from "../filters/titleMatch.ts";
 import { filterByRsvp } from "../filters/rsvp.ts";
 import { stripTitlePrefixes } from "../util/titlePrefixes.ts";
+import { mergeDuplicates } from "../filters/duplicates.ts";
 import { filterByIgnoreList, type IgnoreListEntry } from "../filters/ignoreList.ts";
 
 export interface FeedConfig {
@@ -35,6 +36,7 @@ export async function buildSyncPlan(
 	fetchFeed: FeedFetcher,
 	acceptedOnly = false,
 	stripPrefixes: string[] = [],
+	mergeAcrossCalendars = false,
 ): Promise<SyncPlan> {
 	const allEvents: CalendarEvent[] = [];
 	const errors: SyncPlan["errors"] = [];
@@ -74,9 +76,14 @@ export async function buildSyncPlan(
 		? filterByRsvp(ignoreFiltered.kept, new Map(feeds.map((feed) => [feed.name, feed.invitedAs ?? ""])))
 		: { kept: ignoreFiltered.kept, skipped: [] };
 
+	// Runs last, so Busy blocks, ignored events and declined copies never win over a real one.
+	const merged = mergeAcrossCalendars
+		? mergeDuplicates(rsvpFiltered.kept, feeds.map((feed) => feed.name))
+		: { kept: rsvpFiltered.kept, skipped: [] };
+
 	return {
-		toProcess: rsvpFiltered.kept,
-		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped, ...rsvpFiltered.skipped],
+		toProcess: merged.kept,
+		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped, ...rsvpFiltered.skipped, ...merged.skipped],
 		errors,
 	};
 }

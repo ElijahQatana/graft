@@ -73,6 +73,8 @@ export interface GraftSettings {
 	strictCompanyLinks: boolean;
 	/** Skip events whose own RSVP is declined, tentative or not yet answered. Needs "invited as". */
 	acceptedOnly: boolean;
+	/** Keep one copy of a meeting that several calendars hold under different UIDs. The earlier calendar wins. */
+	mergeDuplicates: boolean;
 	/** Remove join and dial-in text from the invite description before it is written. */
 	cleanInviteText: boolean;
 	/** Mark future Meeting notes cancelled when their whole series has gone from the feeds. */
@@ -107,6 +109,7 @@ export const DEFAULT_SETTINGS: GraftSettings = {
 	companyLinking: false,
 	strictCompanyLinks: true,
 	acceptedOnly: false,
+	mergeDuplicates: false,
 	cleanInviteText: true,
 	cancelVanishedSeries: false,
 	previewBeforeApply: true,
@@ -208,7 +211,7 @@ export function loadGraftSettings(saved: unknown): GraftSettings {
 	for (const key of ["daysBack", "daysAhead"] as const) {
 		if (typeof input[key] === "number" && isDayCount(input[key])) result[key] = input[key];
 	}
-	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "cleanInviteText", "cancelVanishedSeries", "previewBeforeApply", "autoRunOnStartup"] as const) {
+	for (const key of ["createPersonStubs", "createSeriesStubs", "companyLinking", "strictCompanyLinks", "acceptedOnly", "mergeDuplicates", "cleanInviteText", "cancelVanishedSeries", "previewBeforeApply", "autoRunOnStartup"] as const) {
 		if (typeof input[key] === "boolean") result[key] = input[key];
 	}
 	return result;

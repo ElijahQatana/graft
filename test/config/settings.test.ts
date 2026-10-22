@@ -43,7 +43,7 @@ test("all settings survive JSON persistence without sharing input objects", () =
 		personFilenameRules: [{ domain: "example.com", style: "initialLast" as const }],
 		meetingFilenamePattern: "{{date}} {{title}}", timezone: "Europe/London",
 		daysBack: 0, daysAhead: 60, createPersonStubs: false, createSeriesStubs: false,
-		companyLinking: true, strictCompanyLinks: false, acceptedOnly: true, cleanInviteText: false, cancelVanishedSeries: true, previewBeforeApply: false, autoRunOnStartup: true,
+		companyLinking: true, strictCompanyLinks: false, acceptedOnly: true, mergeDuplicates: true, cleanInviteText: false, cancelVanishedSeries: true, previewBeforeApply: false, autoRunOnStartup: true,
 	};
 	assert.deepEqual(loadGraftSettings(JSON.parse(JSON.stringify(saved))), saved);
 	const loaded = loadGraftSettings(saved);
@@ -83,6 +83,7 @@ test("invalid saved values fall back without affecting valid siblings", () => {
 	assert.equal(loaded.timezone, "UTC");
 	assert.equal(loaded.autoRunOnStartup, false);
 	assert.equal(loaded.acceptedOnly, false);
+	assert.equal(loaded.mergeDuplicates, false);
 	assert.deepEqual(loaded.titleMatchRules, []);
 	assert.deepEqual(loaded.personFilenameRules, []);
 });
