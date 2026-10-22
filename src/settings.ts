@@ -129,7 +129,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			["companyLinking", "Company linking", "Link Person and Meeting notes to existing Company notes. Off by default. Turn on to set the Company folder, type, domain property and strict links."],
 			["strictCompanyLinks", "Strict Company links", "Require Company links to resolve to existing Company notes."],
 			["cleanInviteText", "Clean up invite text", "Remove Teams, Meet and Zoom join links, dial-in numbers and meeting IDs from the invite agenda. Turn off to write the invite description as it arrives."],
-			["cancelVanishedSeries", "Cancel vanished events", "Off by default. When on, a future Meeting note inside the sync window is marked cancelled if its occurrence was dropped from a series that is still in the feeds, or if the whole series is gone. The series note is never changed. A past date or any feed error changes nothing, and notes are never deleted."],
+			["cancelVanishedSeries", "Cancel vanished events", "Off by default. When on, a Meeting note dated anywhere inside the sync window, past or future, is marked cancelled if its occurrence was dropped from a series that is still in the feeds, or if the whole series is gone. The series note is never changed. Dates outside the window and any feed error change nothing, and notes are never deleted. A feed that lists only a short history can cancel notes for days it no longer shows, so keep the window within its history."],
 			["previewBeforeApply", "Preview before apply", "Show planned changes before writing notes."],
 			["autoRunOnStartup", "Sync on startup", "Run Sync now when Obsidian starts. Follows the preview setting."],
 		] as const) {

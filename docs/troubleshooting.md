@@ -65,7 +65,7 @@ Check the preview: the dropped events are under **Skipped events** with their re
 
 ### A note stays cancelled
 
-Graft sets the occurrence status to cancelled when the calendar marks an event cancelled, or when Cancel vanished events is on and a future occurrence has dropped out of the feeds, or a whole series has. It never sets the status back, because it cannot tell that value from one you chose, for example for a meeting you skipped. If an event returns, change the status back by hand.
+Graft sets the occurrence status to cancelled when the calendar marks an event cancelled, or when Cancel vanished events is on and an occurrence inside the sync window, past or future, has dropped out of the feeds, or a whole series has. It never sets the status back, because it cannot tell that value from one you chose, for example for a meeting you skipped. If an event returns, change the status back by hand.
 
 ### Ambiguous Person match
 

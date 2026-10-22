@@ -22,7 +22,7 @@ Graft is still in development. The settings tab, Preview sync, Sync now and Appl
 - It never writes to your calendar. Access is read-only.
 - It has no sign-in or OAuth. The private ICS address is the only credential. On Obsidian 1.11.4 and later, Graft keeps each address in Obsidian's secret storage on your device, not in the plugin's data file. See [Troubleshooting](docs/troubleshooting.md#privacy-and-feed-urls).
 - It makes no AI or LLM calls. All filtering and matching is mechanical.
-- It does not delete notes. If an event disappears from a feed, the preview shows a warning and the note stays. An optional setting can mark a dropped future occurrence cancelled, which changes only its status.
+- It does not delete notes. If an event disappears from a feed, the preview shows a warning and the note stays. An optional setting can mark a dropped occurrence inside the sync window cancelled, which changes only its status.
 - It does not filter by RSVP status unless you turn on **Only events I have accepted**, which is off by default. See [Configuration](docs/configuration.md).
 
 ## Network use and privacy

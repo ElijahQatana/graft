@@ -175,7 +175,6 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 	if (!plan.errors.length) {
 		const seen = [...plan.toProcess, ...plan.skipped.map(({ event }) => event)];
 		const firstDate = day.minus({ days: daysBack }).toISODate()!;
-		const today = day.toISODate()!;
 		const lastDate = day.plus({ days: daysAhead }).toISODate()!;
 		const candidates: Array<{ uid: string; path: string; field: string; before: unknown; seriesPresent: boolean }> = [];
 		for (const meeting of meetings) {
@@ -186,13 +185,13 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			if (!seen.some((event) => matchMeeting(event.uid, event.recurrenceId, [meeting]))) {
 				const field = schema.meeting.occurrenceStatus;
 				const before = meeting.note.frontmatter[field];
-				const eligible = field && date > today && meeting.icsRecurrenceId && before !== schema.statusValues.cancelled;
+				const eligible = field && meeting.icsRecurrenceId && before !== schema.statusValues.cancelled;
 				if (eligible) candidates.push({ uid: meeting.icsUid, path: meeting.path, field, before, seriesPresent: seen.some((event) => event.uid === meeting.icsUid) });
 				else input.warnings.push({ kind: "vanished-event", subject: meeting.path });
 			}
 		}
 		// A dropped occurrence of a series still in the feeds is cancelled on its own. A series counts as gone only when
-		// several of its future dates are missing, never one date or a one-off.
+		// several of its dates in the window are missing, never one date or a one-off.
 		for (const candidate of candidates) {
 			if (candidate.seriesPresent || candidates.filter((other) => other.uid === candidate.uid).length >= 2) {
 				if (settings.cancelVanishedSeries) (input.vanishedCancellations ??= []).push({ path: candidate.path, field: candidate.field, before: candidate.before, after: schema.statusValues.cancelled });
