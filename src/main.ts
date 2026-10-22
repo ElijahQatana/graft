@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from "obsidian";
+import { addIcon, Notice, Platform, Plugin, TFile, type WorkspaceLeaf } from "obsidian";
 import { GraftSettingTab } from "./settings.ts";
 import { DEFAULT_SETTINGS, loadGraftSettings, type GraftSettings } from "./config/settings.ts";
 import { SyncPreviewModal, type LoadedPreview } from "./preview/modal.ts";
@@ -13,6 +13,7 @@ import { countPlannedChanges, FAILURES_BEFORE_WARNING, planFingerprint } from ".
 import { DateTime } from "luxon";
 import { BrowseCache } from "./calendar/cache.ts";
 import { browseSettings } from "./calendar/browse.ts";
+import { GRAFT_ICON_ID, GRAFT_ICON_SVG } from "./icon.ts";
 import { CALENDAR_VIEW_TYPE, CalendarView } from "./calendar/view.ts";
 
 /** Loads settings and connects the sync commands. */
@@ -45,12 +46,13 @@ export default class GraftPlugin extends Plugin {
 		this.addSettingTab(new GraftSettingTab(this.app, this));
 		this.addCommand({ id: "preview-sync", name: "Preview sync", callback: () => { void this.runSync(true); } });
 		this.addCommand({ id: "sync-now", name: "Sync now", callback: () => { void this.runSync(false); } });
+		addIcon(GRAFT_ICON_ID, GRAFT_ICON_SVG);
 		this.registerView(CALENDAR_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CalendarView(leaf, {
 			cache: this.browseCache,
 			timezone: () => this.settings.timezone,
 			openNote: (path) => { void this.openNote(path); },
 		}));
-		this.addRibbonIcon("calendar-days", "Open Graft calendar", () => { void this.openCalendar(); });
+		this.addRibbonIcon(GRAFT_ICON_ID, "Open Graft calendar", () => { void this.openCalendar(); });
 		this.addCommand({ id: "open-calendar", name: "Open calendar", callback: () => { void this.openCalendar(); } });
 		this.app.workspace.onLayoutReady(() => {
 			if (this.settings.autoRunOnStartup) void this.runSync(false);

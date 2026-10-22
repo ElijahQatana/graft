@@ -1,5 +1,6 @@
 import { ItemView, type WorkspaceLeaf } from "obsidian";
 import { initialCalendarState, renderCalendar, type CalendarState } from "../preview/calendarView.ts";
+import { GRAFT_ICON_ID } from "../icon.ts";
 import { updatedLabel, type BrowseCache } from "./cache.ts";
 
 export const CALENDAR_VIEW_TYPE = "graft-calendar";
@@ -22,7 +23,7 @@ export class CalendarView extends ItemView {
 
 	getViewType() { return CALENDAR_VIEW_TYPE; }
 	getDisplayText() { return "Graft calendar"; }
-	getIcon() { return "calendar-days"; }
+	getIcon() { return GRAFT_ICON_ID; }
 
 	async onOpen() {
 		this.disposed = false;
