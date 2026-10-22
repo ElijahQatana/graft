@@ -109,3 +109,7 @@ test("a failed load shows its message inside the view with Refresh still availab
 	assert.ok(elements.some((element) => element.text === "Add a calendar in Graft settings."));
 	assert.ok(elements.some((element) => element.text === "Refresh" && !element.disabled));
 });
+
+test("the calendar view uses the Graft icon", () => {
+	assert.equal(new CalendarView(undefined, {} as any).getIcon(), "graft-logo");
+});

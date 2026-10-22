@@ -272,7 +272,7 @@ async function loadPlugin(canApply = true) {
 	const module: { exports: any } = { exports: {} };
 	runInNewContext(result.outputFiles[0].text, {
 		module, exports: module.exports, Promise, JSON, structuredClone, globalThis: { __applySync: () => state.applySync() },
-		require: () => ({ ItemView: class {}, Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
+		require: () => ({ addIcon() {}, ItemView: class {}, Modal: TrackedModal, Platform: { isMobile: false }, Plugin, Notice, PluginSettingTab: class {}, Setting: class {}, stringifyYaml: (v: unknown) => JSON.stringify(v) }),
 	});
 	const plugin = new module.exports.default();
 	await plugin.loadSettings();

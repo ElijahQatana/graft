@@ -67,7 +67,7 @@ class PluginSettingTab {}
 const feeds = new Map<string, string>();
 let onRequest: (() => void) | undefined;
 class ItemView {}
-const obsidian = { TFile, Modal, Notice, ItemView, Platform: platform, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => (onRequest?.(), { status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
+const obsidian = { addIcon() {}, TFile, Modal, Notice, ItemView, Platform: platform, Plugin, PluginSettingTab, Setting: class {}, parseYaml: JSON.parse, stringifyYaml: (value: any) => JSON.stringify(value) + "\n", requestUrl: async ({ url }: any) => (onRequest?.(), { status: feeds.has(url) ? 200 : 500, text: feeds.get(url) ?? "" }) };
 async function load(entry: string): Promise<any> {
 	const result = await build({ entryPoints: [entry], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
