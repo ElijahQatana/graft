@@ -628,3 +628,13 @@ test("warning subjects show note titles, and leave event titles and names alone"
 	assert.equal(warningSubjectTitle("Design review"), "Design review");
 	assert.equal(warningSubjectTitle("Q3/Q4 planning"), "Q3/Q4 planning");
 });
+
+test("a vanished note the setting would cancel says how to turn it on", () => {
+	const source = fixture();
+	source.warnings = [{ kind: "vanished-event", subject: "Meetings/Dropped.md", wouldCancel: true }, { kind: "vanished-event", subject: "Meetings/Plain.md" }];
+	const modal = new SyncPreviewModal({}, buildSyncPreview(source));
+	modal.onOpen();
+	const text = allElements(modal.contentEl).map((element) => element.text).join("\n");
+	assert.ok(text.includes("Turn on Cancel vanished events to mark it."));
+	assert.ok(text.includes("The note is left as it is."));
+});

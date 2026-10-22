@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import type { CalendarEvent } from "../types.ts";
 import type { FieldChange, PlannedEvent, PreviewWarning } from "./plan.ts";
-import { warningText } from "./summary.ts";
+import { warningMessage } from "./summary.ts";
 
 export interface DetailSource {
 	event: CalendarEvent;
@@ -51,7 +51,7 @@ export function describeChange({ field, before, after }: FieldChange): string {
 export function warningsFor({ event, planned }: DetailSource, warnings: PreviewWarning[]): string[] {
 	return warnings
 		.filter((warning) => warning.subject === planned?.path || warning.subject === event.summary)
-		.map((warning) => warningText[warning.kind]);
+		.map(warningMessage);
 }
 
 /** The rows shown for a selected event. Rows with nothing to say are left out. */

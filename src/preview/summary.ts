@@ -42,6 +42,13 @@ export const warningText: Record<PreviewWarning["kind"], string> = {
 	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
 
+const VANISHED_OFF_TEXT = "No longer in the calendar feed. It may have been cancelled. Turn on Cancel vanished events to mark it.";
+
+/** The text for one warning. A note the setting would cancel says so while the setting is off. */
+export function warningMessage(warning: PreviewWarning): string {
+	return warning.kind === "vanished-event" && warning.wouldCancel ? VANISHED_OFF_TEXT : warningText[warning.kind];
+}
+
 /** From this many notes missing from the feed, the preview shows one grouped warning instead of one per note. */
 export const GROUPED_VANISHED_MIN = 6;
 

@@ -1,6 +1,6 @@
 import { Modal, type App } from "obsidian";
 import type { PreviewWarning, SyncPreview } from "./plan.ts";
-import { buildRangeText, buildSummary, buildWindowLabel, count, GROUPED_VANISHED_MIN, groupedVanishedText, warningSubjectTitle, warningText } from "./summary.ts";
+import { buildRangeText, buildSummary, buildWindowLabel, count, GROUPED_VANISHED_MIN, groupedVanishedText, warningMessage, warningSubjectTitle } from "./summary.ts";
 import { noteTitle } from "../util/vaultPath.ts";
 import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
@@ -221,7 +221,7 @@ export class SyncPreviewModal extends Modal {
 			}
 			for (const warning of warnings) {
 				if (grouped && warning.kind === "vanished-event") continue;
-				addWarning(section, warning, warningText[warning.kind]);
+				addWarning(section, warning, warningMessage(warning));
 			}
 		}
 		if (errors.length) {
