@@ -337,7 +337,7 @@
 	gap: var(--size-4-2);
 }
 
-.graft-cal-step,
+button.graft-cal-step,
 .graft-segmented .graft-segment {
 	box-sizing: border-box;
 	height: var(--input-height);
@@ -347,7 +347,7 @@
 	line-height: 1;
 }
 
-.graft-cal-step {
+button.graft-cal-step {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	background: var(--interactive-normal);
@@ -356,23 +356,23 @@
 	cursor: var(--cursor);
 }
 
-.graft-cal-step:hover:not(:disabled) {
+button.graft-cal-step:hover:not(:disabled) {
 	background: var(--interactive-hover);
 	box-shadow: var(--input-shadow-hover);
 }
 
-.graft-cal-step:active:not(:disabled) {
+button.graft-cal-step:active:not(:disabled) {
 	background: var(--background-modifier-active-hover);
 	box-shadow: none;
 }
 
-.graft-cal-step:focus-visible,
+button.graft-cal-step:focus-visible,
 .graft-segmented .graft-segment:focus-visible {
 	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
 	outline: none;
 }
 
-.graft-cal-step:disabled {
+button.graft-cal-step:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	box-shadow: none;
@@ -540,7 +540,7 @@
 	--graft-cal-edge: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 65%, var(--background-primary));
 }
 
-.graft-cal-event {
+.graft-cal button.graft-cal-event {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
@@ -561,11 +561,11 @@
 	white-space: normal;
 }
 
-.graft-cal-event:hover {
+.graft-cal button.graft-cal-event:hover {
 	background-color: var(--graft-cal-fill-strong);
 }
 
-.graft-cal-event.is-timed {
+.graft-cal button.graft-cal-event.is-timed {
 	position: absolute;
 	box-sizing: border-box;
 	justify-content: flex-start;
@@ -574,36 +574,36 @@
 	line-height: 1.25;
 }
 
-.graft-cal-event.is-timed.is-inline {
+.graft-cal button.graft-cal-event.is-timed.is-inline {
 	flex-direction: row;
 	align-items: baseline;
 	gap: var(--size-4-1);
 }
 
-.graft-cal-event.is-timed:hover,
-.graft-cal-event.is-timed.is-selected {
+.graft-cal button.graft-cal-event.is-timed:hover,
+.graft-cal button.graft-cal-event.is-timed.is-selected {
 	z-index: 1;
 }
 
-.graft-cal-event .graft-cal-time {
+.graft-cal button.graft-cal-event .graft-cal-time {
 	flex: 0 0 auto;
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 }
 
-.graft-cal-event .graft-cal-title {
+.graft-cal button.graft-cal-event .graft-cal-title {
 	max-width: 100%;
 	overflow-wrap: anywhere;
 	font-weight: var(--font-medium);
 }
 
-.graft-cal-event.is-timed .graft-cal-title {
+.graft-cal button.graft-cal-event.is-timed .graft-cal-title {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
 }
 
-.graft-cal-event.is-timed.is-inline .graft-cal-title {
+.graft-cal button.graft-cal-event.is-timed.is-inline .graft-cal-title {
 	display: block;
 	flex: 1 1 auto;
 	min-width: 0;
@@ -612,31 +612,31 @@
 	white-space: nowrap;
 }
 
-.graft-cal-event.is-timed .graft-cal-time {
+.graft-cal button.graft-cal-event.is-timed .graft-cal-time {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.graft-cal-event.is-selected {
+.graft-cal button.graft-cal-event.is-selected {
 	z-index: 1;
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: -1px;
 	background-color: var(--graft-cal-fill-strong);
 }
 
-.graft-cal-event:focus-visible {
+.graft-cal button.graft-cal-event:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 1px;
 }
 
-.graft-cal-event.is-continued {
+.graft-cal button.graft-cal-event.is-continued {
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
 }
 
-.graft-cal-event.is-continuing {
+.graft-cal button.graft-cal-event.is-continuing {
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
 }
@@ -657,7 +657,7 @@
 	--graft-cal-color: var(--text-faint);
 }
 
-.graft-cal-event.graft-cal-skipped {
+.graft-cal button.graft-cal-event.graft-cal-skipped {
 	border-style: dashed;
 	border-color: var(--text-faint);
 	background-color: color-mix(in srgb, var(--text-faint) 10%, var(--background-primary));
@@ -665,7 +665,7 @@
 	color: var(--text-muted);
 }
 
-.graft-cal-event.graft-cal-skipped.is-selected {
+.graft-cal button.graft-cal-event.graft-cal-skipped.is-selected {
 	border-color: transparent;
 }
 
