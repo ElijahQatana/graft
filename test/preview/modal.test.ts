@@ -71,7 +71,7 @@ test("modal displays each section as literal text and never shows raw feed error
 	modal.onOpen();
 	const elements = allElements(modal.contentEl);
 	const text = elements.map((element) => element.text).join("\n");
-	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "This occurrence is missing from the feed and may have been cancelled", "People/Pat Example 2.md and People/Pat Example.md: Possible duplicate Person", "Meetings/Existing.md: No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
+	for (const expected of ["Dry run", "New Meeting notes", "Existing Meeting notes", "Old title", "New title", "New Person stubs", "New Series stubs", "Skipped example: Ignored", "Unresolved Company link", "Ambiguous Person match", "This occurrence is missing from the feed and may have been cancelled", "Pat Example 2 and Pat Example", "People/Pat Example 2.md and People/Pat Example.md", "Existing", "Meetings/Existing.md", "No invite agenda heading", "preview is incomplete", source.plan.toProcess[0].summary]) assert.ok(text.includes(expected), expected);
 	assert.equal(text.includes("synthetic private response"), false);
 	assert.deepEqual(elements.filter((element) => element.tag === "button").map((element) => element.text), ["List", "Calendar", "Close"]);
 	modal.onOpen();
@@ -186,8 +186,10 @@ test("summary and note rows use singular for one and plural for zero or many", (
 	preview.updates = [0, 1, 2].map((n) => ({ path: `Meetings/R${n}.md`, changes: Array.from({ length: n }, (_: unknown, i: number) => ({ field: `f${i}`, before: "a", after: "b" })) }));
 	const modal = new SyncPreviewModal({}, preview);
 	modal.onOpen();
-	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary" && element.text.startsWith("Meetings/")).map((element) => element.text);
-	assert.deepEqual(rows, ["Meetings/R1.md (1 change)", "Meetings/R2.md (2 changes)", "Meetings/R0.md (0 changes)"]);
+	const rows = allElements(modal.contentEl).filter((element) => element.tag === "summary" && element.children[0]?.cls?.startsWith("graft-item-title")).map((element) => element.children.map((child: any) => child.text).join(""));
+	assert.deepEqual(rows, ["R1 (1 change)", "R2 (2 changes)", "R0 (0 changes)"]);
+	const titles = allElements(modal.contentEl).filter((element) => element.cls?.startsWith("graft-item-title")).map((element) => element.attr.title);
+	assert.deepEqual(titles, ["Meetings/R1.md", "Meetings/R2.md", "Meetings/R0.md"]);
 });
 
 test("preview new-note payload matches writeMeetingNote directly", async () => {
@@ -397,7 +399,7 @@ test("calendar view shows kept and skipped events, ranges, and detail lines", ()
 	assert.deepEqual(skipped.children.map((child: any) => child.text), ["Dropped sync", "16:00"]);
 	assert.ok(texts(modal).includes("Select an event to see its note and what will change."));
 	kept.listeners.click();
-	assert.ok(texts(modal).some((text) => text.startsWith("Kept sync: new note at Meetings/")));
+	assert.ok(texts(modal).some((text) => text.startsWith("Kept sync: new note ")));
 	allElements(modal.contentEl).find((element) => String(element.cls).includes("graft-cal-event graft-cal-skipped")).listeners.click();
 	assert.ok(texts(modal).includes("Dropped sync: skipped. Ignored by title rule"));
 	click(modal, "Next");
@@ -603,4 +605,15 @@ test("a preview opened before its plan shows a spinner, then the plan; closing i
 	early.ready(rangePreview(1, 1));
 	assert.equal(early.isClosed, true);
 	assert.equal(texts(early).includes("Apply"), false);
+});
+
+test("warning subjects show note titles, and leave event titles and names alone", async () => {
+	const { warningSubjectTitle } = await import("../../src/preview/summary.ts");
+	const { noteTitle } = await import("../../src/util/vaultPath.ts");
+	assert.equal(noteTitle("Meetings/Sub/Dev Sync 2026-10-21 2.md"), "Dev Sync 2026-10-21 2");
+	assert.equal(noteTitle("Plain.md"), "Plain");
+	assert.equal(warningSubjectTitle("Meetings/Dev Sync 2026-10-21.md"), "Dev Sync 2026-10-21");
+	assert.equal(warningSubjectTitle("People/A.md and Other/B.md"), "A and B");
+	assert.equal(warningSubjectTitle("Design review"), "Design review");
+	assert.equal(warningSubjectTitle("Q3/Q4 planning"), "Q3/Q4 planning");
 });

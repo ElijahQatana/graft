@@ -11,3 +11,9 @@ export function uniqueName(base: string, isTaken: (name: string) => boolean): st
 	for (let count = 2; isTaken(name); count++) name = `${base} ${count}`;
 	return name;
 }
+
+/** The note's file name without its folder and `.md` extension, for display. */
+export function noteTitle(path: string): string {
+	const name = path.slice(path.lastIndexOf("/") + 1);
+	return name.endsWith(".md") ? name.slice(0, -3) : name;
+}

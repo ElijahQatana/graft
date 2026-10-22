@@ -1,6 +1,7 @@
 import { Modal, type App } from "obsidian";
 import type { SyncPreview } from "./plan.ts";
-import { buildRangeText, buildSummary, buildWindowLabel, count, warningText } from "./summary.ts";
+import { buildRangeText, buildSummary, buildWindowLabel, count, warningSubjectTitle, warningText } from "./summary.ts";
+import { noteTitle } from "../util/vaultPath.ts";
 import { MAX_RANGE_DAYS, rangeDays, type SyncRange } from "../sync/range.ts";
 import { addRangeControl, draftOf, type RangeDraft } from "./rangeControl.ts";
 import { addSegmented, initialCalendarState, renderCalendar, type CalendarState } from "./calendarView.ts";
@@ -147,8 +148,9 @@ export class SyncPreviewModal extends Modal {
 			const section = addSection(body, "New Meeting notes", newMeetings.length, true);
 			for (const { path, note } of newMeetings) {
 				const details = section.createEl("details", { cls: "graft-item" });
-				details.createEl("summary", { text: path });
+				addNoteSummary(details, path);
 				const content = details.createEl("div", { cls: "graft-item-body" });
+				addPath(content, path);
 				showFields(content, note.frontmatter);
 				content.createEl("pre", { text: note.body, cls: "graft-note-body" });
 			}
@@ -160,8 +162,9 @@ export class SyncPreviewModal extends Modal {
 			const section = addSection(body, title, items.length, open);
 			for (const { path, changes } of items) {
 				const details = section.createEl("details", { cls: changes.length ? "graft-item" : "graft-item graft-item-clean" });
-				details.createEl("summary", { text: `${path} (${count(changes.length, "change")})` });
+				addNoteSummary(details, path, count(changes.length, "change"));
 				const content = details.createEl("div", { cls: "graft-item-body" });
+				addPath(content, path);
 				if (!changes.length) content.createEl("p", { text: "No field changes.", cls: "graft-muted" });
 				else {
 					const table = content.createEl("div", { cls: "graft-scroll" }).createEl("table", { cls: "graft-changes" });
@@ -181,8 +184,9 @@ export class SyncPreviewModal extends Modal {
 			const section = addSection(body, label, stubs.length, true);
 			for (const { path, stub, body: stubBody } of stubs) {
 				const details = section.createEl("details", { cls: "graft-item" });
-				details.createEl("summary", { text: path });
+				addNoteSummary(details, path);
 				const content = details.createEl("div", { cls: "graft-item-body" });
+				addPath(content, path);
 				showFields(content, stub.frontmatter);
 				if (stubBody) content.createEl("pre", { text: stubBody, cls: "graft-note-body" });
 			}
@@ -193,7 +197,16 @@ export class SyncPreviewModal extends Modal {
 		}
 		if (warnings.length) {
 			const section = addSection(body, "Warnings", warnings.length, true);
-			for (const warning of warnings) section.createEl("p", { text: `${warning.subject}: ${warningText[warning.kind]}`, cls: "graft-note graft-note-warning" });
+			for (const warning of warnings) {
+				const short = warningSubjectTitle(warning.subject);
+				const note = section.createEl("p", { cls: "graft-note graft-note-warning" });
+				if (short === warning.subject) note.setText(`${warning.subject}: ${warningText[warning.kind]}`);
+				else {
+					note.createEl("span", { text: short, attr: { title: warning.subject } });
+					note.createEl("span", { text: ` (${warning.subject})`, cls: "graft-sr-only" });
+					note.createEl("span", { text: `: ${warningText[warning.kind]}` });
+				}
+			}
 		}
 		if (errors.length) {
 			const section = addSection(body, "Calendar errors", errors.length, true);
@@ -217,6 +230,17 @@ export class SyncPreviewModal extends Modal {
 		this.contentEl.empty();
 		if (!this.applying) this.done?.();
 	}
+}
+
+/** The row shows the note title on one line, with the full path as a tooltip. The path is also listed in the expanded details. */
+function addNoteSummary(details: HTMLElement, path: string, suffix?: string) {
+	const summary = details.createEl("summary");
+	summary.createEl("span", { text: noteTitle(path), cls: suffix ? "graft-item-title graft-item-title-counted" : "graft-item-title", attr: { title: path } });
+	if (suffix) summary.createEl("span", { text: ` (${suffix})` });
+}
+
+function addPath(content: HTMLElement, path: string) {
+	content.createEl("p", { text: path, cls: "graft-muted graft-item-path" });
 }
 
 /** A collapsible section with its count in the heading. Returns the element to fill. */

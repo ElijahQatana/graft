@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { noteTitle } from "../util/vaultPath.ts";
 import type { PreviewWarning, PreviewWindow, SyncPreview } from "./plan.ts";
 
 /** Picks the singular form for exactly one, the plural otherwise (zero included). */
@@ -40,3 +41,11 @@ export const warningText: Record<PreviewWarning["kind"], string> = {
 	"vanished-event": "This occurrence is missing from the feed and may have been cancelled. The series is not affected, and nothing is written to the note.",
 	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
+
+/** A warning subject is a note path, an event title, or two note paths joined by " and ". Paths are shortened to their note titles. */
+export function warningSubjectTitle(subject: string): string {
+	return subject.split(".md and ").map((part, index, parts) => {
+		const path = index < parts.length - 1 ? `${part}.md` : part;
+		return path.endsWith(".md") ? noteTitle(path) : path;
+	}).join(" and ");
+}
