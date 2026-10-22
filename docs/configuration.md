@@ -201,12 +201,14 @@ Off by default. With it off, a Meeting note whose event is missing from the feed
 When on, Graft sets the occurrence status property to the schema's cancelled value on a note that meets all of these:
 
 - it belongs to a recurring event, so it has a recurrence ID,
-- it is dated after today and inside the sync window,
+- it is dated inside the sync window, whether that is in the past, today or the future,
 - it belongs to one of your configured calendars,
 - it is not already cancelled,
-- either its event UID is still in the feeds for that window, so only this occurrence was dropped, or the UID is gone and at least two of its future dates are missing, so the whole series is gone.
+- either its event UID is still in the feeds for that window, so only this occurrence was dropped, or the UID is gone and at least two of its dates in the window are missing, so the whole series is gone.
 
 Only the status of that occurrence note changes. The Series note is never touched, and handwritten text in the note is kept. A one-off event, an event without a UID, or a single missing date of a series that is also gone from the feeds only gets a warning.
+
+Any date inside the sync window can be cancelled, and nothing outside it is touched. A feed that only publishes a short history can therefore cancel notes for days it no longer lists, so keep the window within what your feed covers. If you are unsure, leave this off.
 
 Nothing changes when any feed failed to load. Notes are never deleted or moved. The change is listed in the preview like any other update. A missing event can be a feed or search artifact, so leave this off unless you want it.
 
