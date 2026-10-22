@@ -221,7 +221,7 @@ test("vanished events are checked against every configured calendar's identity",
 	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event")), [{ kind: "vanished-event", subject: "Meetings/Gone.md" }]);
 });
 
-test("a vanished series is marked cancelled only when the setting is on and every guard rail holds", async () => {
+test("a vanished event or series is marked cancelled only when the setting is on and every guard rail holds", async () => {
 	const meeting = (uid: string, date: string, extra: any = {}) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled", ...extra }, "## Invite Agenda\n\nOld");
 	const setup = () => {
 		const f = fixture();
@@ -239,17 +239,23 @@ test("a vanished series is marked cancelled only when the setting is on and ever
 	const f = setup();
 	const prepared = await prepareSync(f.app, f.settings, feed, now);
 	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.path === "Meetings/Gone.md")), [{ path: "Meetings/Gone.md", changes: [{ field: "occurrence_status", before: "Scheduled", after: "Cancelled" }] }]);
-	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/OneOff.md", "Meetings/Partial.md", "Meetings/Single.md", "Meetings/Today.md"]);
+	assert.deepEqual(clean(prepared.preview.warnings.filter((item: any) => item.kind === "vanished-event").map((item: any) => item.subject).sort()), ["Meetings/OneOff.md", "Meetings/Single.md", "Meetings/Today.md"]);
+	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.path === "Meetings/Partial.md")), [{ path: "Meetings/Partial.md", changes: [{ field: "occurrence_status", before: "Scheduled", after: "Cancelled" }] }]);
 	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Partial.md")).occurrence_status, "Cancelled");
+	assert.equal(fields(f.texts.get("Meetings/Partial.md")).ics_uid, "here@example.com");
 	assert.equal(fields(f.texts.get("Meetings/Gone.md")).occurrence_status, "Cancelled");
 	assert.equal(fields(f.texts.get("Meetings/Gone 2.md")).occurrence_status, "Cancelled");
-	for (const path of ["Meetings/Single.md", "Meetings/OneOff.md", "Meetings/Today.md", "Meetings/Partial.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
+	for (const path of ["Meetings/Single.md", "Meetings/OneOff.md", "Meetings/Today.md", "Meetings/Far.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
 	assert.ok(f.files.has("Meetings/Gone.md"));
 	const off = setup();
 	off.settings.cancelVanishedSeries = false;
 	const plain = await prepareSync(off.app, off.settings, feed, now);
 	assert.equal(plain.preview.updates.some((item: any) => item.path === "Meetings/Gone.md"), false);
 	assert.ok(plain.preview.warnings.some((item: any) => item.subject === "Meetings/Gone.md"));
+	assert.equal(plain.preview.updates.some((item: any) => item.path === "Meetings/Partial.md"), false);
+	assert.deepEqual(clean(plain.preview.warnings.filter((item: any) => item.wouldCancel).map((item: any) => item.subject).sort()), ["Meetings/Gone 2.md", "Meetings/Gone.md", "Meetings/Partial.md"]);
+	assert.equal(plain.preview.warnings.find((item: any) => item.subject === "Meetings/Single.md").wouldCancel, undefined);
 	const failed = setup();
 	const broken = await prepareSync(failed.app, failed.settings, async () => { throw new Error("Synthetic feed failure"); }, now);
 	assert.equal(broken.preview.updates.some((item: any) => item.path === "Meetings/Gone.md"), false);
@@ -304,7 +310,7 @@ test("vanished-event warnings follow the range of the preview, on both edges", a
 	assert.deepEqual(await vanished(), []);
 });
 
-test("a narrower or wider range never cancels a series with an occurrence in range and one out", async () => {
+test("a narrower or wider range cancels only the dates inside it", async () => {
 	const meeting = (uid: string, date: string, extra: any = {}) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled", ...extra }, "## Invite Agenda\n\nOld");
 	const setup = () => {
 		const f = fixture();
@@ -321,11 +327,11 @@ test("a narrower or wider range never cancels a series with an occurrence in ran
 		const prepared = await prepareSync(f.app, f.settings, feed, now, range);
 		return { cancelled: prepared.preview.updates.some((item: any) => item.path === path && item.changes.some((change: any) => change.after === "Cancelled")), warned: prepared.preview.warnings.some((item: any) => item.subject === path) };
 	};
-	// 6 Oct is the last day of this range: the series still has occurrences seen, so only a warning.
-	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Series Later.md"), { cancelled: false, warned: true });
+	// 6 Oct is the last day of this range: the series is still in the feeds but this date was dropped, so only it is cancelled.
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Series Later.md"), { cancelled: true, warned: false });
 	// 6 Oct is one day past the range: nothing is said about it.
 	assert.deepEqual(await status({ daysBack: 0, daysAhead: 1 }, "Meetings/Series Later.md"), { cancelled: false, warned: false });
-	assert.deepEqual(await status({ daysBack: 0, daysAhead: 29 }, "Meetings/Series Later.md"), { cancelled: false, warned: true });
+	assert.deepEqual(await status({ daysBack: 0, daysAhead: 29 }, "Meetings/Series Later.md"), { cancelled: true, warned: false });
 	// A series with nothing left is cancelled only when two of its dates are inside the range.
 	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone 6.md"), { cancelled: true, warned: false });
 	assert.deepEqual(await status({ daysBack: 0, daysAhead: 2 }, "Meetings/Gone 5.md"), { cancelled: true, warned: false });
@@ -1078,4 +1084,30 @@ test("Automatic shows, logs and counts any other failure, and the third one show
 	await f.plugin.scheduledCheck();
 	assert.equal(itemText(readyItems()[0]), "Graft: the last check failed");
 	f.app.vault.create = create;
+});
+
+test("a dropped occurrence is cancelled alone, and cancelled, past or one-off notes are left", async () => {
+	const meeting = (uid: string, date: string, extra: any = {}) => note({ type: "Meeting", ics_uid: uid, title: uid, date, invited_as: "one@example.com", occurrence_status: "Scheduled", ...extra }, "## Invite Agenda\n\nMy own notes");
+	const f = fixture();
+	f.settings.cancelVanishedSeries = true;
+	f.settings.daysBack = 2;
+	f.put("Meetings/Dropped.md", meeting("series@example.com", "2026-10-06", { ics_recurrence_id: "20261006T140000Z" }));
+	f.put("Meetings/Past.md", meeting("series@example.com", "2026-10-03", { ics_recurrence_id: "20261003T140000Z" }));
+	f.put("Meetings/Done.md", meeting("series@example.com", "2026-10-05", { ics_recurrence_id: "20261005T140000Z", occurrence_status: "Cancelled" }));
+	f.put("Meetings/Outside.md", meeting("series@example.com", "2026-10-20", { ics_recurrence_id: "20261020T140000Z" }));
+	f.put("Meetings/Series.md", note({ type: "Series", ics_uid: "series@example.com", title: "Series" }));
+	f.put("Meetings/OneOff.md", meeting("series@example.com", "2026-10-06"));
+	const feed = async () => calendar("series@example.com", "Series", "RRULE:FREQ=DAILY;COUNT=1\r\n");
+	const prepared = await prepareSync(f.app, f.settings, feed, now);
+	assert.deepEqual(clean(prepared.preview.updates.filter((item: any) => item.changes.some((change: any) => change.field === "occurrence_status")).map((item: any) => item.path)), ["Meetings/Dropped.md"]);
+	assert.deepEqual(clean(prepared.preview.warnings.map((item: any) => item.subject).sort()), ["Meetings/Done.md", "Meetings/OneOff.md", "Meetings/Past.md"]);
+	await applySync(f.app, prepared);
+	assert.equal(fields(f.texts.get("Meetings/Dropped.md")).occurrence_status, "Cancelled");
+	assert.ok(f.texts.get("Meetings/Dropped.md").includes("My own notes"));
+	for (const path of ["Meetings/Past.md", "Meetings/Outside.md", "Meetings/OneOff.md"]) assert.equal(fields(f.texts.get(path)).occurrence_status, "Scheduled");
+	assert.equal(fields(f.texts.get("Meetings/Series.md")).occurrence_status, undefined);
+	assert.ok(f.files.has("Meetings/Dropped.md"));
+	const broken = await prepareSync(f.app, f.settings, async () => { throw new Error("Synthetic feed failure"); }, now);
+	assert.equal(broken.canApply, false);
+	assert.equal(broken.preview.updates.length, 0);
 });

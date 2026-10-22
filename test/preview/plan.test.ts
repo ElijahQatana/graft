@@ -97,7 +97,7 @@ test("unchanged agenda text preserves existing body spacing", () => {
 	assert.equal(changes.length, 0);
 });
 
-test("explicit cancellation is shown but vanished events are warnings only", () => {
+test("explicit cancellation is shown as a field change and vanished events stay warnings in the plan", () => {
 	const source = fixture();
 	source.plan.toProcess[0].status = "CANCELLED";
 	source.meetings[0].existing = { path: "Meetings/Original.md", frontmatter: { ...buildMeetingFrontmatterUpdate(source.meetings[0].input, []), occurrence_status: "Scheduled" }, body: "## Invite Agenda\n\nNew agenda" };

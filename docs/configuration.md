@@ -13,7 +13,7 @@ Open Graft in Obsidian's settings. For a first-run walk-through, see [Getting st
 - [Sync behavior](#sync-behavior)
 - [Scheduled sync](#scheduled-sync)
 - [Sync log note](#sync-log-note)
-- [Cancel vanished series](#cancel-vanished-series)
+- [Cancel vanished events](#cancel-vanished-events)
 - [Company linking](#company-linking)
 - [Note schema](#note-schema)
 - [Where feed URLs are stored](#where-feed-urls-are-stored)
@@ -135,7 +135,7 @@ The ignore list format is described in [Troubleshooting](troubleshooting.md#igno
 | Sync on startup | off |
 | Company linking | off |
 | Only events I have accepted | off |
-| Cancel vanished series | off |
+| Cancel vanished events | off |
 | Scheduled sync | off |
 
 **Person filenames.** Ordered domain rules for full name, first name, or initial and last name. The first match wins. Unlisted domains use full names.
@@ -160,7 +160,7 @@ After three failed checks in a row, the status bar says the last check failed. O
 
 ### Automatic
 
-Use it only once you trust your setup. Set a **Sync log note** so you can see what each run wrote. Selecting Automatic without one shows a reminder. It includes Cancel vanished series if you turned that on.
+Use it only once you trust your setup. Set a **Sync log note** so you can see what each run wrote. Selecting Automatic without one shows a reminder. It includes Cancel vanished events if you turned that on.
 
 - It never applies a plan blocked by a calendar error or an ambiguous Person.
 - A plan of more than the **Automatic run limit** notes (default 25, 1 to 500) is left for you to review, and announced like Notify.
@@ -182,15 +182,19 @@ Each entry has:
 
 Runs that change nothing are not logged. The newest 200 entries are kept, and feed addresses are never written. The note must be outside the Meeting, Person, Series and Company folders. A problem writing the log never stops a sync.
 
-## Cancel vanished series
+## Cancel vanished events
 
-Off by default. With it off, a Meeting note whose event is missing from the feeds only gets a warning in the preview.
+Off by default. With it off, a Meeting note whose event is missing from the feeds only gets a warning in the preview. The warning says when turning the setting on would mark the note.
 
 When on, Graft sets the occurrence status property to the schema's cancelled value on a note that meets all of these:
 
+- it belongs to a recurring event, so it has a recurrence ID,
 - it is dated after today and inside the sync window,
-- its event UID no longer appears anywhere in the feeds for that window,
-- it belongs to a recurring event with at least two missing future dates. A one-off, or a single missing date, is never cancelled.
+- it belongs to one of your configured calendars,
+- it is not already cancelled,
+- either its event UID is still in the feeds for that window, so only this occurrence was dropped, or the UID is gone and at least two of its future dates are missing, so the whole series is gone.
+
+Only the status of that occurrence note changes. The Series note is never touched, and handwritten text in the note is kept. A one-off event, an event without a UID, or a single missing date of a series that is also gone from the feeds only gets a warning.
 
 Nothing changes when any feed failed to load. Notes are never deleted or moved. The change is listed in the preview like any other update. A missing event can be a feed or search artifact, so leave this off unless you want it.
 
@@ -254,7 +258,7 @@ Use a Markdown heading such as `## Invite Agenda`. If an existing Meeting note h
 
 Each value must be non-empty, the two status values must differ, and so must the two recurrence values. Changing a value does not rewrite notes you already have.
 
-An update sets the cancelled status only on an explicit cancellation. A live event leaves the existing status alone. A note marked cancelled, whether by the calendar or by Cancel vanished series, is not set back to scheduled if the event returns, because Graft cannot tell that status from one you set yourself. Change it back by hand.
+An update sets the cancelled status only on an explicit cancellation. A live event leaves the existing status alone. A note marked cancelled, whether by the calendar or by Cancel vanished events, is not set back to scheduled if the event returns, because Graft cannot tell that status from one you set yourself. Change it back by hand.
 
 ### Empty agenda placeholder
 

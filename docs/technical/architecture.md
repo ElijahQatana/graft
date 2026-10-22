@@ -27,4 +27,4 @@ ICS feeds -> parse -> filter -> plan -> resolve notes -> preview -> apply
 
 `src/sync/flow.ts` resolves the filtered plan against note snapshots. Preview and Apply share those inputs. Apply checks snapshots and destination paths before writing, and repeat sync skips unchanged notes.
 
-The preview shows new notes, field diffs, stubs, skips, and warnings. Calendar failures and ambiguous Person matches block Apply. Missing events are warnings, not inferred cancellations. Real-feed preview/apply comparison is pending.
+The preview shows new notes, field diffs, stubs, skips, and warnings. Calendar failures and ambiguous Person matches block Apply. Missing events are warnings, not inferred cancellations, unless Cancel vanished events is on: then a future occurrence dropped from the feeds is marked cancelled, and only its status changes. Real-feed preview/apply comparison is pending.

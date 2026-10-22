@@ -55,7 +55,7 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 
 ### A note stays cancelled
 
-Graft sets the occurrence status to cancelled when the calendar marks an event cancelled, or when Cancel vanished series is on and a whole series has gone from the feeds. It never sets the status back, because it cannot tell that value from one you chose, for example for a meeting you skipped. If an event returns, change the status back by hand.
+Graft sets the occurrence status to cancelled when the calendar marks an event cancelled, or when Cancel vanished events is on and a future occurrence has dropped out of the feeds, or a whole series has. It never sets the status back, because it cannot tell that value from one you chose, for example for a meeting you skipped. If an event returns, change the status back by hand.
 
 ### Ambiguous Person match
 

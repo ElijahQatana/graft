@@ -17,6 +17,8 @@ export interface PreviewWarning {
 	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading" | "possible-duplicate-person";
 	/** A note path or event title for local display. A possible duplicate names the new stub and the existing note. */
 	subject: string;
+	/** On a vanished-event warning: the note would be marked cancelled if Cancel vanished events were on. */
+	wouldCancel?: boolean;
 }
 
 /** Which optional features are on, so the summary lists only those. */
@@ -50,7 +52,7 @@ export interface PreviewInput {
 	meetingFolder: string;
 	filenamePattern?: string;
 	strictCompanyLinks?: boolean;
-	/** Meeting notes to mark cancelled because their series vanished from the feeds. */
+	/** Meeting notes to mark cancelled because their occurrence, or the whole series, vanished from the feeds. */
 	vanishedCancellations?: Array<{ path: string; field: string; before: unknown; after: string }>;
 	/** Matching and feed-coverage warnings supplied by the resolver. */
 	warnings: PreviewWarning[];
