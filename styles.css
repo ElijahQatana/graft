@@ -330,8 +330,14 @@
 }
 
 .graft-cal-range {
-	flex: 1 1 auto;
+	flex: 1 1 8rem;
+	min-width: 0;
 	font-weight: var(--font-medium);
+}
+
+.graft-cal-zone-note {
+	flex: 1 1 100%;
+	font-size: var(--font-ui-smaller);
 }
 
 .graft-cal-scroll {
@@ -344,9 +350,10 @@
 
 .graft-cal-grid {
 	--graft-cal-hour-height: 3rem;
-	--graft-cal-head-height: 2rem;
+	--graft-cal-head-height: 2.25rem;
+	--graft-cal-line: color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
 	display: grid;
-	grid-template-columns: 2.75rem repeat(var(--graft-cal-days, 3), minmax(0, 1fr));
+	grid-template-columns: 3rem repeat(var(--graft-cal-days, 3), minmax(0, 1fr));
 	grid-template-rows: var(--graft-cal-head-height) auto calc(var(--graft-cal-hours) * var(--graft-cal-hour-height));
 }
 
@@ -359,11 +366,11 @@
 }
 
 .graft-cal-day {
-	border-left: 1px solid var(--background-modifier-border);
+	border-left: 1px solid var(--graft-cal-line);
 }
 
-.graft-cal-day.is-today .graft-cal-day-head {
-	color: var(--interactive-accent);
+.graft-cal-day.is-today .graft-cal-day-body {
+	background-color: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
 }
 
 .graft-cal-day-head,
@@ -376,28 +383,50 @@
 .graft-cal-day-head {
 	top: 0;
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--size-4-1);
 	min-width: 0;
-	padding: var(--size-4-1) var(--size-4-1);
+	padding: 0 var(--size-4-2);
+	border-bottom: 1px solid var(--graft-cal-line);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
+	line-height: 1;
+}
+
+.graft-cal-day-name {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
 
 .graft-cal-day-num {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.6em;
+	height: 1.6em;
+	padding: 0 0.2em;
+	border-radius: var(--radius-l);
 	color: var(--text-normal);
 	font-size: var(--font-ui-medium);
 	font-weight: var(--font-semibold);
 }
 
-.graft-cal-zone {
-	justify-content: flex-end;
-	white-space: nowrap;
+.graft-cal-day.is-today .graft-cal-day-name {
+	color: var(--interactive-accent);
 }
 
-.graft-cal-zone-note {
-	flex: 1 1 100%;
-	font-size: var(--font-ui-smaller);
+.graft-cal-day.is-today .graft-cal-day-num {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.graft-cal-zone {
+	justify-content: flex-end;
+	overflow: hidden;
+	padding: 0 var(--size-4-1);
+	color: var(--text-faint);
+	font-size: calc(var(--font-ui-smaller) * 0.85);
+	white-space: nowrap;
 }
 
 .graft-cal-allday {
@@ -406,13 +435,13 @@
 	flex-direction: column;
 	gap: 2px;
 	padding: 0 2px 2px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--graft-cal-line);
 }
 
 .graft-cal-day-body,
 .graft-cal-gutter-body {
 	position: relative;
-	background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--graft-cal-hour-height) - 1px), var(--background-modifier-border) calc(var(--graft-cal-hour-height) - 1px), var(--background-modifier-border) var(--graft-cal-hour-height));
+	background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--graft-cal-hour-height) - 1px), var(--graft-cal-line) calc(var(--graft-cal-hour-height) - 1px), var(--graft-cal-line) var(--graft-cal-hour-height));
 }
 
 .graft-cal-gutter-body {
@@ -421,10 +450,10 @@
 
 .graft-cal-hour {
 	position: absolute;
-	right: var(--size-4-1);
+	right: var(--size-4-2);
 	transform: translateY(-0.6em);
 	color: var(--text-faint);
-	font-size: var(--font-ui-smaller);
+	font-size: calc(var(--font-ui-smaller) * 0.9);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -434,17 +463,18 @@
 	right: 0;
 	z-index: 1;
 	height: 0;
-	border-top: 2px solid var(--color-red);
+	border-top: 1px solid var(--color-red);
+	opacity: 0.8;
 	pointer-events: none;
 }
 
 .graft-cal-now::before {
 	content: "";
 	position: absolute;
-	top: -5px;
-	left: -4px;
-	width: 8px;
-	height: 8px;
+	top: -4px;
+	left: 0;
+	width: 7px;
+	height: 7px;
 	border-radius: 50%;
 	background: var(--color-red);
 }
@@ -457,16 +487,21 @@
 	height: auto;
 	min-width: 0;
 	max-width: 100%;
-	padding: var(--size-4-1) var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2) var(--size-4-1) calc(var(--size-4-2) + 3px);
 	border: 1px solid transparent;
-	border-left: 3px solid var(--graft-cal-color, var(--text-muted));
 	border-radius: var(--radius-s);
-	box-shadow: none;
-	background: var(--background-secondary);
+	/* The transparent border leaves a gap between neighbours, and the inset shadow is the accent bar. */
+	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 18%, var(--background-primary));
+	background-clip: padding-box;
+	box-shadow: inset 3px 0 0 var(--graft-cal-color, var(--text-muted));
 	color: var(--text-normal);
 	font-size: var(--font-ui-smaller);
 	text-align: left;
 	white-space: normal;
+}
+
+.graft-cal-event:hover {
+	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 28%, var(--background-primary));
 }
 
 .graft-cal-event.is-timed {
@@ -474,9 +509,14 @@
 	box-sizing: border-box;
 	justify-content: flex-start;
 	overflow: hidden;
-	padding: 1px var(--size-4-1);
-	background: var(--background-secondary-alt);
+	padding-block: 1px;
 	line-height: 1.25;
+}
+
+.graft-cal-event.is-timed.is-inline {
+	flex-direction: row;
+	align-items: baseline;
+	gap: var(--size-4-1);
 }
 
 .graft-cal-event.is-timed:hover,
@@ -485,6 +525,7 @@
 }
 
 .graft-cal-event .graft-cal-time {
+	flex: 0 0 auto;
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 }
@@ -492,12 +533,22 @@
 .graft-cal-event .graft-cal-title {
 	max-width: 100%;
 	overflow-wrap: anywhere;
+	font-weight: var(--font-medium);
 }
 
 .graft-cal-event.is-timed .graft-cal-title {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
+}
+
+.graft-cal-event.is-timed.is-inline .graft-cal-title {
+	display: block;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .graft-cal-event.is-timed .graft-cal-time {
@@ -508,7 +559,15 @@
 }
 
 .graft-cal-event.is-selected {
-	border-color: var(--interactive-accent);
+	z-index: 1;
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -1px;
+	background-color: color-mix(in srgb, var(--graft-cal-color, var(--text-muted)) 30%, var(--background-primary));
+}
+
+.graft-cal-event:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
 }
 
 .graft-cal-event.is-continued {
@@ -539,22 +598,21 @@
 
 .graft-cal-event.graft-cal-skipped {
 	border-style: dashed;
-	border-color: var(--background-modifier-border);
-	border-left: 3px dashed var(--text-faint);
-	background: transparent;
+	border-color: var(--background-modifier-border-hover);
+	background-color: transparent;
 	color: var(--text-muted);
-	opacity: 0.7;
+	opacity: 0.75;
 }
 
 .graft-cal-event.graft-cal-skipped.is-selected {
-	border-color: var(--interactive-accent);
+	border-color: transparent;
 	opacity: 1;
 }
 
 .graft-cal-legend {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--size-4-1) var(--size-4-4);
+	gap: 2px var(--size-4-3);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
 }
@@ -563,12 +621,13 @@
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-4-1);
+	white-space: nowrap;
 }
 
 .graft-cal-swatch {
-	width: 0.9em;
-	height: 0.9em;
-	border-radius: var(--radius-s);
+	width: 0.75em;
+	height: 0.75em;
+	border-radius: 2px;
 	background: var(--graft-cal-color);
 }
 
@@ -864,19 +923,27 @@
 .graft-range {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-end;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+}
+
+.graft-range-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
 	gap: var(--size-4-2) var(--size-4-3);
 }
 
 .graft-range-field {
 	display: flex;
-	flex-direction: column;
-	gap: var(--size-4-1);
+	align-items: center;
+	gap: var(--size-4-2);
+	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
 .graft-range-field input {
-	width: 6em;
+	width: 5em;
 }
 
 .graft-range-buttons {
@@ -887,7 +954,7 @@
 .graft-range-note {
 	flex: 1 1 100%;
 	margin: 0;
-	font-size: var(--font-ui-small);
+	font-size: var(--font-ui-smaller);
 }
 
 /* Calendar view */

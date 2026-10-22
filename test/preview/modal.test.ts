@@ -395,8 +395,8 @@ test("calendar view shows kept and skipped events, ranges, and detail lines", ()
 	const elements = allElements(modal.contentEl);
 	const kept = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-new"));
 	const skipped = elements.find((element) => String(element.cls).includes("graft-cal-event graft-cal-skipped"));
-	assert.deepEqual(kept.children.map((child: any) => child.text), ["Kept sync"]);
-	assert.deepEqual(skipped.children.map((child: any) => child.text), ["Dropped sync", "16:00"]);
+	assert.deepEqual(kept.children.map((child: any) => child.text), ["14:00", "Kept sync"]);
+	assert.deepEqual(skipped.children.map((child: any) => child.text), ["16:00", "Dropped sync"]);
 	assert.ok(texts(modal).includes("Select an event to see its note and what will change."));
 	kept.listeners.click();
 	assert.ok(texts(modal).some((text) => text.startsWith("Kept sync: new note ")));
