@@ -6,6 +6,7 @@ Graft shows a short notice when a sync cannot start or stops. The preview window
 
 | Notice | What to do |
 | --- | --- |
+| No feed address on this device for the named calendars. | Open Graft settings and enter the address again. See [Privacy and feed URLs](#privacy-and-feed-urls). |
 | Add a calendar in Graft settings. | Add at least one calendar in the Calendars section. |
 | A Graft sync or preview is already open. | Close the open preview window first. Only one runs at a time. |
 | The ignore list is not valid JSON. Fix the file or clear the ignore list setting. | Open the ignore-list file and fix the JSON, or clear the setting. See the ignore list format below. |
@@ -24,6 +25,11 @@ Graft shows a short notice when a sync cannot start or stops. The preview window
 | Graft sync stopped. Check the vault and run Preview sync again. | A write failed. Some notes may already be written. Check them and preview again. |
 | Graft could not prepare the sync. | A general failure. Check the calendar settings, folders, templates and ignore list. |
 | Graft could not save settings. | Edit the setting again. |
+| Graft could not read a feed address from secret storage. | Open Graft settings and check each calendar. Enter any address that is missing. |
+| Graft could not use secret storage for a feed address. | The address stays in the plugin settings for now. Save the calendar again later. |
+| Graft did not write the sync log, because it is inside a note folder. | Choose a sync log note outside the Meeting, Person, Series and Company folders. |
+| Graft could not write the sync log. | The sync itself was not affected. Check that the sync log path is a valid note path. |
+| Graft sync finished. | Nothing to do. The notes in the preview were written. |
 
 ### Filename conflicts
 

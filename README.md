@@ -14,6 +14,7 @@ Graft is still in development. The settings tab, Preview sync, Sync now and Appl
 - Links recurring events to a Series note, and creates a minimal Series note when there is none.
 - Updates only the calendar fields of notes it already wrote. Anything you typed in a note stays as it is.
 - Shows a read-only preview of every change before it writes anything.
+- Adds a dockable calendar view of your feeds. It never writes notes.
 - Skips events by title rule or by an ignore list you edit by hand, and can optionally skip events you have not accepted. It writes one note when the same event arrives from two calendars.
 - Lets you point the plugin at your own property names, headings and note templates.
 

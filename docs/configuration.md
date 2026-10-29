@@ -144,16 +144,15 @@ The ignore list format is described in [Troubleshooting](troubleshooting.md#igno
 | Preview before apply | on |
 | Create Person stubs | on |
 | Create Series stubs | on |
-| Invite text clean-up | on |
+| Clean up invite text | on |
 | Sync on startup | off |
 | Company linking | off |
-| Only events I have accepted | off |
 | Cancel vanished events | off |
 | Scheduled sync | off |
 
 **Person filenames.** Ordered domain rules for full name, first name, or initial and last name. The first match wins. Unlisted domains use full names.
 
-**Invite text clean-up.** Before the description is written under the invite agenda heading, Graft removes Teams, Google Meet and Zoom join links and labels, meeting IDs and passcodes, dial-in numbers, HTML tags and long separator lines, and collapses repeated blank lines. Other text is left as written, including ordinary links and numbers. If nothing is left, the section shows the empty agenda placeholder. The preview shows the cleaned text, and an existing note whose agenda still holds join text shows a change for it in the next preview. Turn the setting off to write the description as it arrives.
+**Clean up invite text.** Before the description is written under the invite agenda heading, Graft removes Teams, Google Meet and Zoom join links and labels, meeting IDs and passcodes, dial-in numbers, HTML tags and long separator lines, and collapses repeated blank lines. Other text is left as written, including ordinary links and numbers. If nothing is left, the section shows the empty agenda placeholder. The preview shows the cleaned text, and an existing note whose agenda still holds join text shows a change for it in the next preview. Turn the setting off to write the description as it arrives.
 
 ## Scheduled sync
 
