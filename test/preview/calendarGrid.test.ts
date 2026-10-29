@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 import { readFile } from "node:fs/promises";
 import { parseIcs } from "../../src/ics/parse.ts";
 import { assignColumns, bucketByDay, dayRange, layoutDay, minuteOnDate, visibleHours } from "../../src/preview/calendar.ts";
-import { blockFit, rangeLabel, stepAnchor, visibleDates, zoneLabel } from "../../src/preview/calendarView.ts";
+import { titleLines, rangeLabel, stepAnchor, visibleDates, zoneLabel } from "../../src/preview/calendarView.ts";
 import { makeEvent } from "../helpers.ts";
 
 const zone = "America/New_York";
@@ -162,10 +162,11 @@ test("a week that holds a clock change still has seven days, with the short or l
 	assert.deepEqual(bucketByDay(items, ["2026-10-31"], zone)[0].entries.map((entry) => entry.item.event.summary), ["Saturday night"]);
 });
 
-test("a short block keeps its time and title on one line and a tall one stacks them", () => {
-	assert.deepEqual(blockFit(30), { titleLines: 1, stacked: false });
-	assert.deepEqual(blockFit(60), { titleLines: 1, stacked: true });
-	assert.deepEqual(blockFit(120), { titleLines: 5, stacked: true });
+test("a block gets as many title lines as its height allows, and at least one", () => {
+	assert.equal(titleLines(15), 1);
+	assert.equal(titleLines(30), 1);
+	assert.equal(titleLines(60), 2);
+	assert.equal(titleLines(120), 6);
 });
 
 test("the gutter label is a compact UTC offset", () => {

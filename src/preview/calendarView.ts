@@ -66,10 +66,9 @@ const HOUR_PX = 48;
 const LINE_PX = 15;
 const BLOCK_PAD_PX = 4;
 
-/** How a block lays out its text. A short block puts the time and the title on one line. A taller one gives the time its own line and wraps the title below it. */
-export function blockFit(durationMin: number): { titleLines: number; stacked: boolean } {
-	const lines = Math.max(1, Math.floor(((durationMin / 60) * HOUR_PX - BLOCK_PAD_PX) / LINE_PX));
-	return lines >= 2 ? { titleLines: lines - 1, stacked: true } : { titleLines: 1, stacked: false };
+/** How many lines of title fit in a timed block, which shows the title only since its place on the grid gives the time. */
+export function titleLines(durationMin: number): number {
+	return Math.max(1, Math.floor(((durationMin / 60) * HOUR_PX - BLOCK_PAD_PX) / LINE_PX));
 }
 
 /** A short zone label for the gutter, such as "UTC-4". The full name is kept for the tooltip. */
@@ -201,14 +200,20 @@ function addChip(list: HTMLElement, item: CalendarItem, entry: DayEntry<unknown>
 	const time = entry.allDay ? "All day" : entry.continuesFromPrevious ? `Until ${entry.endTime}` : entry.startTime;
 	const title = item.event.summary || "(No title)";
 	const classes = ["graft-cal-event", `graft-cal-${item.kind}`];
-	const fit = position ? blockFit(duration) : undefined;
-	if (position) classes.push("is-timed", fit!.stacked ? "is-stacked" : "is-inline");
+	const lines = position ? titleLines(duration) : undefined;
+	if (position) classes.push("is-timed");
+	if (lines === 1) classes.push("is-short");
 	if (item.id === state.selected) classes.push("is-selected");
 	if (entry.continuesFromPrevious) classes.push("is-continued");
 	if (entry.continuesToNext) classes.push("is-continuing");
 	const chip = list.createEl("button", { cls: classes.join(" "), attr: { type: "button", "aria-pressed": String(item.id === state.selected), "aria-label": `${kindLabel[item.kind]}: ${time}, ${title}`, ...(position ? { style: position } : {}) } });
-	if (fit && !entry.allDay) chip.createEl("span", { text: time, cls: "graft-cal-time" });
-	chip.createEl("span", { text: title, cls: "graft-cal-title", ...(fit?.stacked ? { attr: { style: `-webkit-line-clamp:${fit.titleLines}` } } : {}) });
+	const showEnd = position && entry.continuesFromPrevious;
+	const label = chip.createEl("span", { cls: "graft-cal-title", ...(showEnd ? {} : { text: title }), ...(lines && lines > 1 ? { attr: { style: `-webkit-line-clamp:${lines}` } } : {}) });
+	// Without a start on this day's grid, the end time is the only place to read when it finishes.
+	if (showEnd) {
+		label.createEl("span", { text: `${time} `, cls: "graft-cal-time" });
+		label.createEl("span", { text: title });
+	}
 	chip.addEventListener("click", () => { state.selected = item.id === state.selected ? undefined : item.id; state.refocus = true; update(); });
 }
 

@@ -574,19 +574,12 @@ button.graft-cal-step:disabled {
 	line-height: 1.25;
 }
 
-.graft-cal button.graft-cal-event.is-timed.is-inline {
-	flex-direction: row;
-	align-items: baseline;
-	gap: var(--size-4-1);
-}
-
 .graft-cal button.graft-cal-event.is-timed:hover,
 .graft-cal button.graft-cal-event.is-timed.is-selected {
 	z-index: 1;
 }
 
 .graft-cal button.graft-cal-event .graft-cal-time {
-	flex: 0 0 auto;
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 }
@@ -603,18 +596,13 @@ button.graft-cal-step:disabled {
 	overflow: hidden;
 }
 
-.graft-cal button.graft-cal-event.is-timed.is-inline .graft-cal-title {
-	display: block;
-	flex: 1 1 auto;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+/* A block of half an hour or less has room for one line, so it uses smaller text and a plain ellipsis. */
+.graft-cal button.graft-cal-event.is-timed.is-short {
+	line-height: 1.2;
 }
 
-.graft-cal button.graft-cal-event.is-timed .graft-cal-time {
-	max-width: 100%;
-	overflow: hidden;
+.graft-cal button.graft-cal-event.is-timed.is-short .graft-cal-title {
+	display: block;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
