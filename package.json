@@ -1,7 +1,7 @@
 {
   "name": "graft",
   "version": "1.0.0-rc.7",
-  "description": "Read-only sync of any number of Google or Outlook/Microsoft 365 calendar feeds into an existing Obsidian note schema",
+  "description": "Create Meeting, Person and Series notes from Google and Outlook calendar feeds. Read-only.",
   "main": "main.js",
   "private": true,
   "type": "module",
