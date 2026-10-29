@@ -7,7 +7,7 @@ import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.
 import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
 
 /** Default filename pattern; callers can supply their own. */
-export const DEFAULT_FILENAME_PATTERN = "{{title}} {{date}}";
+const DEFAULT_FILENAME_PATTERN = "{{title}} {{date}}";
 
 export interface ResolvedAttendee {
 	/** Person filename used for the wikilink. */

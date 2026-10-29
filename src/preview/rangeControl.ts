@@ -12,7 +12,7 @@ export function draftOf(range: SyncRange): RangeDraft {
 	return { daysBack: String(daysBack), daysAhead: String(daysAhead) };
 }
 
-export const CLAMPED_NOTE = `The range in settings is longer than ${MAX_RANGE_DAYS} days, so these fields start shorter. The preview shown still covers the full range.`;
+const CLAMPED_NOTE = `The range in settings is longer than ${MAX_RANGE_DAYS} days, so these fields start shorter. The preview shown still covers the full range.`;
 
 /** An empty field becomes NaN, which `rangeProblem` rejects. */
 function parse(draft: RangeDraft): SyncRange {

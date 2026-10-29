@@ -5,7 +5,7 @@ export type WeekStartSetting = "auto" | WeekDay;
 
 export const WEEK_DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
-export function isWeekDay(value: unknown): value is WeekDay {
+function isWeekDay(value: unknown): value is WeekDay {
 	return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 6;
 }
 

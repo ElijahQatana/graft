@@ -31,7 +31,7 @@ export function newCalendarId(taken: Iterable<string>): string {
 
 /** What a scheduled run does: nothing, check and tell the user when something is ready, or check and apply. */
 export type ScheduledMode = "off" | "notify" | "automatic";
-export const SCHEDULED_MODES: ScheduledMode[] = ["off", "notify", "automatic"];
+const SCHEDULED_MODES: ScheduledMode[] = ["off", "notify", "automatic"];
 export const MIN_INTERVAL_MINUTES = 15;
 export const MAX_INTERVAL_MINUTES = 1440;
 
@@ -80,7 +80,7 @@ export interface GraftSettings {
 	mergeDuplicates: boolean;
 	/** Remove join and dial-in text from the invite description before it is written. */
 	cleanInviteText: boolean;
-	/** Mark future Meeting notes cancelled when their whole series has gone from the feeds. */
+	/** Mark Meeting notes cancelled when their occurrence or whole series has gone from the feeds. */
 	cancelVanishedSeries: boolean;
 	previewBeforeApply: boolean;
 	autoRunOnStartup: boolean;

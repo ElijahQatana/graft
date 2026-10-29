@@ -17,7 +17,7 @@ import { browseSettings } from "./calendar/browse.ts";
 import { GRAFT_ICON_ID, GRAFT_ICON_SVG } from "./icon.ts";
 import { CALENDAR_VIEW_TYPE, CalendarView } from "./calendar/view.ts";
 
-/** Loads settings and connects the sync commands. */
+/** Connects the sync commands, the calendar view and scheduled checks. */
 export default class GraftPlugin extends Plugin {
 	settings: GraftSettings = structuredClone(DEFAULT_SETTINGS);
 	private settingsSave: Promise<void> = Promise.resolve();
