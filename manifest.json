@@ -3,7 +3,7 @@
   "name": "Graft",
   "version": "1.0.0-rc.7",
   "minAppVersion": "1.4.10",
-  "description": "Read-only sync of any number of Google or Outlook/Microsoft 365 calendar feeds into your existing meeting-note schema.",
+  "description": "Create Meeting, Person and Series notes from Google and Outlook calendar feeds. Read-only.",
   "author": "Elijah Qatana",
   "authorUrl": "https://github.com/ElijahQatana",
   "isDesktopOnly": false
