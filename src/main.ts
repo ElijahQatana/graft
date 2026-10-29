@@ -226,13 +226,13 @@ export default class GraftPlugin extends Plugin {
 			item.setAttribute("tabindex", "0");
 			item.setAttribute("aria-label", "Open Graft preview");
 			item.createSpan({ text: label });
-			item.addEventListener("click", () => { void this.runSync(true); });
+			onActivate(item, () => { void this.runSync(true); });
 			this.readyItem = item;
 		}
 		const notice = new Notice(createFragment((fragment) => {
 			fragment.createSpan({ text: `${noticeText} ` });
 			const open = fragment.createEl("a", { text: "Open preview", attr: { role: "button", tabindex: "0" } });
-			open.addEventListener("click", () => { notice.hide(); void this.runSync(true); });
+			onActivate(open, () => { notice.hide(); void this.runSync(true); });
 		}), 10000);
 	}
 
@@ -334,6 +334,16 @@ export default class GraftPlugin extends Plugin {
 			new Notice("Graft could not save settings. Try editing the setting again.");
 		}
 	}
+}
+
+/** Runs `action` on a click, or on Enter or Space when the element has focus. */
+function onActivate(el: HTMLElement, action: () => void) {
+	el.addEventListener("click", action);
+	el.addEventListener("keydown", (event: KeyboardEvent) => {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		action();
+	});
 }
 
 function errorMessage(error: unknown, fallback: string): string {
