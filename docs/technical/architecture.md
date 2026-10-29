@@ -11,7 +11,9 @@ Graft is an Obsidian plugin written in TypeScript. Its sync pipeline is split in
 | `src/generate/`, `src/templates/` | Prepare note content and updates. |
 | `src/config/` | Settings defaults, validation and loading. See below. |
 | `src/preview/` | Builds a read-only preview from resolved plan inputs and shows it in a modal. Uses the same Meeting generators as the write helpers. |
-| `src/main.ts` | Commands, startup sync and ordered settings saves. |
+| `src/calendar/` | The dockable calendar view and the cache of feed results it draws from. |
+| `src/util/`, `src/ui/` | Small helpers for filenames, paths, time zones, invite text and the path suggestions in settings. |
+| `src/main.ts` | Commands, startup and scheduled sync, the calendar view and ordered settings saves. |
 | `src/settings.ts` | The settings tab. |
 
 Inside `src/config/`:
