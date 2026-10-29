@@ -34,7 +34,7 @@ export function buildRangeText({ start, end, timezone }: PreviewWindow): string 
 }
 
 /** What each warning means, shown in the warnings section and on a selected event. */
-export const warningText: Record<PreviewWarning["kind"], string> = {
+const warningText: Record<PreviewWarning["kind"], string> = {
 	"unresolved-company": "Unresolved Company link. The link will be omitted.",
 	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
 	"possible-duplicate-person": "Possible duplicate Person. If they are the same person, add the new address as an alias on the existing note and preview again.",

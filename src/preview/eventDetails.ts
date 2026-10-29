@@ -43,7 +43,7 @@ function show(value: unknown): string {
 	return typeof value === "string" ? value || "(empty)" : JSON.stringify(value);
 }
 
-export function describeChange({ field, before, after }: FieldChange): string {
+function describeChange({ field, before, after }: FieldChange): string {
 	return `${field}: ${show(before)} to ${show(after)}`;
 }
 

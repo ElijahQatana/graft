@@ -88,8 +88,8 @@ export interface HourRange {
 	end: number;
 }
 
-export const MIN_BLOCK = 30;
-export const DEFAULT_HOURS: HourRange = { start: 7, end: 20 };
+const MIN_BLOCK = 30;
+const DEFAULT_HOURS: HourRange = { start: 7, end: 20 };
 
 function minutesOf(time: string): number {
 	return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
