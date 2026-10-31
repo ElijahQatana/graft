@@ -1,5 +1,7 @@
 # Graft Calendar
 
+*One schedule, grafted into the notes you already keep.* More at [graft.elijahquintana.pro](https://graft.elijahquintana.pro).
+
 Graft Calendar is an Obsidian plugin that turns your calendar events into Meeting notes. It reads Google Calendar and Outlook or Microsoft 365 calendars through their private ICS feed addresses, then writes Meeting, Person and Series notes into your vault.
 
 ## What it does
