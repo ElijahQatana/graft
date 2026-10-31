@@ -18,6 +18,8 @@ export interface SyncPlan {
 	toProcess: CalendarEvent[];
 	skipped: Array<{ event: CalendarEvent; reason: string }>;
 	errors: Array<{ feed: string; message: string }>;
+	/** Titles of recurring series that hit the expansion limit, so their events may be missing. Left out when there are none. */
+	truncatedSeries?: string[];
 }
 
 /** Injected fetcher keeps the plan builder independent of Obsidian. */
@@ -40,6 +42,7 @@ export async function buildSyncPlan(
 ): Promise<SyncPlan> {
 	const allEvents: CalendarEvent[] = [];
 	const errors: SyncPlan["errors"] = [];
+	const truncatedSeries = new Set<string>();
 
 	// Requests start together. Results are handled in feed order, so events, duplicates and
 	// errors come out the same as when the feeds were fetched one by one.
@@ -48,7 +51,7 @@ export async function buildSyncPlan(
 		const result = fetched[index];
 		try {
 			if (result.status === "rejected") throw result.reason;
-			const events = parseIcs(result.value, window).map((event) => ({
+			const events = parseIcs(result.value, window, (title) => truncatedSeries.add(stripTitlePrefixes(title, stripPrefixes))).map((event) => ({
 				...event,
 				summary: stripTitlePrefixes(event.summary, stripPrefixes),
 				source: feed.name,
@@ -89,5 +92,6 @@ export async function buildSyncPlan(
 		toProcess: merged.kept,
 		skipped: [...duplicates, ...titleFiltered.skipped, ...ignoreFiltered.skipped, ...rsvpFiltered.skipped, ...merged.skipped],
 		errors,
+		...(truncatedSeries.size ? { truncatedSeries: [...truncatedSeries] } : {}),
 	};
 }

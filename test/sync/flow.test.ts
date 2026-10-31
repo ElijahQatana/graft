@@ -1201,3 +1201,13 @@ test("a dropped occurrence is cancelled alone, and cancelled, outside-window or 
 	assert.equal(broken.canApply, false);
 	assert.equal(broken.preview.updates.length, 0);
 });
+
+test("a series too dense to expand is named in the preview warnings without its URL", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];
+	const dense = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:dense@example.com\r\nDTSTART:20200101T000000Z\r\nDTEND:20200101T003000Z\r\nRRULE:FREQ=HOURLY\r\nSUMMARY:Synthetic hourly check\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+	const prepared = await prepareSync(f.app, f.settings, async () => dense, now);
+	assert.deepEqual(clean(prepared.preview.warnings), [{ kind: "series-too-dense", subject: "Synthetic hourly check" }]);
+	assert.equal(prepared.canApply, true);
+	assert.equal(JSON.stringify(prepared.preview.warnings).includes("https://"), false);
+});
