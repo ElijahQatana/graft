@@ -3,7 +3,7 @@
   "name": "Graft Calendar",
   "version": "1.0.0",
   "minAppVersion": "1.4.10",
-  "description": "Create Meeting, Person and Series notes from Google and Outlook calendar feeds. Read-only.",
+  "description": "Calendar events become meeting, people and series notes that fit the vault you already have. Google and Outlook, no sign-in, read-only, with a preview before every write.",
   "author": "Elijah Qatana",
   "authorUrl": "https://github.com/ElijahQatana",
   "isDesktopOnly": false
