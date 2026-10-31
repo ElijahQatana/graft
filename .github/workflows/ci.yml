@@ -1,14 +1,9 @@
 name: CI
 
-# CI is manual-trigger only for now, to save Actions minutes. When ready,
-# replace the trigger block with this one:
-#
-# on:
-#   pull_request:
-#   push:
-#     branches: [main]
-#   workflow_dispatch:
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

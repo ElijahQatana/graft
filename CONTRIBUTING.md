@@ -15,7 +15,7 @@ Run `npm run lint`, `npm test` and `npm run build` before opening a pull request
 
 ## Continuous integration
 
-The CI workflow (`.github/workflows/ci.yml`) runs lint, tests and the build on Node 22. For now it only runs when started by hand from the Actions tab, to save Actions minutes. The `pull_request` and push-to-`main` triggers are written in a comment at the top of the file; uncomment them when you want CI on every change.
+The CI workflow (`.github/workflows/ci.yml`) runs lint, tests and the build on Node 22 for every pull request and every push to `main`. It can also be started by hand from the Actions tab.
 
 ## Cutting a release
 
