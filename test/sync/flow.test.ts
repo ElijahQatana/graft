@@ -89,13 +89,21 @@ function calendar(uid: any, title = "Synthetic meeting", extra = "") {
 	return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Example//Graft//EN\r\nBEGIN:VEVENT\r\nUID:${uid}\r\nDTSTART:20261004T140000Z\r\nDTEND:20261004T143000Z\r\nSUMMARY:${title}\r\nORGANIZER;CN=Alex Example:mailto:alex@example.com\r\nATTENDEE;CN=Pat Example:mailto:pat@example.com\r\nDESCRIPTION:New agenda\r\n${extra}END:VEVENT\r\nEND:VCALENDAR\r\n`;
 }
 function fixture() {
-	const files = new Map<string, any>(); const texts = new Map<string, any>(); const writes: string[] = [];
-	function put(path: any, text: any) { files.set(path, new TFile(path)); texts.set(path, text); }
+	const files = new Map<string, any>(); const writes: string[] = []; const reads = { read: [] as string[], cachedRead: [] as string[] };
+	// Like the real vault, a changed text gives the file a new modified time.
+	const versions = new Map<string, number>();
+	const texts = new class extends Map<string, any> { override set(path: string, text: any) { versions.set(path, (versions.get(path) ?? 0) + 1); return super.set(path, text); } }();
+	function put(path: any, text: any) {
+		const file = new TFile(path);
+		Object.defineProperty(file, "stat", { configurable: true, get: () => ({ mtime: versions.get(path), size: String(texts.get(path)).length }) });
+		files.set(path, file); texts.set(path, text);
+	}
 	const app = {
 		vault: {
 			getMarkdownFiles: () => [...files.values()].filter((file) => file instanceof TFile),
 			getAbstractFileByPath: (path: any) => files.get(path) ?? null,
-			async read(file: any) { if (!texts.has(file.path)) throw new Error("Missing synthetic file"); return texts.get(file.path); },
+			async read(file: any) { if (!texts.has(file.path)) throw new Error("Missing synthetic file"); reads.read.push(file.path); return texts.get(file.path); },
+			async cachedRead(file: any) { if (!texts.has(file.path)) throw new Error("Missing synthetic file"); reads.cachedRead.push(file.path); return texts.get(file.path); },
 			async create(path: any, text: any) { assert.equal(files.has(path), false); put(path, text); writes.push(path); return files.get(path); },
 			async createFolder(path: any) { assert.equal(files.has(path), false); files.set(path, { path }); },
 			async process(file: any, update: any) { texts.set(file.path, update(texts.get(file.path))); writes.push(file.path); },
@@ -111,7 +119,7 @@ function fixture() {
 		schema: ORIGINAL_SCHEMA, companyLinking: true, daysBack: 0, daysAhead: 2,
 	});
 	const fetch = async (url: any) => url.includes("google") ? calendar("google@example.com", "Google sample", "RRULE:FREQ=DAILY;COUNT=2\r\n") : calendar("outlook@example.com", "Outlook sample");
-	return { app, settings, fetch, files, texts, writes, put };
+	return { app, settings, fetch, files, texts, writes, put, reads };
 }
 
 const calendarEntry = (name: any, type: any, invitedAs: any): any => ({ name, type, url: `https://example.com/${name.toLowerCase()}.ics`, invitedAs });
@@ -578,6 +586,49 @@ test("vault changes and occupied targets reject apply before any note or folder 
 		assert.equal(f.writes.length, 0);
 		assert.equal(f.files.size, before);
 	}
+});
+
+test("plan reads notes through the cache and Apply reads again only what it writes", async () => {
+	const f = fixture();
+	f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];
+	f.put("Meetings/Shared.md", note({ type: "Meeting", ics_uid: "shared@example.com", title: "Old", date: "2026-10-04", invited_as: "work@example.com" }, "## Invite Agenda\n\nOld"));
+	f.put("Meetings/Other.md", note({ type: "Meeting", ics_uid: "other@example.com", title: "Other", date: "2026-09-01", invited_as: "work@example.com" }));
+	f.put("People/Existing.md", note({ type: "Person", email: "existing@example.com" }));
+	f.put("Series/Existing.md", note({ type: "Series", ics_uid: "series@example.com" }));
+	f.put("Templates/Meeting.md", "# {{title}}\n## Invite Agenda\n\n{{invite_agenda}}\n");
+	f.settings.templates = { meeting: "Templates/Meeting.md" };
+	const prepared = await prepareSync(f.app, f.settings, async () => calendar("shared@example.com", "Shared meeting"), now);
+	assert.deepEqual(clean(f.reads.cachedRead.sort()), ["Meetings/Other.md", "Meetings/Shared.md", "People/Existing.md", "Series/Existing.md"]);
+	assert.deepEqual(clean(f.reads.read), ["Templates/Meeting.md"]);
+	f.reads.read.length = 0;
+	await applySync(f.app, prepared);
+	// The template and the one note being updated are read fresh, in the check and again right before the write.
+	assert.deepEqual(clean(f.reads.read.sort()), ["Meetings/Shared.md", "Meetings/Shared.md", "Templates/Meeting.md"]);
+	assert.equal(fields(f.texts.get("Meetings/Shared.md")).title, "Shared meeting");
+});
+
+test("an edit after the preview is refused whether or not the note's size and time changed", async () => {
+	const setup = async () => {
+		const f = fixture();
+		f.settings.calendars = [calendarEntry("Work", "google", "work@example.com")];
+		f.put("Meetings/Shared.md", note({ type: "Meeting", ics_uid: "shared@example.com", title: "Old", date: "2026-10-04", invited_as: "work@example.com" }, "## Invite Agenda\n\nOld"));
+		f.put("People/Existing.md", note({ type: "Person", email: "existing@example.com" }));
+		const prepared = await prepareSync(f.app, f.settings, async () => calendar("shared@example.com", "Shared meeting"), now);
+		assert.equal(prepared.preview.updates.length, 1);
+		return { f, prepared };
+	};
+	// An edit to a note the plan only reads changes its time.
+	const person = await setup();
+	person.f.texts.set("People/Existing.md", note({ type: "Person", email: "changed@example.com" }));
+	await assert.rejects(() => applySync(person.f.app, person.prepared), { name: "VaultChangedError" });
+	// A note Apply writes is compared by its text, so an edit that leaves size and time alone is still caught.
+	const meeting = await setup();
+	const file = meeting.f.files.get("Meetings/Shared.md");
+	const stat = { ...file.stat };
+	meeting.f.texts.set("Meetings/Shared.md", note({ type: "Meeting", ics_uid: "shared@example.com", title: "Old", date: "2026-10-04", invited_as: "work@example.com" }, "## Invite Agenda\n\nNew"));
+	Object.defineProperty(file, "stat", { value: stat });
+	await assert.rejects(() => applySync(meeting.f.app, meeting.prepared), { name: "VaultChangedError" });
+	assert.equal(meeting.f.writes.length, 0);
 });
 
 test("custom bodies, filenames, disabled stubs and non-strict links are honored", async () => {
