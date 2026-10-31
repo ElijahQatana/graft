@@ -1,6 +1,6 @@
 {
   "name": "graft",
-  "version": "1.0.0-rc.8",
+  "version": "1.0.0",
   "description": "Create Meeting, Person and Series notes from Google and Outlook calendar feeds. Read-only.",
   "main": "main.js",
   "private": true,
