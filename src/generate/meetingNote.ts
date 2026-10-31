@@ -1,7 +1,7 @@
 import type { CalendarEvent } from "../types.ts";
 import { toWallClock, wallClockFromDate } from "../util/timezone.ts";
 import { sanitizeFilename } from "../util/filename.ts";
-import { cleanInviteText } from "../util/inviteText.ts";
+import { inviteAgendaText } from "../util/inviteText.ts";
 import { renderTemplate } from "../templates/engine.ts";
 import { validateCompanyLinks, type CompanyRecord } from "../match/companyMatch.ts";
 import { evaluateExtras, type NoteSchema } from "../config/schema.ts";
@@ -84,7 +84,7 @@ export function buildMeetingNote(
 		weekday: start.weekday, recurrence: input.series ? schema.recurrenceValues.series : schema.recurrenceValues.oneOff, companies,
 	}));
 
-	const inviteAgenda = (input.cleanInvite === false ? input.event.description?.trim() : cleanInviteText(input.event.description)) || schema.agendaPlaceholder;
+	const inviteAgenda = inviteAgendaText(input.event.description, input.cleanInvite !== false) || schema.agendaPlaceholder;
 	const seriesAgenda = input.seriesStandingAgenda?.trim() || "";
 	const body = input.bodyTemplate === undefined ? buildBody(schema, inviteAgenda, seriesAgenda)
 		: renderTemplate(input.bodyTemplate, {

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 const noIds = (calendars: Array<{ id: string }>) => calendars.map(({ id, ...rest }) => { assert.match(id, /^[a-z0-9]{1,40}$/); return rest; });
 import {
-	DEFAULT_SETTINGS, loadGraftSettings, isVaultPath, isFeedUrl, isCalendarUrl, sameCalendarName,
+	DEFAULT_SETTINGS, loadGraftSettings, isVaultPath, isFeedUrl, isCalendarUrl, isInsecureFeedUrl, sameCalendarName,
 	isDayCount, isTimezone, isTitleRule, isFilenameRule,
 } from "../../src/config/settings.ts";
 
@@ -95,6 +95,15 @@ test("calendar validators require a URL and compare names without case", () => {
 	assert.equal(isCalendarUrl("https://example.com/feed.ics"), true);
 	assert.equal(sameCalendarName(" Work ", "work"), true);
 	assert.equal(sameCalendarName("Work", "Home"), false);
+});
+
+test("only http feed addresses are flagged as insecure, and are still accepted", () => {
+	assert.equal(isInsecureFeedUrl("http://example.com/feed.ics"), true);
+	assert.equal(isInsecureFeedUrl("  HTTP://example.com/feed.ics"), true);
+	assert.equal(isInsecureFeedUrl("https://example.com/feed.ics"), false);
+	assert.equal(isInsecureFeedUrl("https://example.com/?next=http://example.com"), false);
+	assert.equal(isInsecureFeedUrl(""), false);
+	assert.equal(isCalendarUrl("http://example.com/feed.ics"), true);
 });
 
 test("validators reject unsafe paths, URLs, windows, and rule rows", () => {

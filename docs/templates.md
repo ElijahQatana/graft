@@ -30,7 +30,7 @@ These placeholders are available in a Meeting template:
 | `{{ics_uid}}`, `{{ics_recurrence_id}}` | The event's UID and, for a single occurrence of a series, its recurrence ID. |
 | `{{occurrence_status}}` | `Scheduled`, or `Cancelled` if the calendar marks the event cancelled. |
 | `{{type}}` | The note type value, `Meeting`. |
-| `{{invite_agenda}}` | The event's description text with join and dial-in text removed, or the empty agenda placeholder (`No agenda provided` unless you changed it). |
+| `{{invite_agenda}}` | The event's description text with join and dial-in text removed, or the empty agenda placeholder (`No agenda provided` unless you changed it). Code fences, Templater tags, images and embeds in the description are escaped so they show as literal text. |
 | `{{series_agenda}}` | The standing agenda copied from the Series note, or empty. |
 
 Any extra Meeting property you define in the note schema settings is also available by its name, for example `{{week}}` if you added a `week` property. An extra whose value is a list of Company links is joined with commas.
@@ -95,7 +95,7 @@ The Meeting filename pattern is separate from the templates and has its own plac
 
 ## Checking a template
 
-Run **Graft: Preview sync** and open a new note in the preview. It shows the body Graft will write, so you can check the placeholders before anything is created. See [Getting started](getting-started.md).
+Run **Graft Calendar: Preview sync** and open a new note in the preview. It shows the body Graft will write, so you can check the placeholders before anything is created. See [Getting started](getting-started.md).
 
 ## How the Series agenda and the invite agenda combine
 

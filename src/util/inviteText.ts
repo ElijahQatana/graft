@@ -98,3 +98,39 @@ export function cleanInviteText(raw: string | undefined): string {
 
 	return out.filter((l) => l !== "\0").join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
+
+/** Tags that load or run something when a note is rendered. */
+const ACTIVE_TAG = /<(?=\/?(?:img|iframe|script|object|embed|video|audio|source|link|style|svg|form)[\s/>])/gi;
+
+/** A fence opener or closer, allowing a quote or list marker in front of it. */
+const FENCE_LINE = /^((?:[ \t]*(?:>|[-*+]|\d+[.)]))*[ \t]*)(?=`{3,}|~{3,})/;
+
+/** Adds a backslash in front of `pattern` unless an odd run of backslashes already escapes it. */
+function escapeUnlessEscaped(text: string, pattern: string): string {
+	return text.replace(new RegExp(`(\\\\*)(${pattern})`, "g"), (_m, slashes: string, hit: string) =>
+		slashes.length % 2 === 0 ? `${slashes}\\${hit}` : `${slashes}${hit}`);
+}
+
+/**
+ * Makes text from an invite harmless to plugins that act on note content. Fenced code blocks, inline
+ * Dataview queries, Templater tags, images, embeds and active HTML tags show as literal text instead of
+ * running or loading anything. Ordinary text, lists and links come through unchanged. Applying it to
+ * its own output changes nothing.
+ */
+export function neutralizeInviteText(text: string): string {
+	let out = text
+		.split("\n")
+		.map((line) => line.replace(FENCE_LINE, (_m, prefix: string) => `${prefix}\\`))
+		.join("\n");
+	out = out.replace(/(\\*)(`+)(?=\s*\$?=)/g, (_m, slashes: string, ticks: string) =>
+		slashes + ticks.split("").map((t, i) => (i === 0 && slashes.length % 2 === 1 ? t : `\\${t}`)).join(""));
+	out = escapeUnlessEscaped(out, "!(?=\\[)");
+	return out
+		.replace(/<%/g, "&lt;%")
+		.replace(ACTIVE_TAG, "&lt;");
+}
+
+/** The invite description as it is written into a Meeting note: cleaned when asked, always inert. */
+export function inviteAgendaText(raw: string | undefined, clean = true): string {
+	return neutralizeInviteText(clean ? cleanInviteText(raw) : raw?.trim() ?? "");
+}

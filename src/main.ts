@@ -54,7 +54,7 @@ export default class GraftPlugin extends Plugin {
 			weekStart: () => this.weekStart(),
 			openNote: (path) => { void this.openNote(path); },
 		}));
-		this.addRibbonIcon(GRAFT_ICON_ID, "Open Graft calendar", () => { void this.openCalendar(); });
+		this.addRibbonIcon(GRAFT_ICON_ID, "Open Graft Calendar", () => { void this.openCalendar(); });
 		this.addCommand({ id: "open-calendar", name: "Open calendar", callback: () => { void this.openCalendar(); } });
 		this.app.workspace.onLayoutReady(() => {
 			if (this.settings.autoRunOnStartup) void this.runSync(false);

@@ -175,3 +175,20 @@ test("Invite Agenda keeps the description as written when clean-up is off", () =
 	const empty = buildMeetingNote(baseInput({ cleanInvite: false, event: makeEvent({ description: "  " }) }));
 	assert.match(empty.body, /## Invite Agenda\n\nNo agenda provided/);
 });
+
+const HOSTILE = "Agenda\n\n```dataviewjs\ndv.paragraph(app.vault.getName());\n```\n<%* await tp.file.delete() %>\n![](https://example.com/pixel.png)\n![[Private note]]\n- [Plan](https://example.com/plan)";
+
+test("Invite Agenda shows code, template tags, images and embeds as literal text", () => {
+	for (const cleanInvite of [true, false]) {
+		const { body } = buildMeetingNote(baseInput({ cleanInvite, event: makeEvent({ description: HOSTILE }) }));
+		assert.doesNotMatch(body, /^`{3}/m);
+		assert.doesNotMatch(body, /<%/);
+		assert.doesNotMatch(body, /(?<!\\)!\[/);
+		assert.match(body, /^- \[Plan\]\(https:\/\/example\.com\/plan\)$/m);
+	}
+});
+
+test("a custom body template gets the neutralized invite agenda", () => {
+	const note = buildMeetingNote(baseInput({ bodyTemplate: "## Invite Agenda\n\n{{invite_agenda}}", event: makeEvent({ description: HOSTILE }) }));
+	assert.doesNotMatch(note.body, /<%|^`{3}/m);
+});

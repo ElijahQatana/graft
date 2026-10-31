@@ -257,6 +257,24 @@ test("calendar rows reject missing names, duplicate names, and bad URLs without 
 	assert.equal(saves.length, 3);
 });
 
+test("an http feed address shows a warning but still saves, and https shows none", async () => {
+	const { plugin, control, row, saves } = fixture();
+	const [nameInput, urlInput] = row("New calendar").controls.filter((item: any) => item.kind === "text");
+	const warning = () => row("New calendar").descEl.children.find((child: any) => child.cls === "graft-warning").text;
+	assert.equal(warning(), "");
+	nameInput.change("Work"); urlInput.change("http://example.com/work.ics");
+	assert.match(warning(), /without encryption/);
+	assert.equal(warning().includes("example.com"), false);
+	urlInput.change("https://example.com/work.ics");
+	assert.equal(warning(), "");
+	urlInput.change("http://example.com/work.ics");
+	await control("New calendar", "button", "Add calendar").click();
+	assert.equal(plugin.settings.calendars[0].url, "http://example.com/work.ics");
+	assert.equal(saves.length, 1);
+	await control("Work", "button", "Edit").click();
+	assert.match(row("Calendar 1").descEl.children.find((child: any) => child.cls === "graft-warning").text, /without encryption/);
+});
+
 test("filename conventions normalize domains and persist style, order, and removal", async () => {
 	const { plugin, control, saves } = fixture();
 	control("New filename rule", "text").change("one@example.com");

@@ -22,6 +22,8 @@ import { rangeProblem, type SyncRange } from "./range.ts";
 
 interface NoteSnapshot {
 	file: TFile;
+	/** Size and modified time taken before the text was read, so a later change always shows. */
+	stat?: { mtime: number; size: number };
 	text: string;
 	frontmatter: Record<string, unknown>;
 	body: string;
@@ -219,9 +221,17 @@ export async function applySync(app: App, prepared: PreparedSync): Promise<void>
 	const current = app.vault.getMarkdownFiles().filter((file) => prepared.folders.some((folder) => isInFolder(file, folder))).map((file) => file.path).sort();
 	const expected = prepared.snapshots.map((note) => note.file.path).sort();
 	if (JSON.stringify(current) !== JSON.stringify(expected)) throw new VaultChangedError("The vault changed. Run Preview sync again.");
-	for (const snapshot of [...prepared.snapshots, ...prepared.templates]) {
+	// A note Apply will write is always read again. Any other note counts as unchanged when its size and modified time match.
+	const written = new Set([...prepared.preview.updates.filter((update) => update.changes.length).map((update) => update.path), ...(prepared.input.vanishedCancellations ?? []).map((cancellation) => cancellation.path)]);
+	for (const snapshot of prepared.snapshots) {
 		const file = app.vault.getAbstractFileByPath(snapshot.file.path);
-		if (!(file instanceof TFile) || await app.vault.read(file) !== snapshot.text) throw new VaultChangedError("The vault changed. Run Preview sync again.");
+		if (!(file instanceof TFile)) throw new VaultChangedError("The vault changed. Run Preview sync again.");
+		if (!written.has(file.path) && sameStat(file, snapshot.stat)) continue;
+		if (await app.vault.read(file) !== snapshot.text) throw new VaultChangedError("The vault changed. Run Preview sync again.");
+	}
+	for (const template of prepared.templates) {
+		const file = app.vault.getAbstractFileByPath(template.file.path);
+		if (!(file instanceof TFile) || await app.vault.read(file) !== template.text) throw new VaultChangedError("The vault changed. Run Preview sync again.");
 	}
 	const newPaths = [...prepared.preview.newMeetings, ...prepared.input.personStubs, ...prepared.input.seriesStubs].map((note) => note.path);
 	for (const path of newPaths) {
@@ -307,11 +317,17 @@ async function readIgnoreList(app: App, path: string, templates: PreparedSync["t
 	return value.ignored as IgnoreListEntry[];
 }
 
+function sameStat(file: TFile, stat: NoteSnapshot["stat"]): boolean {
+	return stat !== undefined && file.stat?.mtime === stat.mtime && file.stat?.size === stat.size;
+}
+
 async function readSnapshots(app: App, folders: string[]): Promise<NoteSnapshot[]> {
 	const snapshots: NoteSnapshot[] = [];
 	for (const file of app.vault.getMarkdownFiles().filter((file) => folders.some((folder) => isInFolder(file, folder)))) {
-		const text = await app.vault.read(file);
-		snapshots.push({ file, text, ...splitNote(text) });
+		const stat = file.stat ? { mtime: file.stat.mtime, size: file.stat.size } : undefined;
+		// A cached read is enough here: Apply reads a note fresh before it writes it.
+		const text = await app.vault.cachedRead(file);
+		snapshots.push({ file, stat, text, ...splitNote(text) });
 	}
 	return snapshots;
 }

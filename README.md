@@ -1,6 +1,6 @@
-# Graft
+# Graft Calendar
 
-Graft is an Obsidian plugin that turns your calendar events into Meeting notes. It reads Google Calendar and Outlook or Microsoft 365 calendars through their private ICS feed addresses, then writes Meeting, Person and Series notes into your vault.
+Graft Calendar is an Obsidian plugin that turns your calendar events into Meeting notes. It reads Google Calendar and Outlook or Microsoft 365 calendars through their private ICS feed addresses, then writes Meeting, Person and Series notes into your vault.
 
 ## Status
 
@@ -37,10 +37,10 @@ Graft makes one kind of network request: it downloads each calendar's ICS feed f
 
 ## Quick start
 
-1. Install Graft (see below) and turn it on under Settings, Community plugins.
+1. Install Graft Calendar (see below) and turn it on under Settings, Community plugins.
 2. Get a private ICS address from each calendar you want. [Getting started](docs/getting-started.md) shows where to find it in Google Calendar and in Outlook.
-3. Open Settings, then Graft. Add each calendar with a name, its type and its ICS address.
-4. Run **Graft: Preview sync** from the command palette. Read the preview. Nothing is written yet.
+3. Open Settings, then Graft Calendar. Add each calendar with a name, its type and its ICS address.
+4. Run **Graft Calendar: Preview sync** from the command palette. Read the preview. Nothing is written yet.
 5. Select **Apply** if it looks right.
 
 The full walk-through is in [Getting started](docs/getting-started.md).
@@ -65,7 +65,7 @@ Pre-releases are marked as such on the release page. To try one, install the BRA
 
 1. In your vault, create the folder `.obsidian/plugins/graft/`. It is a hidden folder, so use your file manager's option to show hidden files if you cannot see it.
 2. Copy `main.js`, `manifest.json` and `styles.css` into it. To build `main.js` yourself, see Development below.
-3. Restart Obsidian, or reload the plugin list, then enable Graft under Settings, Community plugins.
+3. Restart Obsidian, or reload the plugin list, then enable Graft Calendar under Settings, Community plugins.
 
 ## Documentation
 
@@ -89,7 +89,7 @@ You need Node.js and npm.
 | `npm run build` | Type-checks and writes a production `main.js` in the project root. |
 | `npm run dev` | Rebuilds `main.js` as you edit. |
 
-To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/graft/` in a test vault and enable Graft. Use a test vault with made-up calendar data, not your real one.
+To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/graft/` in a test vault and enable Graft Calendar. Use a test vault with made-up calendar data, not your real one.
 
 ## License
 

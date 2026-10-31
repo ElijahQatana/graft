@@ -84,6 +84,63 @@ test("one feed failing to fetch doesn't stop the other feed's events from being 
 	assert.equal(plan.errors[0].message, "Calendar feed could not be fetched or parsed.");
 });
 
+test("events keep feed order even when a later feed answers first", async () => {
+	const feeds: FeedConfig[] = [
+		{ name: "Work", url: "https://work.example/feed.ics" },
+		{ name: "Home", url: "https://home.example/feed.ics" },
+	];
+	let releaseWork: (text: string) => void = () => {};
+	const work = new Promise<string>((resolve) => { releaseWork = resolve; });
+	const fakeFetch = (url: string) => {
+		if (url.includes("work")) return work;
+		return Promise.resolve(icsWith(vevent("h-1@example.com", "From Home")));
+	};
+
+	const planned = buildSyncPlan(feeds, WINDOW, [], [], fakeFetch);
+	await new Promise((resolve) => setImmediate(resolve));
+	releaseWork(icsWith(vevent("w-1@example.com", "From Work")));
+	const plan = await planned;
+
+	assert.deepEqual(plan.toProcess.map((e) => e.source), ["Work", "Home"]);
+});
+
+test("a failing feed in the middle leaves the feeds around it and reports only its own error", async () => {
+	const feeds: FeedConfig[] = [
+		{ name: "Work", url: "https://work.example/feed.ics" },
+		{ name: "Broken", url: "https://broken.example/feed.ics" },
+		{ name: "Home", url: "https://home.example/feed.ics" },
+	];
+	const fakeFetch = async (url: string) => {
+		if (url.includes("broken")) throw new Error("HTTP 500");
+		if (url.includes("work")) return icsWith(vevent("w-1@example.com", "From Work"));
+		return icsWith(vevent("h-1@example.com", "From Home"));
+	};
+
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], fakeFetch);
+
+	assert.deepEqual(plan.toProcess.map((e) => e.source), ["Work", "Home"]);
+	assert.deepEqual(plan.errors, [{ feed: "Broken", message: "Calendar feed could not be fetched or parsed." }]);
+});
+
+test("all feeds are requested before the first one finishes", async () => {
+	const feeds: FeedConfig[] = [
+		{ name: "Work", url: "https://work.example/feed.ics" },
+		{ name: "Home", url: "https://home.example/feed.ics" },
+	];
+	const requested: string[] = [];
+	let releaseWork: (text: string) => void = () => {};
+	const fakeFetch = (url: string) => {
+		requested.push(url);
+		if (url.includes("work")) return new Promise<string>((resolve) => { releaseWork = resolve; });
+		return Promise.resolve(icsWith());
+	};
+
+	const planned = buildSyncPlan(feeds, WINDOW, [], [], fakeFetch);
+	assert.deepEqual(requested, ["https://work.example/feed.ics", "https://home.example/feed.ics"]);
+	releaseWork(icsWith());
+	await planned;
+});
+
 test("feed errors do not include request or parser details", async () => {
 	const feeds: FeedConfig[] = [{ name: "Google", url: "https://example.com/feed.ics?key=synthetic" }];
 	for (const failure of [new Error("https://example.com/feed.ics?key=synthetic"), "Synthetic event content"]) {

@@ -4,13 +4,13 @@ import { build } from "esbuild";
 import { runInNewContext } from "node:vm";
 
 let request: (...args: any[]) => Promise<unknown>;
-let fetchIcs: (url: string) => Promise<string>;
+let fetchIcs: (url: string, timeoutMs?: number) => Promise<string>;
 let IcsFetchError: new (...args: any[]) => Error;
 before(async () => {
 	const bundled = await build({ entryPoints: ["src/ics/fetch.ts"], bundle: true, write: false, platform: "node", format: "cjs", external: ["obsidian"] });
 	const module: { exports: any } = { exports: {} };
 	runInNewContext(bundled.outputFiles[0].text, {
-		module, exports: module.exports, require: () => ({ requestUrl: (...args: any[]) => request(...args) }),
+		module, exports: module.exports, window: { setTimeout, clearTimeout }, require: () => ({ requestUrl: (...args: any[]) => request(...args) }),
 	});
 	({ fetchIcs, IcsFetchError } = module.exports);
 });
@@ -42,4 +42,20 @@ test("valid calendar text is returned using Obsidian requestUrl", async () => {
 		return { status: 200, text };
 	};
 	assert.equal(await fetchIcs(url), text);
+});
+
+test("a request that never settles fails with a plain error and no URL", async () => {
+	request = () => new Promise(() => {});
+	await assert.rejects(fetchIcs(url, 20), (error: any) => {
+		assert.ok(error instanceof IcsFetchError);
+		assert.equal(error.message, "The calendar feed took too long to answer.");
+		assert.equal(error.stack!.includes(url), false);
+		return true;
+	});
+});
+
+test("a request that settles in time returns its text and leaves no timer running", async () => {
+	const text = "BEGIN:VCALENDAR\nEND:VCALENDAR";
+	request = async () => ({ status: 200, text });
+	assert.equal(await fetchIcs(url, 60_000), text);
 });

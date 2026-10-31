@@ -1,6 +1,6 @@
 # Settings
 
-Open Graft in Obsidian's settings. For a first-run walk-through, see [Getting started](getting-started.md).
+Open Graft Calendar in Obsidian's settings. For a first-run walk-through, see [Getting started](getting-started.md).
 
 ## Contents
 
@@ -30,9 +30,9 @@ Open Graft in Obsidian's settings. For a first-run walk-through, see [Getting st
 
 | Command | What it does |
 | --- | --- |
-| **Graft: Preview sync** | Reads the calendars and shows every planned change. Writes nothing. |
-| **Graft: Sync now** | Follows the **Preview before apply** toggle. With preview off, it writes immediately. |
-| **Graft: Open calendar** | Opens the calendar view. Also available from the Graft icon in the ribbon. |
+| **Graft Calendar: Preview sync** | Reads the calendars and shows every planned change. Writes nothing. |
+| **Graft Calendar: Sync now** | Follows the **Preview before apply** toggle. With preview off, it writes immediately. |
+| **Graft Calendar: Open calendar** | Opens the calendar view. Also available from the Graft icon in the ribbon. |
 
 While Graft reads calendars or writes notes, a spinner with a short label shows in the status bar on desktop, and as a notice on mobile, until the run ends.
 
@@ -54,7 +54,7 @@ A saved calendar shows as one line with its type, its Invited as value, and whet
 | --- | --- |
 | Name | Required. Must be unique, ignoring case. Previews use it to say which calendar had a problem. |
 | Type | Google, or Outlook / Microsoft 365. |
-| ICS URL | Required. An HTTP or HTTPS address with no username or password. Prefer HTTPS. It is masked on screen, and errors never repeat it. See [Where feed URLs are stored](#where-feed-urls-are-stored). |
+| ICS URL | Required. An HTTP or HTTPS address with no username or password. Prefer HTTPS: an HTTP address is accepted, but Graft shows a warning under the field because the address would be sent without encryption. It is masked on screen, and errors never repeat it. See [Where feed URLs are stored](#where-feed-urls-are-stored). |
 | Invited as | Written to the `invited_as` property of each Meeting note from that calendar. |
 
 ### The same event in several calendars
@@ -153,6 +153,8 @@ The ignore list format is described in [Troubleshooting](troubleshooting.md#igno
 **Person filenames.** Ordered domain rules for full name, first name, or initial and last name. The first match wins. Unlisted domains use full names.
 
 **Clean up invite text.** Before the description is written under the invite agenda heading, Graft removes Teams, Google Meet and Zoom join links and labels, meeting IDs and passcodes, dial-in numbers, HTML tags and long separator lines, and collapses repeated blank lines. Other text is left as written, including ordinary links and numbers. If nothing is left, the section shows the empty agenda placeholder. The preview shows the cleaned text, and an existing note whose agenda still holds join text shows a change for it in the next preview. Turn the setting off to write the description as it arrives.
+
+**Code and templates in invite text.** Whatever this setting says, Graft writes anything in the description that could run or load as plain text, so a stranger's invite cannot do it in your vault. Code fences (including `dataview` and `dataviewjs`), inline Dataview queries that start with `=` or `$=`, Templater tags (`<% ... %>`), images, `![[...]]` embeds and HTML such as `<img>` and `<iframe>` are escaped, and show as literal text. Ordinary text, lists and links are not changed. The escaping is the same on every sync, so it never causes a change in the preview on its own.
 
 ## Scheduled sync
 

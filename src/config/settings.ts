@@ -139,6 +139,11 @@ export function isCalendarUrl(value: string): boolean {
 	return value.trim().length > 0 && isFeedUrl(value);
 }
 
+/** An http:// address is still accepted, but the private address would travel unencrypted. */
+export function isInsecureFeedUrl(value: string): boolean {
+	return /^http:\/\//i.test(value.trim());
+}
+
 export function isCalendarType(value: unknown): value is CalendarType {
 	return value === "google" || value === "outlook";
 }

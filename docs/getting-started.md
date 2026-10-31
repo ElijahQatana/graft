@@ -31,7 +31,7 @@ Menu names change from time to time. Look for the words "ICS", "publish" or "sec
 
 ## 2. Add calendars in Graft
 
-1. Open Settings, then Graft.
+1. Open Settings, then Graft Calendar.
 2. In the Calendars section, fill in the empty row at the bottom:
    - **Name:** a short label such as `Work`. It must be unique. The preview uses it to tell you which calendar had a problem.
    - **Type:** Google, or Outlook / Microsoft 365.
@@ -52,7 +52,7 @@ For a first sync, a small window is safest. The defaults are 7 days back and 30 
 
 ## 4. Run Preview sync
 
-1. Open the command palette and run **Graft: Preview sync**.
+1. Open the command palette and run **Graft Calendar: Preview sync**.
 2. Wait a moment while Graft fetches the calendars and reads your note folders. A preview window opens.
 
 Preview sync never writes anything. Closing the window discards the preview.
@@ -98,7 +98,7 @@ Run Preview sync once more afterwards. A repeat sync of unchanged events should 
 
 ## 7. Sync now and startup sync
 
-**Graft: Sync now** fetches the calendars and applies the plan. While **Preview before apply** is on, which is the default, it opens the preview and waits for you to select Apply. With that setting off it writes straight away and shows only a notice. If the plan has errors, it opens the preview even with the setting off.
+**Graft Calendar: Sync now** fetches the calendars and applies the plan. While **Preview before apply** is on, which is the default, it opens the preview and waits for you to select Apply. With that setting off it writes straight away and shows only a notice. If the plan has errors, it opens the preview even with the setting off.
 
 **Sync on startup** runs Sync now when Obsidian starts, and follows the same preview setting. It is off by default. Leave it off until you trust the results.
 

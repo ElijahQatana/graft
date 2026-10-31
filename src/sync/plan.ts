@@ -44,10 +44,14 @@ export async function buildSyncPlan(
 	const errors: SyncPlan["errors"] = [];
 	const truncatedSeries = new Set<string>();
 
-	for (const feed of feeds) {
+	// Requests start together. Results are handled in feed order, so events, duplicates and
+	// errors come out the same as when the feeds were fetched one by one.
+	const fetched = await Promise.allSettled(feeds.map(async (feed) => fetchFeed(feed.url)));
+	for (const [index, feed] of feeds.entries()) {
+		const result = fetched[index];
 		try {
-			const icsText = await fetchFeed(feed.url);
-			const events = parseIcs(icsText, window, (title) => truncatedSeries.add(stripTitlePrefixes(title, stripPrefixes))).map((event) => ({
+			if (result.status === "rejected") throw result.reason;
+			const events = parseIcs(result.value, window, (title) => truncatedSeries.add(stripTitlePrefixes(title, stripPrefixes))).map((event) => ({
 				...event,
 				summary: stripTitlePrefixes(event.summary, stripPrefixes),
 				source: feed.name,
