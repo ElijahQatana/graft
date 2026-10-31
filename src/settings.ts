@@ -72,7 +72,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		this.topLoose = [];
 		this.metas = [];
 		this.rowOf = new WeakMap();
-		containerEl.createEl("p", { cls: "graft-intro", text: "Changes save automatically. Run Graft: Preview sync from the command palette to try them." });
+		containerEl.createEl("p", { cls: "graft-intro", text: "Changes save automatically. Run Graft Calendar: Preview sync from the command palette to try them." });
 		this.searchBox();
 		this.startHere();
 
@@ -213,7 +213,7 @@ export class GraftSettingTab extends PluginSettingTab {
 		for (const text of [
 			"Add a calendar below with its private ICS address. In Google Calendar, use the \"Secret address in iCal format\" in the calendar's settings. For Outlook or Microsoft 365, publish the calendar and copy its ICS link.",
 			"Set where Meeting, Person and Series notes should go. The defaults work for a new vault.",
-			"Run Graft: Preview sync from the command palette first. It shows what would change and writes nothing. Run Sync now once it looks right.",
+			"Run Graft Calendar: Preview sync from the command palette first. It shows what would change and writes nothing. Run Sync now once it looks right.",
 		]) steps.createEl("li", { text });
 		this.loose(steps);
 	}

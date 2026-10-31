@@ -1,6 +1,6 @@
 # Settings
 
-Open Graft in Obsidian's settings. For a first-run walk-through, see [Getting started](getting-started.md).
+Open Graft Calendar in Obsidian's settings. For a first-run walk-through, see [Getting started](getting-started.md).
 
 ## Contents
 
@@ -30,9 +30,9 @@ Open Graft in Obsidian's settings. For a first-run walk-through, see [Getting st
 
 | Command | What it does |
 | --- | --- |
-| **Graft: Preview sync** | Reads the calendars and shows every planned change. Writes nothing. |
-| **Graft: Sync now** | Follows the **Preview before apply** toggle. With preview off, it writes immediately. |
-| **Graft: Open calendar** | Opens the calendar view. Also available from the Graft icon in the ribbon. |
+| **Graft Calendar: Preview sync** | Reads the calendars and shows every planned change. Writes nothing. |
+| **Graft Calendar: Sync now** | Follows the **Preview before apply** toggle. With preview off, it writes immediately. |
+| **Graft Calendar: Open calendar** | Opens the calendar view. Also available from the Graft icon in the ribbon. |
 
 While Graft reads calendars or writes notes, a spinner with a short label shows in the status bar on desktop, and as a notice on mobile, until the run ends.
 

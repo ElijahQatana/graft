@@ -1,6 +1,6 @@
 {
   "id": "graft",
-  "name": "Graft",
+  "name": "Graft Calendar",
   "version": "1.0.0-rc.8",
   "minAppVersion": "1.4.10",
   "description": "Create Meeting, Person and Series notes from Google and Outlook calendar feeds. Read-only.",

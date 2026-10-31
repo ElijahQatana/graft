@@ -25,7 +25,7 @@ export class CalendarView extends ItemView {
 	}
 
 	getViewType() { return CALENDAR_VIEW_TYPE; }
-	getDisplayText() { return "Graft calendar"; }
+	getDisplayText() { return "Graft Calendar"; }
 	getIcon() { return GRAFT_ICON_ID; }
 
 	async onOpen() {
