@@ -110,4 +110,6 @@ Practical steps:
 - Do not paste addresses into notes, screenshots, issues or logs.
 - If an address leaks, reset or unpublish it in Google Calendar or Outlook, then add the new one in Graft.
 
+Use an https:// address. Graft accepts http:// for feeds you host yourself and shows a warning, but the address, which works like a password, then travels unencrypted.
+
 Graft sends the address only to the calendar provider, to download the feed. It does not contact any other service.
