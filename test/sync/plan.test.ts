@@ -264,3 +264,15 @@ test("a declined copy is dropped by accepted-only before merging, so it cannot w
 	const plan = await buildSyncPlan(feeds, WINDOW, [], [], fetchFeed, true, [], true);
 	assert.deepEqual(plan.toProcess.map((e) => e.uid), ["h-1@example.com"]);
 });
+
+test("a series that hits the expansion limit is listed by title without its feed URL", async () => {
+	const { readFile } = await import("node:fs/promises");
+	const ics = await readFile(new URL("../fixtures/synthetic/hourly-long-series.ics", import.meta.url), "utf8");
+	const feeds: FeedConfig[] = [{ name: "Work", url: "https://work.example/feed.ics" }];
+
+	const plan = await buildSyncPlan(feeds, WINDOW, [], [], async () => ics, false, ["Synthetic "]);
+
+	assert.deepEqual(plan.truncatedSeries, ["hourly check"]);
+	assert.equal(JSON.stringify(plan.truncatedSeries).includes("https://"), false);
+	assert.equal(plan.toProcess.every((event) => event.uid === "hourly-recent@example.com"), true);
+});

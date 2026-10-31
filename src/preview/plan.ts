@@ -14,7 +14,7 @@ export interface FieldChange {
 }
 
 export interface PreviewWarning {
-	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading" | "possible-duplicate-person";
+	kind: "unresolved-company" | "ambiguous-person" | "vanished-event" | "missing-invite-heading" | "possible-duplicate-person" | "series-too-dense";
 	/** A note path or event title for local display. A possible duplicate names the new stub and the existing note. */
 	subject: string;
 	/** On a vanished-event warning: the note would be marked cancelled if Cancel vanished events were on. */

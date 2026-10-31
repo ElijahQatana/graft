@@ -6,7 +6,7 @@ import { buildMeetingFrontmatterUpdate } from "../../src/generate/meetingUpdate.
 import { buildPersonStub } from "../../src/generate/personStub.ts";
 import { buildSeriesStub } from "../../src/generate/seriesStub.ts";
 import { ORIGINAL_SCHEMA } from "../../src/config/schema.ts";
-import { buildWindowLabel } from "../../src/preview/summary.ts";
+import { buildWindowLabel, warningMessage } from "../../src/preview/summary.ts";
 import { makeEvent } from "../helpers.ts";
 
 export function fixture(): PreviewInput {
@@ -168,4 +168,8 @@ test("each kept event is listed with its note path and state", () => {
 	source.meetings[0].existing = { path: "Meetings/Existing.md", frontmatter: { ...synced, title: "Old title" }, body: "## Invite Agenda\n\nNew agenda" };
 	const changed = buildSyncPreview(source).events;
 	assert.deepEqual(changed.map(({ state, changes }) => [state, changes.map((change) => change.field)]), [["changed", ["title"]]]);
+});
+
+test("a too-dense series warning has its own message", () => {
+	assert.match(warningMessage({ kind: "series-too-dense", subject: "Synthetic hourly check" }), /Too many repeats to expand/);
 });

@@ -101,6 +101,7 @@ export async function prepareSync(app: App, settings: GraftSettings, fetchFeed: 
 			skipped: settings.titleMatchRules.length > 0 || settings.ignoreListPath !== "" || settings.acceptedOnly || settings.mergeDuplicates,
 		},
 	};
+	for (const title of plan.truncatedSeries ?? []) input.warnings.push({ kind: "series-too-dense", subject: title || "Untitled event" });
 	const newPeople = new Map<string, ResolvedAttendee>();
 	const newSeries = new Map<string, { filename: string; standingAgenda?: string }>();
 	const targets = new Set<string>();

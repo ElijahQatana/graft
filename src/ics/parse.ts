@@ -4,8 +4,10 @@ import type { Attendee, CalendarEvent, SyncWindow } from "../types.ts";
 /** Limit recurrence expansion so dense or unbounded rules cannot hang a sync. */
 const MAX_ITERATIONS_PER_SERIES = 20000;
 
-/** Expands events within the sync window and applies recurrence exceptions. */
-export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
+/** Expands events within the sync window and applies recurrence exceptions.
+ * `onTruncated` is called with the title of each series that hit the expansion limit before
+ * reaching the end of the window, so the caller can report that events may be missing. */
+export function parseIcs(icsText: string, window: SyncWindow, onTruncated?: (title: string) => void): CalendarEvent[] {
 	const component = new ICAL.Component(ICAL.parse(icsText) as unknown[]);
 	const vevents = component.getAllSubcomponents("vevent");
 
@@ -39,13 +41,18 @@ export function parseIcs(icsText: string, window: SyncWindow): CalendarEvent[] {
 		}
 
 		// Start at DTSTART: INTERVAL phase and COUNT depend on the true first occurrence.
+		// ical.js cannot start the iterator later without changing both, so a series too dense to
+		// reach the window within the limit is reported instead.
 		const iterator = event.iterator();
 		let next: ICAL.Time | null;
 		let iterations = 0;
 		while ((next = iterator.next())) {
 			iterations++;
-			if (iterations > MAX_ITERATIONS_PER_SERIES) break;
 			if (next.compare(windowEnd) >= 0) break;
+			if (iterations > MAX_ITERATIONS_PER_SERIES) {
+				onTruncated?.(event.summary ?? "");
+				break;
+			}
 			if (next.compare(windowStart) < 0) continue;
 
 			const details = event.getOccurrenceDetails(next);

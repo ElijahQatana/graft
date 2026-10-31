@@ -39,6 +39,7 @@ const warningText: Record<PreviewWarning["kind"], string> = {
 	"ambiguous-person": "Ambiguous Person match. Check the matching notes before syncing.",
 	"possible-duplicate-person": "Possible duplicate Person. If they are the same person, add the new address as an alias on the existing note and preview again.",
 	"vanished-event": "No longer in the calendar feed. It may have been cancelled. The note is left as it is.",
+	"series-too-dense": "Too many repeats to expand before the sync window, so events in this series are missing from the preview.",
 	"missing-invite-heading": "No invite agenda heading in this note, so its agenda is not updated. Add the heading or check the Headings setting.",
 };
 

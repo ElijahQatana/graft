@@ -298,3 +298,23 @@ test("keeps local wall-clock time for a TZID series across a DST change", async 
 		["2026-03-02T14:00:00.000Z", "2026-03-16T13:00:00.000Z", "2026-03-30T13:00:00.000Z"],
 	);
 });
+
+test("reports a series that hits the expansion limit before the window", async () => {
+	const truncated: string[] = [];
+	const events = parseIcs(await readFixture("hourly-long-series.ics"), WINDOW, (title) => truncated.push(title));
+
+	// 20000 hourly steps from 2020-01-01 end in 2022, long before the window.
+	assert.deepEqual(truncated, ["Synthetic hourly check"]);
+	assert.equal(events.some((e) => e.uid === "hourly-old@example.com"), false);
+});
+
+test("expands a dense series that reaches the window within the limit without reporting it", async () => {
+	const truncated: string[] = [];
+	const events = parseIcs(await readFixture("hourly-long-series.ics"), WINDOW, (title) => truncated.push(title));
+
+	assert.equal(truncated.includes("Synthetic recent hourly"), false);
+	const recent = events.filter((e) => e.uid === "hourly-recent@example.com");
+	assert.equal(recent.length, 36 * 24);
+	assert.equal(recent[0]?.start, "2026-08-25T00:00:00.000Z");
+	assert.equal(recent.at(-1)?.start, "2026-09-29T23:00:00.000Z");
+});

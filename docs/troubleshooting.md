@@ -59,6 +59,10 @@ Google and Outlook both let you reset or unpublish an address. After a reset, pa
 - The same event in an earlier calendar takes priority. The other copy is listed as skipped, and so is a copy dropped by **Merge duplicates across calendars**.
 - Unless **Only events I have accepted** is on, an event you declined or have tentatively accepted is still included. With it on, such events are listed as skipped with the reason.
 
+### A series is too dense to expand
+
+A warning names a recurring series that repeats so often, for example hourly for several years, that Graft stopped expanding it before it reached the sync window. Events from that series are missing from the preview. Graft counts from the series' first event, so shortening the series in the calendar app, or ending it and starting a new one, fixes it. Apply is still available, but notes for that series are not created or updated, and with Cancel vanished events on, existing notes for it inside the window may be marked cancelled.
+
 ### Duplicates from calendar mirroring
 
 If a tool copies events between your calendars, one meeting can reach Graft several times with different IDs: as plain `Busy` blocks and as copies with full details. That gives Meeting notes titled Busy and two notes for one meeting. To clean it up:
