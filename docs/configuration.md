@@ -54,7 +54,7 @@ A saved calendar shows as one line with its type, its Invited as value, and whet
 | --- | --- |
 | Name | Required. Must be unique, ignoring case. Previews use it to say which calendar had a problem. |
 | Type | Google, or Outlook / Microsoft 365. |
-| ICS URL | Required. An HTTP or HTTPS address with no username or password. Prefer HTTPS. It is masked on screen, and errors never repeat it. See [Where feed URLs are stored](#where-feed-urls-are-stored). |
+| ICS URL | Required. An HTTP or HTTPS address with no username or password. Prefer HTTPS: an HTTP address is accepted, but Graft shows a warning under the field because the address would be sent without encryption. It is masked on screen, and errors never repeat it. See [Where feed URLs are stored](#where-feed-urls-are-stored). |
 | Invited as | Written to the `invited_as` property of each Meeting note from that calendar. |
 
 ### The same event in several calendars

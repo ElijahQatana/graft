@@ -840,6 +840,16 @@ button.graft-cal-step:disabled {
 	display: none;
 }
 
+.graft-settings .graft-warning {
+	margin-top: var(--size-4-1);
+	color: var(--text-warning);
+	font-size: var(--font-ui-smaller);
+}
+
+.graft-settings .graft-warning:empty {
+	display: none;
+}
+
 .graft-settings [hidden] {
 	display: none !important;
 }

@@ -2,7 +2,7 @@ import { App, Notice, PluginSettingTab, Setting, TFile } from "obsidian";
 import type GraftPlugin from "./main.ts";
 import { WEEK_DAY_NAMES, isWeekStartSetting } from "./util/weekStart.ts";
 import {
-	isCalendarType, isCalendarUrl, isDayCount, isAutomaticLimit, isIntervalMinutes, isScheduledMode, MAX_AUTOMATIC_NOTES, MAX_INTERVAL_MINUTES, MIN_AUTOMATIC_NOTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
+	isCalendarType, isCalendarUrl, isInsecureFeedUrl, isDayCount, isAutomaticLimit, isIntervalMinutes, isScheduledMode, MAX_AUTOMATIC_NOTES, MAX_INTERVAL_MINUTES, MIN_AUTOMATIC_NOTES, MIN_INTERVAL_MINUTES, isFilenameRule, isTimezone, isTitleRule, isVaultPath, newCalendarId, sameCalendarName,
 	type CalendarSettings,
 } from "./config/settings.ts";
 import { secretStoreOf } from "./config/secrets.ts";
@@ -28,6 +28,7 @@ const PERSON_LABELS: Record<PersonFieldKey, string> = {
 };
 const SERIES_LABELS: Record<SeriesFieldKey, string> = { uid: "Event UID", title: "Title" };
 const RENAME_NOTE = "Changing this does not rename it in existing notes, which may then show as new.";
+const HTTP_WARNING = "This address starts with http://, so it is sent without encryption. Use an https:// address if you can.";
 const MEETING_MATCH: MeetingFieldKey[] = ["uid", "recurrenceId"];
 const PERSON_MATCH: PersonFieldKey[] = ["email", "emailAliases"];
 
@@ -414,6 +415,9 @@ export class GraftSettingTab extends PluginSettingTab {
 		const row = this.row(index === undefined ? "New calendar" : `Calendar ${index + 1}`, noUrl ? "No feed address on this device. Enter it again." : "", "name type google outlook microsoft ICS URL invited as");
 		row.settingEl?.classList?.add("graft-rule-row", index === undefined ? "graft-rule-new" : "graft-rule-saved");
 		const error = this.errorSlot(row);
+		const warning = row.descEl.createEl("div", { cls: "graft-warning", attr: { role: "status", "aria-live": "polite" } });
+		const warn = (value: string) => warning.setText(isInsecureFeedUrl(value) ? HTTP_WARNING : "");
+		warn(draft.url);
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Calendar name");
 			input.setPlaceholder("Name, such as Work").setValue(draft.name).onChange((value) => { draft.name = value; });
@@ -425,7 +429,7 @@ export class GraftSettingTab extends PluginSettingTab {
 			input.inputEl.type = "password";
 			input.inputEl.autocomplete = "off";
 			input.inputEl.spellcheck = false;
-			input.setPlaceholder(noUrl ? "Enter the private ICS URL again" : "Private ICS URL").setValue(draft.url).onChange((value) => { draft.url = value; });
+			input.setPlaceholder(noUrl ? "Enter the private ICS URL again" : "Private ICS URL").setValue(draft.url).onChange((value) => { draft.url = value; warn(value); });
 		});
 		row.addText((input) => {
 			input.inputEl.setAttribute("aria-label", "Calendar invited as");
