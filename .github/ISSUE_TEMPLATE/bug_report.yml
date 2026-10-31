@@ -1,0 +1,57 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please leave out real event titles, names, email addresses, meeting links, tokens, private feed URLs and home-directory paths. Redact logs and screenshots first.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can it be reproduced?
+      description: Made-up events or calendars are best.
+  - type: input
+    id: version
+    attributes:
+      label: Graft Calendar version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: obsidian
+    attributes:
+      label: Obsidian version
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - iOS
+        - Android
+        - Not sure
+  - type: dropdown
+    id: source
+    attributes:
+      label: Calendar source involved
+      options:
+        - Google
+        - Outlook / Microsoft 365
+        - Both or not sure
+  - type: textarea
+    id: output
+    attributes:
+      label: Notices, console output or screenshots
+      description: Redacted only.
+      render: text
