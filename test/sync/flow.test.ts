@@ -40,6 +40,7 @@ const timers: Array<{ id: number; ms: number; cleared: boolean }> = [];
 const fakeWindow = {
 	setInterval(_callback: any, ms: number) { const id = timers.length + 1; timers.push({ id, ms, cleared: false }); return id; },
 	clearInterval(id: number) { const timer = timers.find((item) => item.id === id); if (timer) timer.cleared = true; },
+	setTimeout, clearTimeout,
 };
 function fakeElement(): any {
 	const el: any = { children: [], listeners: {}, createSpan(options: any) { const c = fakeElement(); c.text = options?.text; el.children.push(c); return c; }, createEl(_tag: string, options: any) { const c = fakeElement(); c.text = options?.text; el.children.push(c); return c; }, addEventListener(name: string, callback: any) { el.listeners[name] = callback; } };
