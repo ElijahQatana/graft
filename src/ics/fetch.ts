@@ -8,13 +8,23 @@ export class IcsFetchError extends Error {
 	}
 }
 
+/** How long one feed request may run before it is treated as failed. */
+export const FEED_TIMEOUT_MS = 30_000;
+
 /** Uses Obsidian's requestUrl to avoid browser CORS restrictions. */
-export async function fetchIcs(url: string): Promise<string> {
+export async function fetchIcs(url: string, timeoutMs = FEED_TIMEOUT_MS): Promise<string> {
 	let response;
+	let timer: number | undefined;
 	try {
-		response = await requestUrl({ url, throw: false });
-	} catch {
+		const timeout = new Promise<never>((_, reject) => {
+			timer = window.setTimeout(() => reject(new IcsFetchError("The calendar feed took too long to answer.")), timeoutMs);
+		});
+		response = await Promise.race([requestUrl({ url, throw: false }), timeout]);
+	} catch (error) {
+		if (error instanceof IcsFetchError) throw error;
 		throw new IcsFetchError("Could not reach the calendar feed.");
+	} finally {
+		window.clearTimeout(timer);
 	}
 
 	if (response.status < 200 || response.status >= 300) {
