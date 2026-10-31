@@ -1,6 +1,6 @@
 # Getting started
 
-This guide takes you from a fresh install to a first sync. Graft is still in development and has not yet been tested against real Google and Outlook feeds, so use a test vault first if you can, and read each preview before applying it.
+This guide takes you from a fresh install to a first sync. Read each preview before applying it.
 
 You need Graft installed and enabled. See the [README](../README.md#install).
 

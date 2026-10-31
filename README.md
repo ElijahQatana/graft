@@ -2,10 +2,6 @@
 
 Graft Calendar is an Obsidian plugin that turns your calendar events into Meeting notes. It reads Google Calendar and Outlook or Microsoft 365 calendars through their private ICS feed addresses, then writes Meeting, Person and Series notes into your vault.
 
-## Status
-
-Graft is still in development. The settings tab, Preview sync, Sync now and Apply are all connected. Testing against real Google and Outlook feeds is still pending, so expect rough edges, and read every preview before you apply it.
-
 ## What it does
 
 - Reads any number of Google and Outlook / Microsoft 365 calendars from their private ICS addresses.
