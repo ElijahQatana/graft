@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { buildMeetingBodyUpdate, buildMeetingFrontmatterUpdate, type MeetingUpdateInput } from "../../src/generate/meetingUpdate.ts";
+import { buildMeetingNote } from "../../src/generate/meetingNote.ts";
 import type { CompanyRecord } from "../../src/match/companyMatch.ts";
 import { ORIGINAL_SCHEMA, cloneSchema } from "../../src/config/schema.ts";
 import { makeEvent } from "../helpers.ts";
@@ -131,4 +132,14 @@ test("a body update keeps join text when clean-up is off and does not rewrite an
 	assert.match(buildMeetingBodyUpdate(body, description, "## Invite Agenda", undefined, false), /Discuss Q3 numbers\n\nJoin Zoom Meeting/);
 	const stored = "## Invite Agenda\n\nDiscuss Q3 numbers\n\nJoin Zoom Meeting\n\n## Notes\n";
 	assert.equal(buildMeetingBodyUpdate(stored, description, "## Invite Agenda", undefined, false), stored);
+});
+
+test("a note written with escaped invite text is unchanged by the next update", () => {
+	const description = "Agenda\n\n```dataviewjs\ndv.paragraph(1);\n```\n<% tp.date.now() %>\n![](https://example.com/pixel.png)\n![[Private note]]";
+	for (const clean of [true, false]) {
+		const written = buildMeetingNote({ ...baseInput({ event: makeEvent({ description }) }), cleanInvite: clean });
+		const body = `# Meeting\n\n${written.body}\n\n## Notes\n\nMine`;
+		assert.equal(buildMeetingBodyUpdate(body, description, HEADING, undefined, clean), body);
+		assert.doesNotMatch(body, /<%|^`{3}|(?<!\\)!\[/m);
+	}
 });

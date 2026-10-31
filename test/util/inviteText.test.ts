@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { cleanInviteText } from "../../src/util/inviteText.ts";
+import { cleanInviteText, inviteAgendaText, neutralizeInviteText } from "../../src/util/inviteText.ts";
 
 const SEP = "_".repeat(80);
 
@@ -121,4 +121,71 @@ test("keeps password, PIN and phone lines when the text holds no join text", () 
 
 test("removes detail lines next to join text", () => {
 	assert.equal(cleanInviteText("Agenda\n\nJoin Zoom Meeting\nPasscode: 123456\nDial by your location\n+1 555 010 0100 US"), "Agenda");
+});
+
+test("shows a dataviewjs block as literal text", () => {
+	const out = neutralizeInviteText("Agenda\n\n```dataviewjs\ndv.paragraph(app.vault.getName());\n```\n\nThanks");
+	assert.doesNotMatch(out, /^`{3}/m);
+	assert.match(out, /^\\```dataviewjs$/m);
+	assert.match(out, /^Agenda\n\n/);
+	assert.match(out, /\n\nThanks$/);
+});
+
+test("shows dataview, tilde and indented fences as literal text", () => {
+	const out = neutralizeInviteText("```dataview\nTABLE file.name\n```\n~~~js\nrun();\n~~~\n- ```dataviewjs\n  >  ```js\n   ```");
+	for (const line of out.split("\n")) assert.doesNotMatch(line, /^[\s>*+-]*(?:`{3}|~{3})/);
+	assert.equal(out.split("\n")[0], "\\```dataview");
+});
+
+test("breaks Templater tags", () => {
+	const out = neutralizeInviteText("Hi <% tp.date.now() %> and <%* tR += 'x' %> and <%+ tp.file.title %>");
+	assert.doesNotMatch(out, /<%/);
+	assert.equal(out, "Hi &lt;% tp.date.now() %> and &lt;%* tR += 'x' %> and &lt;%+ tp.file.title %>");
+});
+
+test("shows remote images and embeds as links, not loads", () => {
+	const out = neutralizeInviteText("![](https://example.com/pixel.png)\n![logo][ref]\n![[Private note]]\n![[photo.png|200]]\n\n[ref]: https://example.com/a.png");
+	assert.doesNotMatch(out, /(?<!\\)!\[/);
+	assert.match(out, /^\\!\[\]\(https:\/\/example\.com\/pixel\.png\)$/m);
+	assert.match(out, /^\\!\[\[Private note\]\]$/m);
+});
+
+test("breaks inline Dataview queries but not other inline code", () => {
+	const out = neutralizeInviteText("Run `$= dv.current()` and `= this.file.name` and ``$=x`` but keep `npm test`");
+	assert.equal(out, "Run \\`$= dv.current()` and \\`= this.file.name` and \\`\\`$=x`` but keep `npm test`");
+});
+
+test("breaks active HTML tags", () => {
+	const out = neutralizeInviteText("<img src=\"https://example.com/p.gif\"> <iframe src=x></iframe> <b>bold</b>");
+	assert.doesNotMatch(out, /<img|<iframe/);
+	assert.match(out, /<b>bold<\/b>/);
+});
+
+test("leaves ordinary agenda text, lists and links unchanged", () => {
+	const text = "Agenda\n\n- Review Q3 plan: 50% done!\n- Budget > $5,000 & <10 people\n1. [Roadmap](https://example.com/roadmap)\n> quoted line\n\nSee https://example.com/doc?a=1&b=2 or [[Project plan]].\nUse `npm test` and a == b, a = b.\nWow![ok]";
+	assert.equal(neutralizeInviteText(text), text.replace("Wow![ok]", "Wow\\![ok]"));
+});
+
+test("neutralizing is stable on its own output", () => {
+	const text = "```dataviewjs\nx\n```\n<%* y %>\n![](https://example.com/p.png)\n![[A]]\n`$= z`\n``$=z``\n<img src=x>";
+	const once = neutralizeInviteText(text);
+	assert.equal(neutralizeInviteText(once), once);
+});
+
+test("does not double-escape text the sender already escaped", () => {
+	assert.equal(neutralizeInviteText("\\![x](a.png) \\`$= y`"), "\\![x](a.png) \\`$= y`");
+});
+
+test("inviteAgendaText neutralizes with clean-up on and off", () => {
+	const description = "Plan\n\n<%* await tp.file.delete() %>\n```dataviewjs\ndv.view('x')\n```\n\nJoin Zoom Meeting\nhttps://example.zoom.us/j/12345678901";
+	const on = inviteAgendaText(description, true);
+	const off = inviteAgendaText(description, false);
+	for (const out of [on, off]) {
+		assert.doesNotMatch(out, /<%/);
+		assert.doesNotMatch(out, /^`{3}/m);
+	}
+	assert.doesNotMatch(on, /zoom\.us/);
+	assert.match(off, /zoom\.us/);
+	assert.equal(inviteAgendaText("  \n ", false), "");
+	assert.equal(inviteAgendaText(undefined), "");
 });

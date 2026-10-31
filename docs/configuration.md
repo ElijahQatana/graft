@@ -154,6 +154,8 @@ The ignore list format is described in [Troubleshooting](troubleshooting.md#igno
 
 **Clean up invite text.** Before the description is written under the invite agenda heading, Graft removes Teams, Google Meet and Zoom join links and labels, meeting IDs and passcodes, dial-in numbers, HTML tags and long separator lines, and collapses repeated blank lines. Other text is left as written, including ordinary links and numbers. If nothing is left, the section shows the empty agenda placeholder. The preview shows the cleaned text, and an existing note whose agenda still holds join text shows a change for it in the next preview. Turn the setting off to write the description as it arrives.
 
+**Code and templates in invite text.** Whatever this setting says, Graft writes anything in the description that could run or load as plain text, so a stranger's invite cannot do it in your vault. Code fences (including `dataview` and `dataviewjs`), inline Dataview queries that start with `=` or `$=`, Templater tags (`<% ... %>`), images, `![[...]]` embeds and HTML such as `<img>` and `<iframe>` are escaped, and show as literal text. Ordinary text, lists and links are not changed. The escaping is the same on every sync, so it never causes a change in the preview on its own.
+
 ## Scheduled sync
 
 Off by default. The **Sync interval** is 15 to 1440 minutes (default 60). The first check runs one interval after Obsidian starts, and a check is skipped while a sync or preview is open.
