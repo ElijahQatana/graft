@@ -67,6 +67,8 @@ Pre-releases are marked as such on the release page. To try one, install the BRA
 
 ## Documentation
 
+The same pages, with search, are on the [docs site](https://graft.elijahquintana.pro/docs/).
+
 | Page | Covers |
 | --- | --- |
 | [Getting started](https://github.com/ElijahQatana/graft/blob/main/docs/getting-started.md) | A step-by-step first sync. |
