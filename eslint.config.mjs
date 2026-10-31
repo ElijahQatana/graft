@@ -15,7 +15,7 @@ export default defineConfig([
 		},
 		rules: {
 			// Graft and ICS are names. Meeting is the note type's name, and Work is an example calendar name.
-			"obsidianmd/ui/sentence-case": ["warn", { brands: ["Graft", "ICS", "Meeting", "Work"] }],
+			"obsidianmd/ui/sentence-case": ["warn", { brands: ["Graft", "Graft Calendar", "ICS", "Meeting", "Work"] }],
 			// The declarative settings API (getSettingDefinitions) needs Obsidian 1.13, but Graft supports 1.4.4 and
 			// later, so the settings tab keeps display(). Revisit when minAppVersion reaches 1.13.
 			"obsidianmd/settings-tab/prefer-setting-definitions": "off",

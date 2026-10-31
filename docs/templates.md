@@ -95,7 +95,7 @@ The Meeting filename pattern is separate from the templates and has its own plac
 
 ## Checking a template
 
-Run **Graft: Preview sync** and open a new note in the preview. It shows the body Graft will write, so you can check the placeholders before anything is created. See [Getting started](getting-started.md).
+Run **Graft Calendar: Preview sync** and open a new note in the preview. It shows the body Graft will write, so you can check the placeholders before anything is created. See [Getting started](getting-started.md).
 
 ## How the Series agenda and the invite agenda combine
 
