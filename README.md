@@ -19,10 +19,10 @@ Graft Calendar is an Obsidian plugin that turns your calendar events into Meetin
 ## What it does not do
 
 - It never writes to your calendar. Access is read-only.
-- It has no sign-in or OAuth. The private ICS address is the only credential. On Obsidian 1.11.4 and later, Graft keeps each address in Obsidian's secret storage on your device, not in the plugin's data file. See [Troubleshooting](docs/troubleshooting.md#privacy-and-feed-urls).
+- It has no sign-in or OAuth. The private ICS address is the only credential. On Obsidian 1.11.4 and later, Graft keeps each address in Obsidian's secret storage on your device, not in the plugin's data file. See [Troubleshooting](https://github.com/ElijahQatana/graft/blob/main/docs/troubleshooting.md#privacy-and-feed-urls).
 - It makes no AI or LLM calls. All filtering and matching is mechanical.
 - It does not delete notes. If an event disappears from a feed, the preview shows a warning and the note stays. An optional setting can mark a dropped occurrence inside the sync window cancelled, which changes only its status.
-- It does not filter by RSVP status unless you turn on **Only events I have accepted**, which is off by default. See [Configuration](docs/configuration.md).
+- It does not filter by RSVP status unless you turn on **Only events I have accepted**, which is off by default. See [Configuration](https://github.com/ElijahQatana/graft/blob/main/docs/configuration.md).
 
 ## Network use and privacy
 
@@ -31,17 +31,17 @@ Graft makes one kind of network request: it downloads each calendar's ICS feed f
 - No account is needed and nothing is paid for.
 - No telemetry, analytics or ads. Graft sends nothing about you or your vault anywhere.
 - It does not read files outside your vault.
-- The feed address works like a password for the calendar. See [Troubleshooting](docs/troubleshooting.md#privacy-and-feed-urls) for where it is stored.
+- The feed address works like a password for the calendar. See [Troubleshooting](https://github.com/ElijahQatana/graft/blob/main/docs/troubleshooting.md#privacy-and-feed-urls) for where it is stored.
 
 ## Quick start
 
 1. Install Graft Calendar (see below) and turn it on under Settings, Community plugins.
-2. Get a private ICS address from each calendar you want. [Getting started](docs/getting-started.md) shows where to find it in Google Calendar and in Outlook.
+2. Get a private ICS address from each calendar you want. [Getting started](https://github.com/ElijahQatana/graft/blob/main/docs/getting-started.md) shows where to find it in Google Calendar and in Outlook.
 3. Open Settings, then Graft Calendar. Add each calendar with a name, its type and its ICS address.
 4. Run **Graft Calendar: Preview sync** from the command palette. Read the preview. Nothing is written yet.
 5. Select **Apply** if it looks right.
 
-The full walk-through is in [Getting started](docs/getting-started.md).
+The full walk-through is in [Getting started](https://github.com/ElijahQatana/graft/blob/main/docs/getting-started.md).
 
 ## Install
 
@@ -69,12 +69,12 @@ Pre-releases are marked as such on the release page. To try one, install the BRA
 
 | Page | Covers |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | A step-by-step first sync. |
-| [Settings](docs/configuration.md) | Every setting. |
-| [Custom templates](docs/templates.md) | Placeholders for Meeting, Person and Series templates. |
-| [Troubleshooting](docs/troubleshooting.md) | Notices, what they mean, and privacy of feed addresses. |
-| [Code layout](docs/technical/architecture.md) | How the sync pipeline is split up. |
-| [Contributing](CONTRIBUTING.md) | How to send a change. |
+| [Getting started](https://github.com/ElijahQatana/graft/blob/main/docs/getting-started.md) | A step-by-step first sync. |
+| [Settings](https://github.com/ElijahQatana/graft/blob/main/docs/configuration.md) | Every setting. |
+| [Custom templates](https://github.com/ElijahQatana/graft/blob/main/docs/templates.md) | Placeholders for Meeting, Person and Series templates. |
+| [Troubleshooting](https://github.com/ElijahQatana/graft/blob/main/docs/troubleshooting.md) | Notices, what they mean, and privacy of feed addresses. |
+| [Code layout](https://github.com/ElijahQatana/graft/blob/main/docs/technical/architecture.md) | How the sync pipeline is split up. |
+| [Contributing](https://github.com/ElijahQatana/graft/blob/main/CONTRIBUTING.md) | How to send a change. |
 
 ## Development
 
@@ -91,4 +91,4 @@ To try a build, copy `main.js`, `manifest.json` and `styles.css` into `.obsidian
 
 ## License
 
-Graft is released under the [MIT License](LICENSE).
+Graft is released under the [MIT License](https://github.com/ElijahQatana/graft/blob/main/LICENSE).
